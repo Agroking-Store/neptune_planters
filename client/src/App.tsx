@@ -1,11 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { RouterProvider } from "@tanstack/react-router";
 import { getRouter } from "./router";
 import { tokenStore } from "./lib/api";
+import { Loader2 } from "lucide-react";
 
 const router = getRouter();
 
 function App() {
+  const [isRestoring, setIsRestoring] = useState(true);
+
   // ── Silent session restore on every page load ──
   // Attempts to get a new access token using the HttpOnly refresh cookie.
   // If the user was previously logged in, this keeps them logged in
@@ -31,11 +34,21 @@ function App() {
         }
       } catch (err) {
         console.error("[App] Session restore failed (server may be down):", err);
+      } finally {
+        setIsRestoring(false);
       }
     };
 
     void restoreSession();
   }, []);
+
+  if (isRestoring) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return <RouterProvider router={router} />;
 }

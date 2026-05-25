@@ -7,7 +7,8 @@
     "dev": "ts-node-dev --respawn --transpile-only --exit-child src/server.ts",
     "build": "tsc --project tsconfig.json",
     "start": "node dist/server.js",
-    "seed": "ts-node-dev --transpile-only src/utils/seed.ts"
+    "seed": "ts-node-dev --transpile-only src/utils/seed.ts",
+    "seed:inventory": "ts-node-dev --transpile-only src/utils/seedInventory.ts"
   },
   "keywords": [],
   "author": "",

@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Upload, Package, Save, Image as ImageIcon, Tag, IndianRupee, Boxes, Palette, Check, ChevronDown, Plus, Search } from "lucide-react";
+import { Upload, Package, Save, Image as ImageIcon, Tag, IndianRupee, Boxes, Palette, Check, ChevronDown, Plus, Search, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { store } from "@/lib/store";
 import { toast } from "sonner";
 import { isAuthenticated } from "@/lib/auth";
+import { api, ApiClientError } from "@/lib/api";
 
 export const Route = createFileRoute("/inventory/new")({
   head: () => ({ meta: [{ title: "Add Inventory Item — Indux" }] }),
@@ -14,40 +14,80 @@ export const Route = createFileRoute("/inventory/new")({
   component: () => <AppShell><NewItem /></AppShell>,
 });
 
-const DEFAULT_DEPARTMENTS = ["Electronics", "Furniture", "Industrial Access", "Stationery", "Tools", "Lighting"];
-const DEFAULT_CATEGORIES = ["General", "Premium", "Budget", "Industrial", "Consumer", "Specialty"];
-const UOMS = ["pcs", "box", "kg", "ltr", "set", "mtr", "sqft"];
+// ── Predefined UOM values (matches backend enum exactly) ──────────────
+const UOM_VALUES = ["pcs", "box", "kg", "ltr", "set", "mtr", "sqft"] as const;
+type UOM = typeof UOM_VALUES[number];
+
+// ── API types ──────────────────────────────────────────────────────────
+interface Department { _id: string; name: string; description?: string; }
+interface Category   { _id: string; name: string; departmentId: string; }
+interface Brand      { _id: string; name: string; }
 
 function NewItem() {
   const navigate = useNavigate();
   const productImgRef = useRef<HTMLInputElement>(null);
-  const refImgRef = useRef<HTMLInputElement>(null);
+  const refImgRef     = useRef<HTMLInputElement>(null);
   const textureImgRef = useRef<HTMLInputElement>(null);
 
-  const [departments, setDepartments] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem("indux_departments") || "null") || DEFAULT_DEPARTMENTS; } catch { return DEFAULT_DEPARTMENTS; }
-  });
-  const [categories, setCategories] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem("indux_categories") || "null") || DEFAULT_CATEGORIES; } catch { return DEFAULT_CATEGORIES; }
-  });
-  useEffect(() => { localStorage.setItem("indux_departments", JSON.stringify(departments)); }, [departments]);
-  useEffect(() => { localStorage.setItem("indux_categories", JSON.stringify(categories)); }, [categories]);
+  // ── Lookup data from API ──────────────────────────────────────────────
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [categories, setCategories]   = useState<Category[]>([]);
+  const [brands, setBrands]           = useState<Brand[]>([]);
+  const [lookupsLoading, setLookupsLoading] = useState(true);
 
-  const [image, setImage] = useState<string | undefined>();
-  const [referenceImage, setReferenceImage] = useState<string | undefined>();
-  const [textureImage, setTextureImage] = useState<string | undefined>();
+  // Fetch departments and brands on mount
+  useEffect(() => {
+    const fetchLookups = async () => {
+      console.log("[Inventory] Fetching departments and brands...");
+      try {
+        const [depts, brnds] = await Promise.all([
+          api.get<Department[]>("/inventory/departments"),
+          api.get<Brand[]>("/inventory/brands"),
+        ]);
+        setDepartments(depts ?? []);
+        setBrands(brnds ?? []);
+        console.log("[Inventory] Loaded", depts?.length, "depts,", brnds?.length, "brands");
+      } catch (err) {
+        console.error("[Inventory] Failed to load lookups:", err);
+        toast.error("Failed to load departments/brands from server.");
+      } finally {
+        setLookupsLoading(false);
+      }
+    };
+    void fetchLookups();
+  }, []);
+
+  // ── Form state ────────────────────────────────────────────────────────
+  const [image, setImage]               = useState<string | undefined>();
+  const [referenceImage, setRefImage]   = useState<string | undefined>();
+  const [textureImage, setTexImage]     = useState<string | undefined>();
 
   const [form, setForm] = useState({
-    // Basics
-    name: "", sku: "", hsn: "", description: "",
-    department: "Electronics", category: "General",
-    // Pricing
-    price: 0, discount: 0, tax: 18,
-    // Stock
-    quantity: 0, unit: "pcs",
-    // Attributes
-    brand: "", batchNo: "", color: "", productN: "", size: "", dimensions: "",
+    productName: "", sku: "", hsnNumber: "", description: "",
+    departmentId: "", departmentName: "",
+    categoryId: "",   categoryName: "",
+    brandId: "",      brandName: "",
+    productN: "",
+    unitPrice: 0, defaultDiscount: 0, taxPercentage: 18,
+    stockQuantity: 0, uom: "pcs" as UOM,
+    batchNo: "", color: "", size: "", dimensions: "",
   });
+
+  const [submitting, setSubmitting] = useState(false);
+
+  // When department changes → fetch its categories
+  const onDepartmentChange = async (deptId: string, deptName: string) => {
+    setForm((f) => ({ ...f, departmentId: deptId, departmentName: deptName, categoryId: "", categoryName: "" }));
+    setCategories([]);
+    if (!deptId) return;
+    console.log("[Inventory] Fetching categories for dept:", deptName);
+    try {
+      const cats = await api.get<Category[]>(`/inventory/categories?departmentId=${deptId}`);
+      setCategories(cats ?? []);
+    } catch (err) {
+      console.error("[Inventory] Failed to load categories:", err);
+    }
+  };
 
   const readFile = (f: File, setter: (s: string) => void) => {
     const reader = new FileReader();
@@ -55,13 +95,60 @@ function NewItem() {
     reader.readAsDataURL(f);
   };
 
-  const submit = (e: React.FormEvent) => {
+  // ── Submit ────────────────────────────────────────────────────────────
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.sku) { toast.error("Product name and SKU are required"); return; }
-    store.addInventory({ ...form, image, referenceImage, textureImage });
-    toast.success("Item added to inventory");
-    navigate({ to: "/inventory" });
+    if (!form.productName.trim() || !form.sku.trim()) {
+      toast.error("Product name and SKU are required");
+      return;
+    }
+    if (!form.departmentId && !form.departmentName) {
+      toast.error("Please select a department");
+      return;
+    }
+
+    setSubmitting(true);
+    console.log("[Inventory] Submitting product:", form.productName);
+
+    // Build images array
+    const productImages = [
+      image         && { type: "product",   url: image,         publicId: "" },
+      referenceImage && { type: "reference", url: referenceImage, publicId: "" },
+      textureImage  && { type: "texture",   url: textureImage,  publicId: "" },
+    ].filter(Boolean);
+
+    const payload = {
+      ...form,
+      productImages,
+    };
+
+    try {
+      await api.post("/inventory/products", payload);
+      console.log("[Inventory] Product created successfully");
+      toast.success("Product added to inventory");
+      navigate({ to: "/inventory" });
+    } catch (err) {
+      console.error("[Inventory] Create failed:", err);
+      if (err instanceof ApiClientError) {
+        toast.error(err.message);
+      } else if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to save product. Please try again.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (lookupsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground">Loading form data...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -74,39 +161,62 @@ function NewItem() {
         {/* Media */}
         <Section icon={<ImageIcon className="w-5 h-5" />} title="Product Media" subtitle="Primary product, reference and texture imagery.">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <ImageDrop label="Product Image" value={image} onPick={() => productImgRef.current?.click()} onClear={() => setImage(undefined)} inputRef={productImgRef} onFile={(f) => readFile(f, setImage)} />
-            <ImageDrop label="Reference Image" value={referenceImage} onPick={() => refImgRef.current?.click()} onClear={() => setReferenceImage(undefined)} inputRef={refImgRef} onFile={(f) => readFile(f, setReferenceImage)} />
-            <ImageDrop label="Texture Image" value={textureImage} onPick={() => textureImgRef.current?.click()} onClear={() => setTextureImage(undefined)} inputRef={textureImgRef} onFile={(f) => readFile(f, setTextureImage)} />
+            <ImageDrop label="Product Image"   value={image}          onPick={() => productImgRef.current?.click()} onClear={() => setImage(undefined)}    inputRef={productImgRef} onFile={(f) => readFile(f, setImage)} />
+            <ImageDrop label="Reference Image" value={referenceImage} onPick={() => refImgRef.current?.click()}     onClear={() => setRefImage(undefined)}  inputRef={refImgRef}     onFile={(f) => readFile(f, setRefImage)} />
+            <ImageDrop label="Texture Image"   value={textureImage}   onPick={() => textureImgRef.current?.click()} onClear={() => setTexImage(undefined)}  inputRef={textureImgRef} onFile={(f) => readFile(f, setTexImage)} />
           </div>
         </Section>
 
-        {/* Basics */}
+        {/* Product Info */}
         <Section icon={<Package className="w-5 h-5" />} title="Product Info" subtitle="The essentials: name, codes and classification.">
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Field label="Product Name *"><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={input} placeholder="Office Chair Executive" /></Field>
-            <Field label="SKU *"><input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className={input} placeholder="OFFICE-CHAIR-001" /></Field>
-            <Field label="HSN Number"><input value={form.hsn} onChange={(e) => setForm({ ...form, hsn: e.target.value })} className={input} placeholder="94013000" /></Field>
-            <Field label="Department">
+            <Field label="Product Name *">
+              <input value={form.productName} onChange={(e) => setForm({ ...form, productName: e.target.value })} className={input} placeholder="Office Chair Executive" />
+            </Field>
+            <Field label="SKU *">
+              <input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className={input} placeholder="OFFICE-CHAIR-001" />
+            </Field>
+            <Field label="HSN Number">
+              <input value={form.hsnNumber} onChange={(e) => setForm({ ...form, hsnNumber: e.target.value })} className={input} placeholder="94013000" />
+            </Field>
+
+            {/* Department — from API */}
+            <Field label="Department *">
               <SearchableSelect
-                value={form.department}
-                options={departments}
-                onChange={(v) => setForm({ ...form, department: v })}
-                onAdd={(v) => setDepartments((prev) => prev.includes(v) ? prev : [...prev, v])}
+                value={form.departmentName}
+                options={departments.map((d) => ({ id: d._id, label: d.name }))}
+                onChange={(id, label) => void onDepartmentChange(id, label)}
+                onAdd={async (name) => {
+                  // New dept typed — add to local state immediately and clear category
+                  setDepartments((prev) => [...prev, { _id: "", name }]);
+                  setForm((f) => ({ ...f, departmentId: "", departmentName: name, categoryId: "", categoryName: "" }));
+                  setCategories([]);
+                }}
                 placeholder="Search department…"
                 addLabel="Add department"
               />
             </Field>
+
+            {/* Category — dynamic, filtered by dept */}
             <Field label="Category">
               <SearchableSelect
-                value={form.category}
-                options={categories}
-                onChange={(v) => setForm({ ...form, category: v })}
-                onAdd={(v) => setCategories((prev) => prev.includes(v) ? prev : [...prev, v])}
-                placeholder="Search category…"
+                value={form.categoryName}
+                options={categories.map((c) => ({ id: c._id, label: c.name }))}
+                onChange={(id, label) => setForm((f) => ({ ...f, categoryId: id, categoryName: label }))}
+                onAdd={(name) => {
+                  setCategories((prev) => [...prev, { _id: "", name, departmentId: form.departmentId }]);
+                  setForm((f) => ({ ...f, categoryId: "", categoryName: name }));
+                }}
+                placeholder={(form.departmentId || form.departmentName) ? "Search category…" : "Select department first"}
                 addLabel="Add category"
+                disabled={!form.departmentId && !form.departmentName}
               />
             </Field>
-            <Field label="Product-N"><input value={form.productN} onChange={(e) => setForm({ ...form, productN: e.target.value })} className={input} placeholder="PN-00123" /></Field>
+
+            <Field label="Product-N">
+              <input value={form.productN} onChange={(e) => setForm({ ...form, productN: e.target.value })} className={input} placeholder="PN-00123" />
+            </Field>
+
             <Field className="sm:col-span-2 lg:col-span-3" label="Product Description">
               <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className={`${input} resize-none`} placeholder="Short description shown on quotations…" />
             </Field>
@@ -116,40 +226,81 @@ function NewItem() {
         {/* Pricing */}
         <Section icon={<IndianRupee className="w-5 h-5" />} title="Pricing & Tax" subtitle="Unit price along with discount and tax percentages.">
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Field label="Unit Price (₹)"><input type="number" min={0} value={form.price} onChange={(e) => setForm({ ...form, price: +e.target.value || 0 })} className={input} /></Field>
-            <Field label="Discount (%)"><input type="number" min={0} max={100} value={form.discount} onChange={(e) => setForm({ ...form, discount: +e.target.value || 0 })} className={input} /></Field>
-            <Field label="Tax (%)"><input type="number" min={0} max={100} value={form.tax} onChange={(e) => setForm({ ...form, tax: +e.target.value || 0 })} className={input} /></Field>
+            <Field label="Unit Price (₹) *">
+              <input type="number" min={0} value={form.unitPrice} onChange={(e) => setForm({ ...form, unitPrice: +e.target.value || 0 })} className={input} />
+            </Field>
+            <Field label="Discount (%)">
+              <input type="number" min={0} max={100} value={form.defaultDiscount} onChange={(e) => setForm({ ...form, defaultDiscount: +e.target.value || 0 })} className={input} />
+            </Field>
+            <Field label="Tax (%)">
+              <input type="number" min={0} max={100} value={form.taxPercentage} onChange={(e) => setForm({ ...form, taxPercentage: +e.target.value || 0 })} className={input} />
+            </Field>
           </div>
         </Section>
 
         {/* Stock */}
         <Section icon={<Boxes className="w-5 h-5" />} title="Stock & Units" subtitle="Quantity on hand and unit of measure.">
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Field label="Quantity"><input type="number" min={0} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: +e.target.value || 0 })} className={input} /></Field>
-            <Field label="UOM (Unit)">
-              <select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className={input}>
-                {UOMS.map((u) => <option key={u}>{u}</option>)}
+            <Field label="Quantity">
+              <input type="number" min={0} value={form.stockQuantity} onChange={(e) => setForm({ ...form, stockQuantity: +e.target.value || 0 })} className={input} />
+            </Field>
+            {/* UOM — predefined dropdown */}
+            <Field label="UOM (Unit of Measure) *">
+              <select
+                value={form.uom}
+                onChange={(e) => setForm({ ...form, uom: e.target.value as UOM })}
+                className={input}
+              >
+                {UOM_VALUES.map((u) => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
               </select>
             </Field>
-            <Field label="Batch No"><input value={form.batchNo} onChange={(e) => setForm({ ...form, batchNo: e.target.value })} className={input} placeholder="BATCH-2026-05" /></Field>
+            <Field label="Batch No">
+              <input value={form.batchNo} onChange={(e) => setForm({ ...form, batchNo: e.target.value })} className={input} placeholder="BATCH-2026-05" />
+            </Field>
           </div>
         </Section>
 
         {/* Attributes */}
         <Section icon={<Palette className="w-5 h-5" />} title="Attributes" subtitle="Brand, dimensions and visual descriptors.">
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Field label="Product Brand"><input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} className={input} placeholder="Acme Co." /></Field>
-            <Field label="Color"><input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className={input} placeholder="Charcoal Grey" /></Field>
-            <Field label="Size"><input value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })} className={input} placeholder="L / 42 / XL" /></Field>
-            <Field className="sm:col-span-2 lg:col-span-3" label="Dimensions"><input value={form.dimensions} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} className={input} placeholder="65 x 65 x 115 cm" /></Field>
+            {/* Brand — from API */}
+            <Field label="Brand">
+              <SearchableSelect
+                value={form.brandName}
+                options={brands.map((b) => ({ id: b._id, label: b.name }))}
+                onChange={(id, label) => setForm((f) => ({ ...f, brandId: id, brandName: label }))}
+                onAdd={(name) => {
+                  setBrands((prev) => [...prev, { _id: "", name }]);
+                  setForm((f) => ({ ...f, brandId: "", brandName: name }));
+                }}
+                placeholder="Search brand…"
+                addLabel="Add brand"
+              />
+            </Field>
+            <Field label="Color">
+              <input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className={input} placeholder="Charcoal Grey" />
+            </Field>
+            <Field label="Size">
+              <input value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })} className={input} placeholder="L / 42 / XL" />
+            </Field>
+            <Field className="sm:col-span-2 lg:col-span-3" label="Dimensions">
+              <input value={form.dimensions} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} className={input} placeholder="65 x 65 x 115 cm" />
+            </Field>
           </div>
-
         </Section>
 
         <div className="flex flex-col sm:flex-row gap-2 justify-end">
-          <button type="button" onClick={() => navigate({ to: "/inventory" })} className="px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-sm font-medium">Cancel</button>
-          <button type="submit" className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 text-sm">
-            <Save className="w-4 h-4" /> Save item
+          <button type="button" onClick={() => navigate({ to: "/inventory" })} className="px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-sm font-medium">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save item</>}
           </button>
         </div>
       </form>
@@ -157,6 +308,7 @@ function NewItem() {
   );
 }
 
+// ── Styles ─────────────────────────────────────────────────────────────
 const input = "w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring text-sm";
 
 function Section({ icon, title, subtitle, children }: { icon: React.ReactNode; title: string; subtitle?: string; children: React.ReactNode }) {
@@ -186,21 +338,13 @@ function Field({ label, children, className = "" }: { label: string; children: R
 function ImageDrop({
   label, value, onPick, onClear, inputRef, onFile,
 }: {
-  label: string;
-  value?: string;
-  onPick: () => void;
-  onClear: () => void;
-  inputRef: React.RefObject<HTMLInputElement | null>;
-  onFile: (f: File) => void;
+  label: string; value?: string; onPick: () => void; onClear: () => void;
+  inputRef: React.RefObject<HTMLInputElement | null>; onFile: (f: File) => void;
 }) {
   return (
     <div>
       <div className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5"><Tag className="w-3 h-3" /> {label}</div>
-      <button
-        type="button"
-        onClick={onPick}
-        className="w-full aspect-square rounded-2xl border-2 border-dashed border-border grid place-items-center text-center overflow-hidden bg-gradient-soft hover:bg-muted transition-colors"
-      >
+      <button type="button" onClick={onPick} className="w-full aspect-square rounded-2xl border-2 border-dashed border-border grid place-items-center text-center overflow-hidden bg-gradient-soft hover:bg-muted transition-colors">
         {value ? (
           <img src={value} alt={label} className="w-full h-full object-cover" />
         ) : (
@@ -217,15 +361,17 @@ function ImageDrop({
   );
 }
 
+// ── SearchableSelect — updated to work with {id, label} options ────────
 function SearchableSelect({
-  value, options, onChange, onAdd, placeholder = "Search…", addLabel = "Add new",
+  value, options, onChange, onAdd, placeholder = "Search…", addLabel = "Add new", disabled = false,
 }: {
   value: string;
-  options: string[];
-  onChange: (v: string) => void;
-  onAdd: (v: string) => void;
+  options: { id: string; label: string }[];
+  onChange: (id: string, label: string) => void;
+  onAdd: (label: string) => void;
   placeholder?: string;
   addLabel?: string;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -240,23 +386,24 @@ function SearchableSelect({
   }, []);
 
   const q = query.trim();
-  const filtered = options.filter((o) => o.toLowerCase().includes(q.toLowerCase()));
-  const canAdd = q.length > 0 && !options.some((o) => o.toLowerCase() === q.toLowerCase());
+  const filtered = options.filter((o) => o.label.toLowerCase().includes(q.toLowerCase()));
+  const canAdd = q.length > 0 && !options.some((o) => o.label.toLowerCase() === q.toLowerCase());
 
-  const pick = (v: string) => { onChange(v); setOpen(false); setQuery(""); };
-  const add = () => { if (!canAdd) return; onAdd(q); onChange(q); setOpen(false); setQuery(""); };
+  const pick = (opt: { id: string; label: string }) => { onChange(opt.id, opt.label); setOpen(false); setQuery(""); };
+  const add  = () => { if (!canAdd) return; onAdd(q); setOpen(false); setQuery(""); };
 
   return (
     <div ref={wrapRef} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={`${input} flex items-center justify-between text-left`}
+        onClick={() => !disabled && setOpen((o) => !o)}
+        disabled={disabled}
+        className={`${input} flex items-center justify-between text-left ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
         <span className={value ? "" : "text-muted-foreground"}>{value || placeholder}</span>
         <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
       </button>
-      {open && (
+      {open && !disabled && (
         <div className="absolute z-20 mt-1.5 w-full rounded-xl border border-border bg-popover shadow-elegant overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
             <Search className="w-4 h-4 text-muted-foreground" />
@@ -271,14 +418,9 @@ function SearchableSelect({
           </div>
           <div className="max-h-56 overflow-auto py-1">
             {filtered.map((o) => (
-              <button
-                key={o}
-                type="button"
-                onClick={() => pick(o)}
-                className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted text-left"
-              >
-                <span>{o}</span>
-                {o === value && <Check className="w-4 h-4 text-primary" />}
+              <button key={o.id} type="button" onClick={() => pick(o)} className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted text-left">
+                <span>{o.label}</span>
+                {o.label === value && <Check className="w-4 h-4 text-primary" />}
               </button>
             ))}
             {filtered.length === 0 && !canAdd && (
@@ -286,11 +428,7 @@ function SearchableSelect({
             )}
           </div>
           {canAdd && (
-            <button
-              type="button"
-              onClick={add}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm border-t border-border bg-accent/40 hover:bg-accent text-left"
-            >
+            <button type="button" onClick={add} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm border-t border-border bg-accent/40 hover:bg-accent text-left">
               <Plus className="w-4 h-4 text-primary" />
               <span className="font-medium">{addLabel}:</span>
               <span className="text-muted-foreground truncate">{q}</span>

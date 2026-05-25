@@ -14,6 +14,7 @@ function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [err, setErr] = useState("");
 
   const submit = async (e: React.FormEvent) => {
@@ -28,7 +29,7 @@ function Login() {
     console.log("[Login] Submitting login for:", email);
 
     try {
-      await loginMutation.mutateAsync({ email, password });
+      await loginMutation.mutateAsync({ email, password, rememberMe });
       console.log("[Login] Login successful — redirecting to dashboard");
       navigate({ to: "/dashboard" });
     } catch (error) {
@@ -94,6 +95,17 @@ function Login() {
                   required
                 />
               </div>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                disabled={isPending}
+                className="rounded border-border text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+              />
+              <span className="text-sm text-muted-foreground select-none">Remember me</span>
             </label>
 
             {err && (

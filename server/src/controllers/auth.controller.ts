@@ -14,12 +14,23 @@ import { User } from '../models/User.model';
 // POST /api/auth/login
 // ─────────────────────────────────────────────
 export const login = asyncHandler(async (req: Request, res: Response) => {
-  const { email, password } = req.body as { email: string; password: string };
+  const { email, password, rememberMe } = req.body as {
+    email: string;
+    password: string;
+    rememberMe?: boolean;
+  };
 
   const { accessToken, refreshToken } = await loginUser(email, password);
 
-  // Set refresh token in HttpOnly cookie
-  res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
+  // Remember Me: 30 days if checked, 7 days if not
+  const cookieOptions = {
+    ...refreshCookieOptions,
+    maxAge: rememberMe
+      ? 30 * 24 * 60 * 60 * 1000  // 30 days
+      : 7  * 24 * 60 * 60 * 1000, // 7 days
+  };
+
+  res.cookie(REFRESH_COOKIE_NAME, refreshToken, cookieOptions);
 
   res.status(200).json(
     ApiResponse.success('Login successful', { accessToken }).toJSON()

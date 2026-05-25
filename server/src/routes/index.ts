@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import authRoutes from './auth.routes';
+import inventoryRoutes from './inventory.routes';
 
 const router = Router();
 
 // ─────────────────────────────────────────────
 // Mount all API routes here
-// Future modules: /inventory, /quotations, etc.
 // ─────────────────────────────────────────────
 router.use('/auth', authRoutes);
+router.use('/inventory', inventoryRoutes);
 
 // Health check (unauthenticated)
 router.get('/health', (_req, res) => {
