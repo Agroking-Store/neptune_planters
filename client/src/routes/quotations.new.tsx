@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
+import { isAuthenticated } from "@/lib/auth";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, FileText, Calculator, User, StickyNote, ListChecks, Search } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -9,7 +10,7 @@ import { downloadQuotationPDF } from "@/lib/pdf";
 export const Route = createFileRoute("/quotations/new")({
   head: () => ({ meta: [{ title: "New Quotation — Indux" }] }),
   beforeLoad: () => {
-    if (!store.isAuthed()) throw redirect({ to: "/login" });
+    if (!isAuthenticated()) throw redirect({ to: "/login" });
   },
   component: () => <AppShell><NewQuotation /></AppShell>,
 });

@@ -1,7 +1,8 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { FileText, Package, LogOut, Plus, Menu, X, Sparkles, PackagePlus } from "lucide-react";
 import { useEffect, useState } from "react";
-import { store, useDB } from "@/lib/store";
+import { useDB } from "@/lib/store";
+import { useLogout } from "@/lib/auth";
 
 const nav = [
     { to: "/dashboard", label: "Quotations", icon: FileText },
@@ -14,6 +15,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const navigate = useNavigate();
     const { location } = useRouterState();
     const [open, setOpen] = useState(false);
+    const logoutMutation = useLogout();
+
+    const handleLogout = () => {
+        console.log("[Logout] User logged out");
+        logoutMutation.mutate(undefined, {
+            onSettled: () => navigate({ to: "/login" }),
+        });
+    };
 
     useEffect(() => { setOpen(false); }, [location.pathname]);
 
@@ -119,10 +128,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         </div>
                     </div>
                     <button
-                        onClick={() => { store.logout(); navigate({ to: "/login" }); }}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-border text-sm hover:bg-muted transition-colors"
+                        onClick={handleLogout}
+                        disabled={logoutMutation.isPending}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-border text-sm hover:bg-muted transition-colors disabled:opacity-60"
                     >
-                        <LogOut className="w-4 h-4" /> Logout
+                        <LogOut className="w-4 h-4" /> {logoutMutation.isPending ? "Signing out..." : "Logout"}
                     </button>
                 </div>
             </aside>

@@ -1,4 +1,5 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { isAuthenticated } from "@/lib/auth";
 import { useMemo, useState } from "react";
 import { Boxes, Layers, IndianRupee, Building2, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -8,7 +9,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/inventory/")({
   head: () => ({ meta: [{ title: "Inventory — Indux" }, { name: "description", content: "Manage your product inventory, SKUs, HSN codes and stock levels." }] }),
   beforeLoad: () => {
-    if (!store.isAuthed()) throw redirect({ to: "/login" });
+    if (!isAuthenticated()) throw redirect({ to: "/login" });
   },
   component: () => <AppShell><Inventory /></AppShell>,
 });

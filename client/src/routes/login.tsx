@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowRight, Sparkles, Mail, Lock } from "lucide-react";
-import { store } from "@/lib/store";
+import { ArrowRight, Sparkles, Mail, Lock, Loader2 } from "lucide-react";
+import { useLogin } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — Indux" }, { name: "description", content: "Sign in to manage your quotations and inventory." }] }),
@@ -10,16 +10,41 @@ export const Route = createFileRoute("/login")({
 
 function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("manish@indux.app");
-  const [password, setPassword] = useState("demo1234");
+  const loginMutation = useLogin();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.includes("@") || password.length < 6) { setErr("Enter a valid email and a 6+ char password."); return; }
-    store.login(email);
-    navigate({ to: "/dashboard" });
+    setErr("");
+
+    if (!email.includes("@") || password.length < 8) {
+      setErr("Enter a valid email and a password of at least 8 characters.");
+      return;
+    }
+
+    console.log("[Login] Submitting login for:", email);
+
+    try {
+      await loginMutation.mutateAsync({ email, password });
+      console.log("[Login] Login successful — redirecting to dashboard");
+      navigate({ to: "/dashboard" });
+    } catch (error) {
+      console.error("[Login] Error:", error);
+
+      // Determine which of the two allowed error messages to show
+      const status = (error as { statusCode?: number }).statusCode;
+      if (status === 401) {
+        setErr("Invalid credentials.");
+      } else {
+        setErr("Internal server error. Please contact admin.");
+      }
+    }
   };
+
+  const isPending = loginMutation.isPending;
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
@@ -41,11 +66,15 @@ function Login() {
               <div className="mt-1.5 relative">
                 <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
+                  id="login-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-3 py-3 rounded-xl border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="you@company.com"
+                  disabled={isPending}
+                  autoComplete="email"
+                  required
                 />
               </div>
             </label>
@@ -54,19 +83,42 @@ function Login() {
               <div className="mt-1.5 relative">
                 <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
+                  id="login-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-3 py-3 rounded-xl border border-border bg-card focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="••••••••"
+                  disabled={isPending}
+                  autoComplete="current-password"
+                  required
                 />
               </div>
             </label>
-            {err && <div className="text-sm text-destructive">{err}</div>}
-            <button type="submit" className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 cursor-pointer">
-              Sign in <ArrowRight className="w-4 h-4" />
+
+            {err && (
+              <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">
+                {err}
+              </div>
+            )}
+
+            <button
+              id="login-submit"
+              type="submit"
+              disabled={isPending}
+              className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                <>
+                  Sign in <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
-            <p className="text-xs text-muted-foreground text-center">Demo mode — any email and 6+ char password works.</p>
           </form>
         </div>
       </div>

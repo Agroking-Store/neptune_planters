@@ -3,16 +3,31 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 
 export type InventoryItem = {
   id: string;
+  // Media
+  image?: string; // primary product image (data URL)
+  referenceImage?: string;
+  textureImage?: string;
+  // Basics
   name: string;
   sku: string;
-  department: string;
   hsn: string;
-  price: number;
-  quantity: number;
-  unit: string;
-  dimensions: string;
   description: string;
-  image?: string; // data URL
+  department: string;
+  category?: string;
+  // Pricing
+  price: number;
+  discount?: number; // percent
+  tax?: number; // percent
+  // Stock
+  quantity: number;
+  unit: string; // UOM
+  // Attributes
+  brand?: string;
+  batchNo?: string;
+  color?: string;
+  productN?: string;
+  size?: string;
+  dimensions: string;
   createdAt: string;
 };
 
@@ -80,7 +95,7 @@ function persist() {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(KEY, JSON.stringify(memory));
-  } catch {}
+  } catch { }
   listeners.forEach((l) => l());
 }
 
