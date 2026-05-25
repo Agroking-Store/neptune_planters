@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Download, FileText, Plus, Search, Send, Target, TrendingUp, Trash2, Calendar } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -8,6 +8,9 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Indux" }, { name: "description", content: "Manage and track all your generated quotations." }] }),
+  beforeLoad: () => {
+    if (!store.isAuthed()) throw redirect({ to: "/login" });
+  },
   component: Dashboard,
 });
 

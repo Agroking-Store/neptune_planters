@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Boxes, Layers, IndianRupee, Building2, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -7,6 +7,9 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/inventory/")({
   head: () => ({ meta: [{ title: "Inventory — Indux" }, { name: "description", content: "Manage your product inventory, SKUs, HSN codes and stock levels." }] }),
+  beforeLoad: () => {
+    if (!store.isAuthed()) throw redirect({ to: "/login" });
+  },
   component: () => <AppShell><Inventory /></AppShell>,
 });
 
@@ -109,7 +112,7 @@ function Inventory() {
                   <td className="px-4 py-3">{i.quantity} {i.unit}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      <button className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center" aria-label="Edit"><Pencil className="w-4 h-4 text-primary" /></button>
+                      <button onClick={() => toast.info("Edit coming soon")} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center" aria-label="Edit"><Pencil className="w-4 h-4 text-primary" /></button>
                       <button onClick={() => { store.deleteInventory(i.id); toast.success("Item removed"); }} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center" aria-label="Delete"><Trash2 className="w-4 h-4 text-destructive" /></button>
                     </div>
                   </td>

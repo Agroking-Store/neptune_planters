@@ -63,7 +63,7 @@ function Login() {
               </div>
             </label>
             {err && <div className="text-sm text-destructive">{err}</div>}
-            <button type="submit" className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95">
+            <button type="submit" className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 cursor-pointer">
               Sign in <ArrowRight className="w-4 h-4" />
             </button>
             <p className="text-xs text-muted-foreground text-center">Demo mode — any email and 6+ char password works.</p>

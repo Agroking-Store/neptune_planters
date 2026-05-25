@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { Upload, Package, Save, Image as ImageIcon } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -7,6 +7,9 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/inventory/new")({
   head: () => ({ meta: [{ title: "Add Inventory Item — Indux" }] }),
+  beforeLoad: () => {
+    if (!store.isAuthed()) throw redirect({ to: "/login" });
+  },
   component: () => <AppShell><NewItem /></AppShell>,
 });
 
@@ -20,6 +23,11 @@ function NewItem() {
   });
 
   const onFile = (f: File) => {
+    const MAX_BYTES = 500 * 1024; // 500 KB
+    if (f.size > MAX_BYTES) {
+      toast.error("Image must be under 500 KB — please compress it first.");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => setImage(reader.result as string);
     reader.readAsDataURL(f);

@@ -1,6 +1,6 @@
-@import "tailwindcss" source(none);
-@source "../src";
 @import "tw-animate-css";
+@import "tailwindcss";
+@source "../src";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -124,6 +124,10 @@
 @layer base {
   * {
     border-color: var(--color-border);
+  }
+
+  button, a {
+    cursor: pointer;
   }
 
   html,

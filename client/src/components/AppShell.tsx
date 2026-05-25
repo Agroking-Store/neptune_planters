@@ -15,12 +15,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const { location } = useRouterState();
     const [open, setOpen] = useState(false);
 
-    useEffect(() => {
-        if (typeof window !== "undefined" && !store.isAuthed()) {
-            navigate({ to: "/login" });
-        }
-    }, [navigate]);
-
     useEffect(() => { setOpen(false); }, [location.pathname]);
 
     return (

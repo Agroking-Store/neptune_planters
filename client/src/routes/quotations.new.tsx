@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, FileText, Calculator, User, StickyNote, ListChecks, Search } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { store, useDB, formatINR, type QuotationItem } from "@/lib/store";
@@ -8,6 +8,9 @@ import { downloadQuotationPDF } from "@/lib/pdf";
 
 export const Route = createFileRoute("/quotations/new")({
   head: () => ({ meta: [{ title: "New Quotation — Indux" }] }),
+  beforeLoad: () => {
+    if (!store.isAuthed()) throw redirect({ to: "/login" });
+  },
   component: () => <AppShell><NewQuotation /></AppShell>,
 });
 
@@ -24,6 +27,20 @@ function NewQuotation() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickQ, setPickQ] = useState("");
   const [followUp, setFollowUp] = useState<string>("");
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  // Close picker when clicking outside
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setPickerOpen(false);
+        setPickQ("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [pickerOpen]);
 
   const totals = useMemo(() => {
     const sub = items.reduce((s, it) => s + it.quantity * it.price, 0);
@@ -101,7 +118,7 @@ function NewQuotation() {
 
           {/* Items */}
           <Section icon={<ListChecks className="w-5 h-5" />} title="Items" right={
-            <div className="relative">
+            <div ref={pickerRef} className="relative">
               <button onClick={() => setPickerOpen((o) => !o)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-medium shadow-elegant"><Plus className="w-4 h-4" /> Add Item</button>
               {pickerOpen && (
                 <div className="absolute right-0 mt-2 w-[min(92vw,360px)] rounded-2xl border border-border bg-popover shadow-elegant p-3 z-20">

@@ -81,8 +81,9 @@ export function downloadQuotationPDF(q: Quotation) {
   doc.text(formatINR(grand), valX, y, { align: "right" });
   doc.setFont("helvetica", "normal");
 
-  // Notes & terms
+  // Notes & terms — add new page if content would overflow
   y += 36;
+  if (y > 700) { doc.addPage(); y = 40; }
   if (q.notes) {
     doc.setFont("helvetica", "bold");
     doc.text("Notes", 40, y);
@@ -90,6 +91,7 @@ export function downloadQuotationPDF(q: Quotation) {
     const lines = doc.splitTextToSize(q.notes, W - 80);
     doc.text(lines, 40, y + 16);
     y += 16 + lines.length * 14;
+    if (y > 700) { doc.addPage(); y = 40; }
   }
   if (q.terms.length) {
     y += 12;
@@ -97,6 +99,8 @@ export function downloadQuotationPDF(q: Quotation) {
     doc.text("Terms & Conditions", 40, y);
     doc.setFont("helvetica", "normal");
     q.terms.forEach((t, i) => {
+      const ty = y + 18 + i * 14;
+      if (ty > 800) { doc.addPage(); y = 40 - 18 - i * 14; }
       doc.text(`• ${t}`, 40, y + 18 + i * 14);
     });
   }
