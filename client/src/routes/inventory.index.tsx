@@ -1,10 +1,11 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { isAuthenticated } from "@/lib/auth";
-import { useMemo, useState } from "react";
-import { Boxes, Layers, IndianRupee, Building2, Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Boxes, Layers, IndianRupee, Building2, Plus, Search, Pencil, Trash2, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { store, useDB, formatINR } from "@/lib/store";
+import { formatINR } from "@/lib/store";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/inventory/")({
   head: () => ({ meta: [{ title: "Inventory — Indux" }, { name: "description", content: "Manage your product inventory, SKUs, HSN codes and stock levels." }] }),
@@ -15,24 +16,92 @@ export const Route = createFileRoute("/inventory/")({
 });
 
 function Inventory() {
-  const db = useDB();
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [dept, setDept] = useState("All");
 
-  const departments = useMemo(() => Array.from(new Set(db.inventory.map((i) => i.department))), [db.inventory]);
-  const filtered = db.inventory.filter((i) => (!q || i.name.toLowerCase().includes(q.toLowerCase()) || i.sku.toLowerCase().includes(q.toLowerCase()) || i.hsn.includes(q)) && (dept === "All" || i.department === dept));
+  const fetchProducts = async () => {
+    console.log("[Inventory] Fetching products from database...");
+    try {
+      const res = await api.get<any[]>("/inventory/products");
+      setProducts(res ?? []);
+    } catch (err) {
+      console.error("[Inventory] Failed to fetch products:", err);
+      toast.error("Failed to load products from server");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const totalQty = db.inventory.reduce((s, i) => s + i.quantity, 0);
-  const inventoryValue = db.inventory.reduce((s, i) => s + i.quantity * i.price, 0);
+  useEffect(() => {
+    void fetchProducts();
+  }, []);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this product?")) return;
+    try {
+      await api.delete(`/inventory/products/${id}`);
+      toast.success("Product deleted successfully");
+      void fetchProducts();
+    } catch (err) {
+      console.error("[Inventory] Delete failed:", err);
+      toast.error("Failed to delete product");
+    }
+  };
+
+  const getProductImage = (i: any) => {
+    if (i.productImages && i.productImages.length > 0) {
+      const prodImg = i.productImages.find((img: any) => img.type === "product");
+      if (prodImg) return prodImg.url;
+      return i.productImages[0].url;
+    }
+    return undefined;
+  };
+
+  const departments = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((i) => {
+      if (i.departmentId?.name) set.add(i.departmentId.name);
+    });
+    return Array.from(set);
+  }, [products]);
+
+  const filtered = useMemo(() => {
+    return products.filter((i) => {
+      const matchQuery = !q ||
+        (i.productName || "").toLowerCase().includes(q.toLowerCase()) ||
+        (i.sku || "").toLowerCase().includes(q.toLowerCase()) ||
+        (i.hsnNumber || "").includes(q);
+      const matchDept = dept === "All" || i.departmentId?.name === dept;
+      return matchQuery && matchDept;
+    });
+  }, [products, q, dept]);
+
+  const totalQty = useMemo(() => products.reduce((s, i) => s + (i.stockQuantity || 0), 0), [products]);
+  const inventoryValue = useMemo(() => products.reduce((s, i) => s + (i.stockQuantity || 0) * (i.unitPrice || 0), 0), [products]);
 
   const distribution = useMemo(() => {
     const map = new Map<string, number>();
-    db.inventory.forEach((i) => map.set(i.department, (map.get(i.department) || 0) + 1));
-    const total = db.inventory.length || 1;
+    products.forEach((i) => {
+      if (i.departmentId?.name) {
+        map.set(i.departmentId.name, (map.get(i.departmentId.name) || 0) + 1);
+      }
+    });
+    const total = products.length || 1;
     return Array.from(map.entries()).map(([k, v]) => ({ name: k, value: v, pct: Math.round((v / total) * 100) })).sort((a, b) => b.value - a.value);
-  }, [db.inventory]);
+  }, [products]);
 
   const palette = ["bg-primary", "bg-violet", "bg-success", "bg-warning", "bg-destructive"];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground">Loading products...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -47,7 +116,7 @@ function Inventory() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Stat icon={<Boxes className="w-5 h-5" />} label="Total Products" value={String(db.inventory.length)} sub="All items in stock" />
+        <Stat icon={<Boxes className="w-5 h-5" />} label="Total Products" value={String(products.length)} sub="All items in stock" />
         <Stat icon={<Layers className="w-5 h-5" />} label="Total Quantity" value={totalQty >= 1000 ? `${(totalQty / 1000).toFixed(2)} K` : String(totalQty)} sub="Across all categories" tone="success" />
         <Stat icon={<IndianRupee className="w-5 h-5" />} label="Inventory Value" value={formatINR(inventoryValue).replace(/\.00$/, "")} sub="Total asset value" tone="violet" />
         <Stat icon={<Building2 className="w-5 h-5" />} label="Departments" value={String(departments.length)} sub="Active departments" tone="warning" />
@@ -93,28 +162,28 @@ function Inventory() {
             </thead>
             <tbody>
               {filtered.map((i, idx) => (
-                <tr key={i.id} className="border-t border-border hover:bg-muted/30">
+                <tr key={i._id} className="border-t border-border hover:bg-muted/30">
                   <td className="px-4 py-3 text-muted-foreground">{idx + 1}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-accent overflow-hidden grid place-items-center shrink-0">
-                        {i.image ? <img src={i.image} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{i.name.slice(0, 2)}</span>}
+                        {getProductImage(i) ? <img src={getProductImage(i)} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{(i.productName || "").slice(0, 2)}</span>}
                       </div>
                       <div className="min-w-0">
-                        <div className="font-medium truncate">{i.name}</div>
+                        <div className="font-medium truncate">{i.productName}</div>
                         <div className="text-xs text-muted-foreground truncate">{i.dimensions}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3">{i.department}</td>
+                  <td className="px-4 py-3">{i.departmentId?.name || "N/A"}</td>
                   <td className="px-4 py-3 font-mono text-xs">{i.sku}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{i.hsn}</td>
-                  <td className="px-4 py-3 font-medium whitespace-nowrap">{formatINR(i.price)}</td>
-                  <td className="px-4 py-3">{i.quantity} {i.unit}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{i.hsnNumber || "-"}</td>
+                  <td className="px-4 py-3 font-medium whitespace-nowrap">{formatINR(i.unitPrice)}</td>
+                  <td className="px-4 py-3">{i.stockQuantity} {i.uom}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      <button onClick={() => toast.info("Edit coming soon")} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center" aria-label="Edit"><Pencil className="w-4 h-4 text-primary" /></button>
-                      <button onClick={() => { store.deleteInventory(i.id); toast.success("Item removed"); }} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center" aria-label="Delete"><Trash2 className="w-4 h-4 text-destructive" /></button>
+                      <Link to={`/inventory/edit/${i._id}`} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center" aria-label="Edit"><Pencil className="w-4 h-4 text-primary" /></Link>
+                      <button onClick={() => handleDelete(i._id)} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center" aria-label="Delete"><Trash2 className="w-4 h-4 text-destructive" /></button>
                     </div>
                   </td>
                 </tr>
@@ -126,23 +195,24 @@ function Inventory() {
 
         <div className="md:hidden divide-y divide-border">
           {filtered.map((i) => (
-            <div key={i.id} className="p-4 flex gap-3">
+            <div key={i._id} className="p-4 flex gap-3">
               <div className="w-14 h-14 rounded-xl bg-accent overflow-hidden grid place-items-center shrink-0">
-                {i.image ? <img src={i.image} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{i.name.slice(0, 2)}</span>}
+                {getProductImage(i) ? <img src={getProductImage(i)} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{(i.productName || "").slice(0, 2)}</span>}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="font-medium truncate">{i.name}</div>
-                    <div className="text-xs text-muted-foreground truncate">{i.department} • {i.sku}</div>
+                    <div className="font-medium truncate">{i.productName}</div>
+                    <div className="text-xs text-muted-foreground truncate">{i.departmentId?.name || "N/A"} • {i.sku}</div>
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold">{formatINR(i.price)}</div>
-                    <div className="text-xs text-muted-foreground">{i.quantity} {i.unit}</div>
+                    <div className="font-semibold">{formatINR(i.unitPrice)}</div>
+                    <div className="text-xs text-muted-foreground">{i.stockQuantity} {i.uom}</div>
                   </div>
                 </div>
                 <div className="flex gap-2 mt-3">
-                  <button onClick={() => { store.deleteInventory(i.id); toast.success("Removed"); }} className="text-xs px-3 py-1.5 rounded-lg border border-border text-destructive">Delete</button>
+                  <Link to={`/inventory/edit/${i._id}`} className="text-xs px-3 py-1.5 rounded-lg border border-border text-primary font-medium hover:bg-muted">Edit</Link>
+                  <button onClick={() => handleDelete(i._id)} className="text-xs px-3 py-1.5 rounded-lg border border-border text-destructive">Delete</button>
                 </div>
               </div>
             </div>

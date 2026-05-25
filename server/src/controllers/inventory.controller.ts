@@ -11,6 +11,9 @@ import {
   findOrCreateDepartment,
   findOrCreateCategory,
   findOrCreateBrand,
+  getProductById,
+  updateProduct,
+  deleteProduct,
 } from '../services/inventory.service';
 import { createProductSchema } from '../validators/inventory.validator';
 
@@ -109,3 +112,69 @@ export const createProductHandler = asyncHandler(async (req: Request, res: Respo
     ApiResponse.success('Product created successfully', product.toJSON()).toJSON()
   );
 });
+
+// ─────────────────────────────────────────────
+// GET /api/inventory/products/:id
+// ─────────────────────────────────────────────
+export const getProductByIdHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const product = await getProductById(id);
+  res.status(200).json(
+    ApiResponse.success('Product retrieved successfully', product.toJSON()).toJSON()
+  );
+});
+
+// ─────────────────────────────────────────────
+// PUT /api/inventory/products/:id
+// ─────────────────────────────────────────────
+export const updateProductHandler = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw ApiError.unauthorized();
+  const { id } = req.params;
+  const body = req.body as Record<string, unknown>;
+
+  // Resolve departmentId, categoryId, brandId
+  let departmentId: string = body['departmentId'] as string ?? '';
+  if (!departmentId && body['departmentName']) {
+    departmentId = await findOrCreateDepartment(body['departmentName'] as string);
+  }
+
+  let categoryId: string | undefined = body['categoryId'] as string | undefined;
+  if (!categoryId && body['categoryName'] && departmentId) {
+    categoryId = await findOrCreateCategory(body['categoryName'] as string, departmentId);
+  }
+
+  let brandId: string | undefined = body['brandId'] as string | undefined;
+  if (!brandId && body['brandName']) {
+    brandId = await findOrCreateBrand(body['brandName'] as string);
+  }
+
+  const result = createProductSchema.safeParse({
+    ...body,
+    departmentId,
+    categoryId,
+    brandId,
+  });
+
+  if (!result.success) {
+    const errors = result.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
+    throw ApiError.badRequest('Validation failed', errors);
+  }
+
+  const product = await updateProduct(id, result.data, req.user.userId);
+  res.status(200).json(
+    ApiResponse.success('Product updated successfully', product.toJSON()).toJSON()
+  );
+});
+
+// ─────────────────────────────────────────────
+// DELETE /api/inventory/products/:id
+// ─────────────────────────────────────────────
+export const deleteProductHandler = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw ApiError.unauthorized();
+  const { id } = req.params;
+  await deleteProduct(id);
+  res.status(200).json(
+    ApiResponse.success('Product deleted successfully').toJSON()
+  );
+});
+

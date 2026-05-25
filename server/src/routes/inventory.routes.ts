@@ -6,6 +6,9 @@ import {
   listBrands,
   listProducts,
   createProductHandler,
+  getProductByIdHandler,
+  updateProductHandler,
+  deleteProductHandler,
 } from '../controllers/inventory.controller';
 
 const router = Router();
@@ -25,5 +28,8 @@ router.get('/brands', listBrands);
 // ─────────────────────────────────────────────
 router.get('/products', listProducts);
 router.post('/products', createProductHandler);
+router.get('/products/:id', getProductByIdHandler);
+router.put('/products/:id', updateProductHandler);
+router.delete('/products/:id', deleteProductHandler);
 
 export default router;

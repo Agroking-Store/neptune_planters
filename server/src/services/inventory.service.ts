@@ -138,3 +138,95 @@ export async function findOrCreateBrand(name: string): Promise<string> {
   }
   return (brand._id as mongoose.Types.ObjectId).toString();
 }
+
+// ─────────────────────────────────────────────
+// Get product by ID (populated refs)
+// ─────────────────────────────────────────────
+export async function getProductById(id: string) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw ApiError.badRequest('Invalid product ID');
+  }
+  const product = await Product.findById(id)
+    .populate('departmentId', 'name')
+    .populate('categoryId', 'name')
+    .populate('brandId', 'name')
+    .exec();
+  if (!product) throw ApiError.notFound('Product not found');
+  return product;
+}
+
+// ─────────────────────────────────────────────
+// Update an existing product
+// ─────────────────────────────────────────────
+export async function updateProduct(
+  id: string,
+  data: CreateProductInput,
+  userId: string
+): Promise<InstanceType<typeof Product>> {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw ApiError.badRequest('Invalid product ID');
+  }
+
+  const product = await Product.findById(id).exec();
+  if (!product) throw ApiError.notFound('Product not found');
+
+  // 1. Validate departmentId exists
+  const dept = await Department.findById(data.departmentId).exec();
+  if (!dept) throw ApiError.badRequest('Department not found');
+
+  // 2. Validate categoryId if provided
+  if (data.categoryId) {
+    const cat = await Category.findById(data.categoryId).exec();
+    if (!cat) throw ApiError.badRequest('Category not found');
+  }
+
+  // 3. Validate brandId if provided
+  if (data.brandId) {
+    const brand = await Brand.findById(data.brandId).exec();
+    if (!brand) throw ApiError.badRequest('Brand not found');
+  }
+
+  // 4. Check SKU uniqueness (excluding current product)
+  const existing = await Product.findOne({
+    sku: data.sku.toUpperCase(),
+    _id: { $ne: product._id }
+  }).exec();
+  if (existing) throw ApiError.conflict(`SKU "${data.sku}" already exists`);
+
+  // 5. Update fields
+  product.productName = data.productName;
+  product.sku = data.sku;
+  product.hsnNumber = data.hsnNumber;
+  product.description = data.description;
+  product.departmentId = new mongoose.Types.ObjectId(data.departmentId);
+  product.categoryId = data.categoryId ? new mongoose.Types.ObjectId(data.categoryId) : undefined;
+  product.brandId = data.brandId ? new mongoose.Types.ObjectId(data.brandId) : undefined;
+  product.unitPrice = data.unitPrice;
+  product.defaultDiscount = data.defaultDiscount;
+  product.taxPercentage = data.taxPercentage;
+  product.stockQuantity = data.stockQuantity;
+  product.uom = data.uom;
+  product.batchNo = data.batchNo;
+  product.color = data.color;
+  product.productN = data.productN;
+  product.size = data.size;
+  product.dimensions = data.dimensions;
+  product.status = data.status;
+  product.productImages = data.productImages;
+
+  await product.save();
+  return product;
+}
+
+// ─────────────────────────────────────────────
+// Delete a product
+// ─────────────────────────────────────────────
+export async function deleteProduct(id: string) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw ApiError.badRequest('Invalid product ID');
+  }
+  const result = await Product.findByIdAndDelete(id).exec();
+  if (!result) throw ApiError.notFound('Product not found');
+  return result;
+}
+

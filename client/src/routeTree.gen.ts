@@ -15,81 +15,92 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as InventoryIndexRouteImport } from './routes/inventory.index'
 import { Route as QuotationsNewRouteImport } from './routes/quotations.new'
 import { Route as InventoryNewRouteImport } from './routes/inventory.new'
+import { Route as InventoryEditIdRouteImport } from './routes/inventory.edit.$id'
 
 const LoginRoute = LoginRouteImport.update({
-    id: '/login',
-    path: '/login',
-    getParentRoute: () => rootRouteImport,
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
-    id: '/dashboard',
-    path: '/dashboard',
-    getParentRoute: () => rootRouteImport,
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const InventoryIndexRoute = InventoryIndexRouteImport.update({
-    id: '/inventory/',
-    path: '/inventory/',
-    getParentRoute: () => rootRouteImport,
+  id: '/inventory/',
+  path: '/inventory/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const QuotationsNewRoute = QuotationsNewRouteImport.update({
-    id: '/quotations/new',
-    path: '/quotations/new',
-    getParentRoute: () => rootRouteImport,
+  id: '/quotations/new',
+  path: '/quotations/new',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const InventoryNewRoute = InventoryNewRouteImport.update({
-    id: '/inventory/new',
-    path: '/inventory/new',
-    getParentRoute: () => rootRouteImport,
+  id: '/inventory/new',
+  path: '/inventory/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryEditIdRoute = InventoryEditIdRouteImport.update({
+  id: '/inventory/edit/$id',
+  path: '/inventory/edit/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
-    '/': typeof IndexRoute
-    '/dashboard': typeof DashboardRoute
-    '/login': typeof LoginRoute
-    '/inventory/new': typeof InventoryNewRoute
-    '/quotations/new': typeof QuotationsNewRoute
-    '/inventory/': typeof InventoryIndexRoute
+  '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
+  '/inventory/new': typeof InventoryNewRoute
+  '/quotations/new': typeof QuotationsNewRoute
+  '/inventory/': typeof InventoryIndexRoute
+  '/inventory/edit/$id': typeof InventoryEditIdRoute
 }
 export interface FileRoutesByTo {
-    '/': typeof IndexRoute
-    '/dashboard': typeof DashboardRoute
-    '/login': typeof LoginRoute
-    '/inventory/new': typeof InventoryNewRoute
-    '/quotations/new': typeof QuotationsNewRoute
-    '/inventory': typeof InventoryIndexRoute
+  '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
+  '/inventory/new': typeof InventoryNewRoute
+  '/quotations/new': typeof QuotationsNewRoute
+  '/inventory': typeof InventoryIndexRoute
+  '/inventory/edit/$id': typeof InventoryEditIdRoute
 }
 export interface FileRoutesById {
-    __root__: typeof rootRouteImport
-    '/': typeof IndexRoute
-    '/dashboard': typeof DashboardRoute
-    '/login': typeof LoginRoute
-    '/inventory/new': typeof InventoryNewRoute
-    '/quotations/new': typeof QuotationsNewRoute
-    '/inventory/': typeof InventoryIndexRoute
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
+  '/inventory/new': typeof InventoryNewRoute
+  '/quotations/new': typeof QuotationsNewRoute
+  '/inventory/': typeof InventoryIndexRoute
+  '/inventory/edit/$id': typeof InventoryEditIdRoute
 }
 export interface FileRouteTypes {
-    fileRoutesByFullPath: FileRoutesByFullPath
-    fullPaths:
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
     | '/'
     | '/dashboard'
     | '/login'
     | '/inventory/new'
     | '/quotations/new'
     | '/inventory/'
-    fileRoutesByTo: FileRoutesByTo
-    to:
+    | '/inventory/edit/$id'
+  fileRoutesByTo: FileRoutesByTo
+  to:
     | '/'
     | '/dashboard'
     | '/login'
     | '/inventory/new'
     | '/quotations/new'
     | '/inventory'
-    id:
+    | '/inventory/edit/$id'
+  id:
     | '__root__'
     | '/'
     | '/dashboard'
@@ -97,74 +108,82 @@ export interface FileRouteTypes {
     | '/inventory/new'
     | '/quotations/new'
     | '/inventory/'
-    fileRoutesById: FileRoutesById
+    | '/inventory/edit/$id'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-    IndexRoute: typeof IndexRoute
-    DashboardRoute: typeof DashboardRoute
-    LoginRoute: typeof LoginRoute
-    InventoryNewRoute: typeof InventoryNewRoute
-    QuotationsNewRoute: typeof QuotationsNewRoute
-    InventoryIndexRoute: typeof InventoryIndexRoute
+  IndexRoute: typeof IndexRoute
+  DashboardRoute: typeof DashboardRoute
+  LoginRoute: typeof LoginRoute
+  InventoryNewRoute: typeof InventoryNewRoute
+  QuotationsNewRoute: typeof QuotationsNewRoute
+  InventoryIndexRoute: typeof InventoryIndexRoute
+  InventoryEditIdRoute: typeof InventoryEditIdRoute
 }
 
 declare module '@tanstack/react-router' {
-    interface FileRoutesByPath {
-        '/login': {
-            id: '/login'
-            path: '/login'
-            fullPath: '/login'
-            preLoaderRoute: typeof LoginRouteImport
-            parentRoute: typeof rootRouteImport
-        }
-        '/dashboard': {
-            id: '/dashboard'
-            path: '/dashboard'
-            fullPath: '/dashboard'
-            preLoaderRoute: typeof DashboardRouteImport
-            parentRoute: typeof rootRouteImport
-        }
-        '/': {
-            id: '/'
-            path: '/'
-            fullPath: '/'
-            preLoaderRoute: typeof IndexRouteImport
-            parentRoute: typeof rootRouteImport
-        }
-        '/inventory/': {
-            id: '/inventory/'
-            path: '/inventory'
-            fullPath: '/inventory/'
-            preLoaderRoute: typeof InventoryIndexRouteImport
-            parentRoute: typeof rootRouteImport
-        }
-        '/quotations/new': {
-            id: '/quotations/new'
-            path: '/quotations/new'
-            fullPath: '/quotations/new'
-            preLoaderRoute: typeof QuotationsNewRouteImport
-            parentRoute: typeof rootRouteImport
-        }
-        '/inventory/new': {
-            id: '/inventory/new'
-            path: '/inventory/new'
-            fullPath: '/inventory/new'
-            preLoaderRoute: typeof InventoryNewRouteImport
-            parentRoute: typeof rootRouteImport
-        }
+  interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory/': {
+      id: '/inventory/'
+      path: '/inventory'
+      fullPath: '/inventory/'
+      preLoaderRoute: typeof InventoryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quotations/new': {
+      id: '/quotations/new'
+      path: '/quotations/new'
+      fullPath: '/quotations/new'
+      preLoaderRoute: typeof QuotationsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory/new': {
+      id: '/inventory/new'
+      path: '/inventory/new'
+      fullPath: '/inventory/new'
+      preLoaderRoute: typeof InventoryNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory/edit/$id': {
+      id: '/inventory/edit/$id'
+      path: '/inventory/edit/$id'
+      fullPath: '/inventory/edit/$id'
+      preLoaderRoute: typeof InventoryEditIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  }
 }
 
 const rootRouteChildren: RootRouteChildren = {
-    IndexRoute: IndexRoute,
-    DashboardRoute: DashboardRoute,
-    LoginRoute: LoginRoute,
-    InventoryNewRoute: InventoryNewRoute,
-    QuotationsNewRoute: QuotationsNewRoute,
-    InventoryIndexRoute: InventoryIndexRoute,
+  IndexRoute: IndexRoute,
+  DashboardRoute: DashboardRoute,
+  LoginRoute: LoginRoute,
+  InventoryNewRoute: InventoryNewRoute,
+  QuotationsNewRoute: QuotationsNewRoute,
+  InventoryIndexRoute: InventoryIndexRoute,
+  InventoryEditIdRoute: InventoryEditIdRoute,
 }
 export const routeTree = rootRouteImport
-    ._addFileChildren(rootRouteChildren)
-    ._addFileTypes<FileRouteTypes>()
-
-
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
