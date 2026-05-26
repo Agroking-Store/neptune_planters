@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as InventoryIndexRouteImport } from './routes/inventory.index'
 import { Route as QuotationsNewRouteImport } from './routes/quotations.new'
 import { Route as InventoryNewRouteImport } from './routes/inventory.new'
+import { Route as QuotationsEditIdRouteImport } from './routes/quotations.edit.$id'
 import { Route as InventoryEditIdRouteImport } from './routes/inventory.edit.$id'
 
 const LoginRoute = LoginRouteImport.update({
@@ -47,6 +48,11 @@ const InventoryNewRoute = InventoryNewRouteImport.update({
   path: '/inventory/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QuotationsEditIdRoute = QuotationsEditIdRouteImport.update({
+  id: '/quotations/edit/$id',
+  path: '/quotations/edit/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InventoryEditIdRoute = InventoryEditIdRouteImport.update({
   id: '/inventory/edit/$id',
   path: '/inventory/edit/$id',
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/quotations/new': typeof QuotationsNewRoute
   '/inventory/': typeof InventoryIndexRoute
   '/inventory/edit/$id': typeof InventoryEditIdRoute
+  '/quotations/edit/$id': typeof QuotationsEditIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/quotations/new': typeof QuotationsNewRoute
   '/inventory': typeof InventoryIndexRoute
   '/inventory/edit/$id': typeof InventoryEditIdRoute
+  '/quotations/edit/$id': typeof QuotationsEditIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/quotations/new': typeof QuotationsNewRoute
   '/inventory/': typeof InventoryIndexRoute
   '/inventory/edit/$id': typeof InventoryEditIdRoute
+  '/quotations/edit/$id': typeof QuotationsEditIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/quotations/new'
     | '/inventory/'
     | '/inventory/edit/$id'
+    | '/quotations/edit/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/quotations/new'
     | '/inventory'
     | '/inventory/edit/$id'
+    | '/quotations/edit/$id'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/quotations/new'
     | '/inventory/'
     | '/inventory/edit/$id'
+    | '/quotations/edit/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   QuotationsNewRoute: typeof QuotationsNewRoute
   InventoryIndexRoute: typeof InventoryIndexRoute
   InventoryEditIdRoute: typeof InventoryEditIdRoute
+  QuotationsEditIdRoute: typeof QuotationsEditIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -165,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InventoryNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/quotations/edit/$id': {
+      id: '/quotations/edit/$id'
+      path: '/quotations/edit/$id'
+      fullPath: '/quotations/edit/$id'
+      preLoaderRoute: typeof QuotationsEditIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/inventory/edit/$id': {
       id: '/inventory/edit/$id'
       path: '/inventory/edit/$id'
@@ -183,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   QuotationsNewRoute: QuotationsNewRoute,
   InventoryIndexRoute: InventoryIndexRoute,
   InventoryEditIdRoute: InventoryEditIdRoute,
+  QuotationsEditIdRoute: QuotationsEditIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

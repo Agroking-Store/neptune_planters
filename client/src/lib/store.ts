@@ -6,28 +6,15 @@ export type InventoryItem = {
   // Media
   image?: string; // primary product image (data URL)
   referenceImage?: string;
-  textureImage?: string;
+  textureImages?: string[];
   // Basics
   name: string;
-  sku: string;
   hsn: string;
   description: string;
-  department: string;
-  category?: string;
   // Pricing
   price: number;
-  discount?: number; // percent
-  tax?: number; // percent
-  // Stock
-  quantity: number;
-  unit: string; // UOM
   // Attributes
-  brand?: string;
-  batchNo?: string;
-  color?: string;
-  productN?: string;
-  size?: string;
-  dimensions: string;
+  sizes?: string[];
   createdAt: string;
 };
 
@@ -64,10 +51,10 @@ type DB = {
 const KEY = "indux_db_v1";
 
 const seedInventory: InventoryItem[] = [
-  { id: "inv_1", name: "Aluminum Ringlock Scaffold", sku: "RING-ALU-VS2M", department: "Industrial Access", hsn: "73084000", price: 14990, quantity: 240, unit: "pcs", dimensions: "2.0m x 1.0m", description: "Heavy-duty aluminum ringlock scaffolding section.", createdAt: new Date().toISOString() },
-  { id: "inv_2", name: "Office Chair Executive", sku: "OFFICE-CHAIR-001", department: "Furniture", hsn: "94013000", price: 8499, quantity: 56, unit: "pcs", dimensions: "65 x 65 x 115 cm", description: "Mesh back executive chair with lumbar support.", createdAt: new Date().toISOString() },
-  { id: "inv_3", name: "Wooden Office Desk", sku: "WOOD-DESK-120", department: "Furniture", hsn: "9403", price: 15750, quantity: 28, unit: "pcs", dimensions: "120 x 60 x 75 cm", description: "Engineered oak finish desk with cable management.", createdAt: new Date().toISOString() },
-  { id: "inv_4", name: "LED Panel Light 40W", sku: "LED-PNL-40", department: "Electronics", hsn: "94054000", price: 1299, quantity: 1840, unit: "pcs", dimensions: "60 x 60 cm", description: "Flicker-free 4000K LED ceiling panel.", createdAt: new Date().toISOString() },
+  { id: "inv_1", name: "Aluminum Ringlock Scaffold", hsn: "73084000", price: 14990, sizes: ["2.0m x 1.0m"], description: "Heavy-duty aluminum ringlock scaffolding section.", createdAt: new Date().toISOString() },
+  { id: "inv_2", name: "Office Chair Executive", hsn: "94013000", price: 8499, sizes: ["65 x 65 x 115 cm"], description: "Mesh back executive chair with lumbar support.", createdAt: new Date().toISOString() },
+  { id: "inv_3", name: "Wooden Office Desk", hsn: "9403", price: 15750, sizes: ["120 x 60 x 75 cm"], description: "Engineered oak finish desk with cable management.", createdAt: new Date().toISOString() },
+  { id: "inv_4", name: "LED Panel Light 40W", hsn: "94054000", price: 1299, sizes: ["60 x 60 cm"], description: "Flicker-free 4000K LED ceiling panel.", createdAt: new Date().toISOString() },
 ];
 
 const seedQuotations: Quotation[] = [

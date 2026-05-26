@@ -84,3 +84,28 @@ export const deleteQuotationHandler = asyncHandler(async (req: Request, res: Res
     ApiResponse.success('Quotation deleted successfully').toJSON()
   );
 });
+
+// ─────────────────────────────────────────────
+// PATCH /api/quotations/:id/status
+// ─────────────────────────────────────────────
+import { Quotation } from '../models/Quotation.model';
+
+export const patchQuotationStatusHandler = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw ApiError.unauthorized();
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!['Draft', 'Sent', 'Accepted', 'Rejected'].includes(status)) {
+    throw ApiError.badRequest('Invalid status value');
+  }
+
+  const quotation = await Quotation.findById(id).exec();
+  if (!quotation) throw ApiError.notFound('Quotation not found');
+
+  quotation.status = status;
+  await quotation.save();
+
+  res.status(200).json(
+    ApiResponse.success('Quotation status updated successfully', quotation.toJSON()).toJSON()
+  );
+});

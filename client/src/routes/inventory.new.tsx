@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
-import { Upload, Package, Save, Image as ImageIcon, Tag, IndianRupee, Boxes, Palette, Check, ChevronDown, Plus, Search, Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Upload, Package, Save, Image as ImageIcon, Tag, Palette, Loader2, Plus, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { toast } from "sonner";
 import { isAuthenticated } from "@/lib/auth";
@@ -14,80 +14,24 @@ export const Route = createFileRoute("/inventory/new")({
   component: () => <AppShell><NewItem /></AppShell>,
 });
 
-// ── Predefined UOM values (matches backend enum exactly) ──────────────
-const UOM_VALUES = ["pcs", "box", "kg", "ltr", "set", "mtr", "sqft"] as const;
-type UOM = typeof UOM_VALUES[number];
-
-// ── API types ──────────────────────────────────────────────────────────
-interface Department { _id: string; name: string; description?: string; }
-interface Category   { _id: string; name: string; departmentId: string; }
-interface Brand      { _id: string; name: string; }
-
 function NewItem() {
   const navigate = useNavigate();
   const productImgRef = useRef<HTMLInputElement>(null);
   const refImgRef     = useRef<HTMLInputElement>(null);
-  const textureImgRef = useRef<HTMLInputElement>(null);
-
-  // ── Lookup data from API ──────────────────────────────────────────────
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [categories, setCategories]   = useState<Category[]>([]);
-  const [brands, setBrands]           = useState<Brand[]>([]);
-  const [lookupsLoading, setLookupsLoading] = useState(true);
-
-  // Fetch departments and brands on mount
-  useEffect(() => {
-    const fetchLookups = async () => {
-      console.log("[Inventory] Fetching departments and brands...");
-      try {
-        const [depts, brnds] = await Promise.all([
-          api.get<Department[]>("/inventory/departments"),
-          api.get<Brand[]>("/inventory/brands"),
-        ]);
-        setDepartments(depts ?? []);
-        setBrands(brnds ?? []);
-        console.log("[Inventory] Loaded", depts?.length, "depts,", brnds?.length, "brands");
-      } catch (err) {
-        console.error("[Inventory] Failed to load lookups:", err);
-        toast.error("Failed to load departments/brands from server.");
-      } finally {
-        setLookupsLoading(false);
-      }
-    };
-    void fetchLookups();
-  }, []);
+  const textureImgRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // ── Form state ────────────────────────────────────────────────────────
   const [image, setImage]               = useState<string | undefined>();
   const [referenceImage, setRefImage]   = useState<string | undefined>();
-  const [textureImage, setTexImage]     = useState<string | undefined>();
+  const [textureImages, setTextureImages] = useState<string[]>([]);
 
   const [form, setForm] = useState({
-    productName: "", sku: "", hsnNumber: "", description: "",
-    departmentId: "", departmentName: "",
-    categoryId: "",   categoryName: "",
-    brandId: "",      brandName: "",
-    productN: "",
-    unitPrice: 0, defaultDiscount: 0, taxPercentage: 18,
-    stockQuantity: 0, uom: "pcs" as UOM,
-    batchNo: "", color: "", size: "", dimensions: "",
+    productName: "", hsnNumber: "", description: "",
+    unitPrice: 0,
   });
 
+  const [sizes, setSizes] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-
-  // When department changes → fetch its categories
-  const onDepartmentChange = async (deptId: string, deptName: string) => {
-    setForm((f) => ({ ...f, departmentId: deptId, departmentName: deptName, categoryId: "", categoryName: "" }));
-    setCategories([]);
-    if (!deptId) return;
-    console.log("[Inventory] Fetching categories for dept:", deptName);
-    try {
-      const cats = await api.get<Category[]>(`/inventory/categories?departmentId=${deptId}`);
-      setCategories(cats ?? []);
-    } catch (err) {
-      console.error("[Inventory] Failed to load categories:", err);
-    }
-  };
 
   const readFile = (f: File, setter: (s: string) => void) => {
     const reader = new FileReader();
@@ -95,40 +39,70 @@ function NewItem() {
     reader.readAsDataURL(f);
   };
 
+  const handleTextureFile = (idx: number, f: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const newTextures = [...textureImages];
+      newTextures[idx] = reader.result as string;
+      setTextureImages(newTextures);
+    };
+    reader.readAsDataURL(f);
+  };
+
+  const addTextureSlot = () => {
+    setTextureImages([...textureImages, ""]);
+  };
+
+  const removeTextureSlot = (idx: number) => {
+    const newTextures = [...textureImages];
+    newTextures.splice(idx, 1);
+    setTextureImages(newTextures);
+  };
+
+  const addSizeSlot = () => {
+    setSizes([...sizes, ""]);
+  };
+
+  const updateSize = (idx: number, val: string) => {
+    const newSizes = [...sizes];
+    newSizes[idx] = val;
+    setSizes(newSizes);
+  };
+
+  const removeSizeSlot = (idx: number) => {
+    const newSizes = [...sizes];
+    newSizes.splice(idx, 1);
+    setSizes(newSizes);
+  };
+
   // ── Submit ────────────────────────────────────────────────────────────
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.productName.trim() || !form.sku.trim()) {
-      toast.error("Product name and SKU are required");
-      return;
-    }
-    if (!form.departmentId && !form.departmentName) {
-      toast.error("Please select a department");
+    if (!form.productName.trim()) {
+      toast.error("Product name is required");
       return;
     }
 
     setSubmitting(true);
-    console.log("[Inventory] Submitting product:", form.productName);
 
     // Build images array
     const productImages = [
       image         && { type: "product",   url: image,         publicId: "" },
       referenceImage && { type: "reference", url: referenceImage, publicId: "" },
-      textureImage  && { type: "texture",   url: textureImage,  publicId: "" },
+      ...textureImages.filter(t => t).map(t => ({ type: "texture", url: t, publicId: "" }))
     ].filter(Boolean);
 
     const payload = {
       ...form,
+      sizes: sizes.filter(s => s.trim() !== ""),
       productImages,
     };
 
     try {
       await api.post("/inventory/products", payload);
-      console.log("[Inventory] Product created successfully");
       toast.success("Product added to inventory");
       navigate({ to: "/inventory" });
     } catch (err) {
-      console.error("[Inventory] Create failed:", err);
       if (err instanceof ApiClientError) {
         toast.error(err.message);
       } else if (err instanceof Error) {
@@ -141,15 +115,6 @@ function NewItem() {
     }
   };
 
-  if (lookupsLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-64">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-muted-foreground">Loading form data...</span>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       <div>
@@ -159,135 +124,104 @@ function NewItem() {
 
       <form onSubmit={submit} className="space-y-6">
         {/* Media */}
-        <Section icon={<ImageIcon className="w-5 h-5" />} title="Product Media" subtitle="Primary product, reference and texture imagery.">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <ImageDrop label="Product Image"   value={image}          onPick={() => productImgRef.current?.click()} onClear={() => setImage(undefined)}    inputRef={productImgRef} onFile={(f) => readFile(f, setImage)} />
-            <ImageDrop label="Reference Image" value={referenceImage} onPick={() => refImgRef.current?.click()}     onClear={() => setRefImage(undefined)}  inputRef={refImgRef}     onFile={(f) => readFile(f, setRefImage)} />
-            <ImageDrop label="Texture Image"   value={textureImage}   onPick={() => textureImgRef.current?.click()} onClear={() => setTexImage(undefined)}  inputRef={textureImgRef} onFile={(f) => readFile(f, setTexImage)} />
+        <Section icon={<ImageIcon className="w-5 h-5" />} title="Product Media" subtitle="Primary product and reference imagery.">
+          <div className="flex flex-wrap gap-4">
+            <div className="w-40">
+              <ImageDrop label="Product Image"   value={image}          onPick={() => productImgRef.current?.click()} onClear={() => setImage(undefined)}    inputRef={productImgRef} onFile={(f) => readFile(f, setImage)} />
+            </div>
+            <div className="w-40">
+              <ImageDrop label="Reference Image" value={referenceImage} onPick={() => refImgRef.current?.click()}     onClear={() => setRefImage(undefined)}  inputRef={refImgRef}     onFile={(f) => readFile(f, setRefImage)} />
+            </div>
           </div>
         </Section>
 
         {/* Product Info */}
-        <Section icon={<Package className="w-5 h-5" />} title="Product Info" subtitle="The essentials: name, codes and classification.">
+        <Section icon={<Package className="w-5 h-5" />} title="Product Info" subtitle="The essentials: name, description and price.">
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Field label="Product Name *">
               <input value={form.productName} onChange={(e) => setForm({ ...form, productName: e.target.value })} className={input} placeholder="Office Chair Executive" />
             </Field>
-            <Field label="SKU *">
-              <input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className={input} placeholder="OFFICE-CHAIR-001" />
+            <Field label="Product Price (₹) *">
+              <input type="number" min={0} value={form.unitPrice} onChange={(e) => setForm({ ...form, unitPrice: +e.target.value || 0 })} className={input} />
             </Field>
             <Field label="HSN Number">
               <input value={form.hsnNumber} onChange={(e) => setForm({ ...form, hsnNumber: e.target.value })} className={input} placeholder="94013000" />
             </Field>
-
-            {/* Department — from API */}
-            <Field label="Department *">
-              <SearchableSelect
-                value={form.departmentName}
-                options={departments.map((d) => ({ id: d._id, label: d.name }))}
-                onChange={(id, label) => void onDepartmentChange(id, label)}
-                onAdd={async (name) => {
-                  // New dept typed — add to local state immediately and clear category
-                  setDepartments((prev) => [...prev, { _id: "", name }]);
-                  setForm((f) => ({ ...f, departmentId: "", departmentName: name, categoryId: "", categoryName: "" }));
-                  setCategories([]);
-                }}
-                placeholder="Search department…"
-                addLabel="Add department"
-              />
-            </Field>
-
-            {/* Category — dynamic, filtered by dept */}
-            <Field label="Category">
-              <SearchableSelect
-                value={form.categoryName}
-                options={categories.map((c) => ({ id: c._id, label: c.name }))}
-                onChange={(id, label) => setForm((f) => ({ ...f, categoryId: id, categoryName: label }))}
-                onAdd={(name) => {
-                  setCategories((prev) => [...prev, { _id: "", name, departmentId: form.departmentId }]);
-                  setForm((f) => ({ ...f, categoryId: "", categoryName: name }));
-                }}
-                placeholder={(form.departmentId || form.departmentName) ? "Search category…" : "Select department first"}
-                addLabel="Add category"
-                disabled={!form.departmentId && !form.departmentName}
-              />
-            </Field>
-
-            <Field label="Product-N">
-              <input value={form.productN} onChange={(e) => setForm({ ...form, productN: e.target.value })} className={input} placeholder="PN-00123" />
-            </Field>
-
             <Field className="sm:col-span-2 lg:col-span-3" label="Product Description">
               <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className={`${input} resize-none`} placeholder="Short description shown on quotations…" />
             </Field>
           </div>
         </Section>
 
-        {/* Pricing */}
-        <Section icon={<IndianRupee className="w-5 h-5" />} title="Pricing & Tax" subtitle="Unit price along with discount and tax percentages.">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Field label="Unit Price (₹) *">
-              <input type="number" min={0} value={form.unitPrice} onChange={(e) => setForm({ ...form, unitPrice: +e.target.value || 0 })} className={input} />
-            </Field>
-            <Field label="Discount (%)">
-              <input type="number" min={0} max={100} value={form.defaultDiscount} onChange={(e) => setForm({ ...form, defaultDiscount: +e.target.value || 0 })} className={input} />
-            </Field>
-            <Field label="Tax (%)">
-              <input type="number" min={0} max={100} value={form.taxPercentage} onChange={(e) => setForm({ ...form, taxPercentage: +e.target.value || 0 })} className={input} />
-            </Field>
-          </div>
-        </Section>
-
-        {/* Stock */}
-        <Section icon={<Boxes className="w-5 h-5" />} title="Stock & Units" subtitle="Quantity on hand and unit of measure.">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Field label="Quantity">
-              <input type="number" min={0} value={form.stockQuantity} onChange={(e) => setForm({ ...form, stockQuantity: +e.target.value || 0 })} className={input} />
-            </Field>
-            {/* UOM — predefined dropdown */}
-            <Field label="UOM (Unit of Measure) *">
-              <select
-                value={form.uom}
-                onChange={(e) => setForm({ ...form, uom: e.target.value as UOM })}
-                className={input}
-              >
-                {UOM_VALUES.map((u) => (
-                  <option key={u} value={u}>{u}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Batch No">
-              <input value={form.batchNo} onChange={(e) => setForm({ ...form, batchNo: e.target.value })} className={input} placeholder="BATCH-2026-05" />
-            </Field>
-          </div>
-        </Section>
-
         {/* Attributes */}
-        <Section icon={<Palette className="w-5 h-5" />} title="Attributes" subtitle="Brand, dimensions and visual descriptors.">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Brand — from API */}
-            <Field label="Brand">
-              <SearchableSelect
-                value={form.brandName}
-                options={brands.map((b) => ({ id: b._id, label: b.name }))}
-                onChange={(id, label) => setForm((f) => ({ ...f, brandId: id, brandName: label }))}
-                onAdd={(name) => {
-                  setBrands((prev) => [...prev, { _id: "", name }]);
-                  setForm((f) => ({ ...f, brandId: "", brandName: name }));
-                }}
-                placeholder="Search brand…"
-                addLabel="Add brand"
-              />
-            </Field>
-            <Field label="Color">
-              <input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className={input} placeholder="Charcoal Grey" />
-            </Field>
-            <Field label="Size">
-              <input value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })} className={input} placeholder="L / 42 / XL" />
-            </Field>
-            <Field className="sm:col-span-2 lg:col-span-3" label="Dimensions">
-              <input value={form.dimensions} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} className={input} placeholder="65 x 65 x 115 cm" />
-            </Field>
+        <Section icon={<Palette className="w-5 h-5" />} title="Attributes" subtitle="Visual descriptors, textures, and dimensions.">
+          <div className="space-y-6">
+            {/* Multiple Dimensions */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium">Dimensions</label>
+                <button type="button" onClick={addSizeSlot} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors">
+                  <Plus className="w-3.5 h-3.5" /> Add Dimension
+                </button>
+              </div>
+              {sizes.length === 0 ? (
+                <div className="text-xs text-muted-foreground p-3 border border-dashed rounded-xl text-center">No dimensions added. Click 'Add Dimension' to begin.</div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {sizes.map((s, i) => (
+                    <div key={i} className="flex items-center gap-1.5 bg-muted/50 border border-border rounded-xl px-2 py-1.5">
+                      <input 
+                        value={s} 
+                        onChange={(e) => updateSize(i, e.target.value)} 
+                        className="bg-transparent text-sm w-32 focus:outline-none placeholder:text-muted-foreground/50" 
+                        placeholder="65x65x65" 
+                      />
+                      <button type="button" onClick={() => removeSizeSlot(i)} className="p-1 rounded-md text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <hr className="border-border" />
+
+            {/* Unlimited Textures */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium">Texture Photos</label>
+                <button type="button" onClick={addTextureSlot} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors">
+                  <Plus className="w-3.5 h-3.5" /> Add Texture
+                </button>
+              </div>
+              {textureImages.length === 0 ? (
+                 <div className="text-xs text-muted-foreground p-3 border border-dashed rounded-xl text-center">No texture photos added. Click 'Add Texture' to begin.</div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                  {textureImages.map((img, i) => (
+                    <div key={i} className="relative group">
+                      <ImageDrop 
+                        label={`Texture ${i + 1}`} 
+                        value={img} 
+                        onPick={() => textureImgRefs.current[i]?.click()} 
+                        onClear={() => {}} // Not used here as we remove the whole slot
+                        inputRef={(el) => (textureImgRefs.current[i] = el)} 
+                        onFile={(f) => handleTextureFile(i, f)} 
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => removeTextureSlot(i)}
+                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Remove texture slot"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </Section>
 
@@ -339,7 +273,7 @@ function ImageDrop({
   label, value, onPick, onClear, inputRef, onFile,
 }: {
   label: string; value?: string; onPick: () => void; onClear: () => void;
-  inputRef: React.RefObject<HTMLInputElement | null>; onFile: (f: File) => void;
+  inputRef: React.Ref<HTMLInputElement | null>; onFile: (f: File) => void;
 }) {
   return (
     <div>
@@ -356,86 +290,7 @@ function ImageDrop({
         )}
       </button>
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
-      {value && <button type="button" onClick={onClear} className="mt-2 text-xs text-destructive hover:underline">Remove</button>}
-    </div>
-  );
-}
-
-// ── SearchableSelect — updated to work with {id, label} options ────────
-function SearchableSelect({
-  value, options, onChange, onAdd, placeholder = "Search…", addLabel = "Add new", disabled = false,
-}: {
-  value: string;
-  options: { id: string; label: string }[];
-  onChange: (id: string, label: string) => void;
-  onAdd: (label: string) => void;
-  placeholder?: string;
-  addLabel?: string;
-  disabled?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const wrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
-
-  const q = query.trim();
-  const filtered = options.filter((o) => o.label.toLowerCase().includes(q.toLowerCase()));
-  const canAdd = q.length > 0 && !options.some((o) => o.label.toLowerCase() === q.toLowerCase());
-
-  const pick = (opt: { id: string; label: string }) => { onChange(opt.id, opt.label); setOpen(false); setQuery(""); };
-  const add  = () => { if (!canAdd) return; onAdd(q); setOpen(false); setQuery(""); };
-
-  return (
-    <div ref={wrapRef} className="relative">
-      <button
-        type="button"
-        onClick={() => !disabled && setOpen((o) => !o)}
-        disabled={disabled}
-        className={`${input} flex items-center justify-between text-left ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-      >
-        <span className={value ? "" : "text-muted-foreground"}>{value || placeholder}</span>
-        <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-      </button>
-      {open && !disabled && (
-        <div className="absolute z-20 mt-1.5 w-full rounded-xl border border-border bg-popover shadow-elegant overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
-            <Search className="w-4 h-4 text-muted-foreground" />
-            <input
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (canAdd) add(); else if (filtered[0]) pick(filtered[0]); } }}
-              placeholder={placeholder}
-              className="flex-1 bg-transparent text-sm focus:outline-none"
-            />
-          </div>
-          <div className="max-h-56 overflow-auto py-1">
-            {filtered.map((o) => (
-              <button key={o.id} type="button" onClick={() => pick(o)} className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted text-left">
-                <span>{o.label}</span>
-                {o.label === value && <Check className="w-4 h-4 text-primary" />}
-              </button>
-            ))}
-            {filtered.length === 0 && !canAdd && (
-              <div className="px-3 py-4 text-xs text-muted-foreground text-center">No matches</div>
-            )}
-          </div>
-          {canAdd && (
-            <button type="button" onClick={add} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm border-t border-border bg-accent/40 hover:bg-accent text-left">
-              <Plus className="w-4 h-4 text-primary" />
-              <span className="font-medium">{addLabel}:</span>
-              <span className="text-muted-foreground truncate">{q}</span>
-            </button>
-          )}
-        </div>
-      )}
+      {value && onClear && <button type="button" onClick={onClear} className="mt-2 text-xs text-destructive hover:underline">Remove</button>}
     </div>
   );
 }

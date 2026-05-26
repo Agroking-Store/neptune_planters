@@ -1,14 +1,15 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { isAuthenticated } from "@/lib/auth";
-import { useMemo, useState } from "react";
-import { Download, FileText, Plus, Search, Send, Target, TrendingUp, Trash2, Calendar } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { Download, FileText, Plus, Search, Send, Target, TrendingUp, Trash2, Calendar, Copy, Edit, ChevronDown, CheckCircle, Activity, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { useDB, formatINR } from "@/lib/store";
+import { useDB, formatINR, store } from "@/lib/store";
 import { downloadQuotationPDF } from "@/lib/pdf";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — Indux" }, { name: "description", content: "Manage and track all your generated quotations." }] }),
+  head: () => ({ meta: [{ title: "Dashboard | Neptune" }, { name: "description", content: "Manage and track all your generated quotations." }] }),
   beforeLoad: () => {
     if (!isAuthenticated()) throw redirect({ to: "/login" });
   },
@@ -23,18 +24,105 @@ function DashboardInner() {
   const db = useDB();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("All");
+  const [quotations, setQuotations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeStatusMenuId, setActiveStatusMenuId] = useState<string | null>(null);
+  const [shareQuotationId, setShareQuotationId] = useState<string | null>(null);
 
-  const stats = useMemo(() => {
-    const total = db.quotations.length;
-    const revenue = db.quotations.reduce((s, x) => s + x.items.reduce((a, it) => a + it.quantity * it.price * (1 + it.tax / 100), 0), 0);
-    const accepted = db.quotations.filter((x) => x.status === "Accepted").length;
-    const counts = { Draft: 0, Sent: 0, Accepted: 0, Rejected: 0 } as Record<string, number>;
-    db.quotations.forEach((x) => { counts[x.status] = (counts[x.status] || 0) + 1; });
-    return { total, revenue, accepted, conv: total ? Math.round((accepted / total) * 100) : 0, counts };
+  const fetchQuotations = async () => {
+    try {
+      const res = await api.get<any[]>("/quotations");
+      if (res && Array.isArray(res)) {
+        setQuotations(res);
+      } else {
+        setQuotations(db.quotations);
+      }
+    } catch (err) {
+      console.warn("[Dashboard] Failed to fetch from API, using local DB:", err);
+      setQuotations(db.quotations);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchQuotations();
   }, [db.quotations]);
 
-  const filtered = db.quotations.filter((x) => {
-    const matches = !q || x.number.toLowerCase().includes(q.toLowerCase()) || x.customerName.toLowerCase().includes(q.toLowerCase());
+  const updateLocalQuotationStatus = (id: string, newStatus: string) => {
+    try {
+      const raw = localStorage.getItem("indux_db_v1");
+      if (raw) {
+        const dbVal = JSON.parse(raw);
+        dbVal.quotations = dbVal.quotations.map((item: any) => item.id === id ? { ...item, status: newStatus } : item);
+        localStorage.setItem("indux_db_v1", JSON.stringify(dbVal));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleUpdateStatus = async (id: string, newStatus: string) => {
+    try {
+      await api.patch(`/quotations/${id}/status`, { status: newStatus });
+      toast.success(`Quotation status updated to ${newStatus}`);
+      void fetchQuotations();
+    } catch (err) {
+      console.warn("[Dashboard] Backend update failed, saving locally:", err);
+      updateLocalQuotationStatus(id, newStatus);
+      setQuotations((prev) => prev.map((item) => (item._id === id || item.id === id) ? { ...item, status: newStatus } : item));
+      toast.success(`Quotation status updated to ${newStatus} (local)`);
+    } finally {
+      setActiveStatusMenuId(null);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await api.delete(`/quotations/${id}`);
+      toast.success("Quotation deleted");
+      void fetchQuotations();
+    } catch (err) {
+      console.warn("[Dashboard] Backend delete failed, deleting locally:", err);
+      store.deleteQuotation(id);
+      setQuotations((prev) => prev.filter((item) => item._id !== id && item.id !== id));
+      toast.success("Deleted (local)");
+    }
+  };
+
+  const handleCopy = (item: any) => {
+    const number = item.quotationId || item.number;
+    const name = item.customerSnapshot?.customerName || item.customerName;
+    const total = item.totalAmount !== undefined ? item.totalAmount : item.items.reduce((s: number, it: any) => s + it.quantity * (it.price || it.unitPrice) * (1 + it.tax / 100), 0);
+    const textToCopy = `Quotation: ${number}\nCustomer: ${name}\nAmount: ${formatINR(total)}`;
+
+    navigator.clipboard.writeText(textToCopy);
+    toast.success("Quotation summary copied to clipboard!");
+  };
+
+  const getStatusOutlineClass = (s: string) => {
+    switch (s) {
+      case "Draft": return "border-amber-500/80 text-amber-600 bg-amber-50/50 hover:bg-amber-100/60 dark:bg-amber-950/20";
+      case "Sent": return "border-blue-500/80 text-blue-600 bg-blue-50/50 hover:bg-blue-100/60 dark:bg-blue-950/20";
+      case "Accepted": return "border-emerald-500/80 text-emerald-600 bg-emerald-50/50 hover:bg-emerald-100/60 dark:bg-emerald-950/20";
+      case "Rejected": return "border-rose-500/80 text-rose-600 bg-rose-50/50 hover:bg-rose-100/60 dark:bg-rose-950/20";
+      default: return "border-border text-muted-foreground";
+    }
+  };
+
+  const stats = useMemo(() => {
+    const total = quotations.length;
+    const revenue = quotations.reduce((s, x) => s + (x.totalAmount !== undefined ? x.totalAmount : x.items.reduce((a: number, it: any) => a + it.quantity * (it.price || it.unitPrice) * (1 + it.tax / 100), 0)), 0);
+    const accepted = quotations.filter((x) => x.status === "Accepted").length;
+    const counts = { Draft: 0, Sent: 0, Accepted: 0, Rejected: 0 } as Record<string, number>;
+    quotations.forEach((x) => { counts[x.status] = (counts[x.status] || 0) + 1; });
+    return { total, revenue, accepted, conv: total ? Math.round((accepted / total) * 100) : 0, counts };
+  }, [quotations]);
+
+  const filtered = quotations.filter((x) => {
+    const number = x.quotationId || x.number || "";
+    const name = x.customerSnapshot?.customerName || x.customerName || "";
+    const matches = !q || number.toLowerCase().includes(q.toLowerCase()) || name.toLowerCase().includes(q.toLowerCase());
     const sOk = status === "All" || x.status === status;
     return matches && sOk;
   });
@@ -53,10 +141,10 @@ function DashboardInner() {
 
       {/* Stats grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard icon={<FileText className="w-5 h-5" />} label="Total Quotations" value={String(stats.total)} sub={`${db.quotations.filter((q) => new Date(q.createdAt).getMonth() === new Date().getMonth()).length} this month`} />
+        <StatCard icon={<FileText className="w-5 h-5" />} label="Total Quotations" value={String(stats.total)} sub={`${quotations.filter((q) => new Date(q.createdAt).getMonth() === new Date().getMonth()).length} this month`} />
         <StatCard icon={<Target className="w-5 h-5" />} label="Conversion Rate" value={`${stats.conv}%`} sub={`${stats.accepted} accepted`} tone="success" />
         <StatCard icon={<TrendingUp className="w-5 h-5" />} label="Total Revenue" value={formatINR(stats.revenue).replace(/\.00$/, "")} sub={`Avg ${stats.total ? formatINR(stats.revenue / stats.total).replace(/\.00$/, "") : "—"}`} />
-        <StatCard icon={<Calendar className="w-5 h-5" />} label="Follow-ups" value={String(db.quotations.filter((x) => x.followUpDate).length)} sub="due soon" tone="violet" />
+        <StatCard icon={<Calendar className="w-5 h-5" />} label="Follow-ups" value={String(quotations.filter((x) => x.followUpDate).length)} sub="due soon" tone="violet" />
       </div>
 
       {/* Distribution */}
@@ -83,22 +171,29 @@ function DashboardInner() {
       </div>
 
       {/* Toolbar */}
-      <div className="rounded-2xl border border-border bg-card p-3 sm:p-4 shadow-soft flex flex-col sm:flex-row gap-3">
+      <div className="rounded-2xl border border-border bg-card p-3 sm:p-4 shadow-soft flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <div className="flex-1 relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input value={q} onChange={(e) => setQ(e.target.value)} className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring text-sm" placeholder="Search by quotation number or customer..." />
         </div>
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm">
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none">
           {["All", "Draft", "Sent", "Accepted", "Rejected"].map((s) => <option key={s}>{s}</option>)}
         </select>
+        <Link
+          to="/quotations/new"
+          className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-violet-600 hover:bg-violet-700 text-white shadow-elegant hover:scale-105 active:scale-95 transition-all shrink-0"
+          title="Create New Quotation"
+        >
+          <Plus className="w-5 h-5" />
+        </Link>
       </div>
 
       {/* Table / cards */}
       <div className="rounded-2xl border border-border bg-card shadow-soft overflow-hidden">
         {/* Desktop table */}
-        <div className="hidden md:block overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto max-h-[500px] overflow-y-auto">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-muted-foreground">
+            <thead className="bg-muted/50 text-muted-foreground sticky top-0 z-10 shadow-sm">
               <tr>
                 {["#", "Quotation", "Customer", "Created", "Total", "Follow-up", "Status", "Actions"].map((h) => (
                   <th key={h} className="text-left font-medium px-4 py-3 whitespace-nowrap">{h}</th>
@@ -107,27 +202,60 @@ function DashboardInner() {
             </thead>
             <tbody>
               {filtered.map((q, i) => {
-                const total = q.items.reduce((s, it) => s + it.quantity * it.price * (1 + it.tax / 100), 0);
+                const total = q.totalAmount !== undefined ? q.totalAmount : q.items.reduce((s: number, it: any) => s + it.quantity * (it.price || it.unitPrice) * (1 + it.tax / 100), 0);
+                const qId = q._id || q.id;
+                const qNumber = q.quotationId || q.number;
+                const qCustomerName = q.customerSnapshot?.customerName || q.customerName;
+
                 return (
-                  <tr key={q.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                  <tr key={qId} className="border-t border-border hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 text-muted-foreground">{i + 1}</td>
-                    <td className="px-4 py-3 font-medium">{q.number}</td>
-                    <td className="px-4 py-3">{q.customerName}</td>
+                    <td className="px-4 py-3 font-medium">{qNumber}</td>
+                    <td className="px-4 py-3">{qCustomerName}</td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{new Date(q.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
                     <td className="px-4 py-3 font-semibold whitespace-nowrap">{formatINR(total)}</td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{q.followUpDate ? new Date(q.followUpDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "N/A"}</td>
                     <td className="px-4 py-3"><StatusBadge status={q.status} /></td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        <IconBtn onClick={() => { downloadQuotationPDF(q); toast.success("PDF downloaded"); }} label="Download PDF"><Download className="w-4 h-4" /></IconBtn>
-                        <IconBtn onClick={() => toast.success(`${q.number} marked as sent`)} label="Send"><Send className="w-4 h-4 text-primary" /></IconBtn>
-                        <IconBtn onClick={() => { store.deleteQuotation(q.id); toast.success("Deleted"); }} label="Delete"><Trash2 className="w-4 h-4 text-destructive" /></IconBtn>
+                      <div className="flex items-center gap-1.5">
+                        {/* Send */}
+                        <IconBtn onClick={() => setShareQuotationId(qId)} label="Send"><Send className="w-4 h-4 text-blue-600" /></IconBtn>
+                        {/* Copy */}
+                        <Link to={`/quotations/new?copyFrom=${qId}`} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center transition-colors focus:outline-none"><Copy className="w-4 h-4" /></Link>
+                        {/* Edit */}
+                        <Link to={`/quotations/edit/${qId}`} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center transition-colors focus:outline-none"><Edit className="w-4 h-4 text-primary" /></Link>
+                        {/* Delete */}
+                        <IconBtn onClick={() => handleDelete(qId)} label="Delete"><Trash2 className="w-4 h-4 text-destructive" /></IconBtn>
+                        {/* Status */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setActiveStatusMenuId(activeStatusMenuId === qId ? null : qId)}
+                            className={`w-9 h-9 rounded-lg border transition-all flex items-center justify-center focus:outline-none ${getStatusOutlineClass(q.status)}`}
+                            title={`Status: ${q.status}`}
+                          >
+                            <Activity className="w-4 h-4" />
+                          </button>
+                          {activeStatusMenuId === qId && (
+                            <div className="absolute right-0 mt-1 w-32 rounded-xl border border-border bg-popover shadow-elegant py-1 z-30">
+                              {(["Accepted", "Rejected"] as const).map((s) => (
+                                <button
+                                  key={s}
+                                  onClick={() => handleUpdateStatus(qId, s)}
+                                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted font-medium transition-colors focus:outline-none"
+                                >
+                                  {s}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>
                 );
               })}
-              {!filtered.length && <tr><td colSpan={8} className="p-12 text-center text-muted-foreground text-sm">No quotations found.</td></tr>}
+              {loading && <tr><td colSpan={8} className="p-12 text-center text-muted-foreground text-sm">Loading quotations...</td></tr>}
+              {!loading && !filtered.length && <tr><td colSpan={8} className="p-12 text-center text-muted-foreground text-sm">No quotations found.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -135,32 +263,78 @@ function DashboardInner() {
         {/* Mobile cards */}
         <div className="md:hidden divide-y divide-border">
           {filtered.map((q) => {
-            const total = q.items.reduce((s, it) => s + it.quantity * it.price * (1 + it.tax / 100), 0);
+            const total = q.totalAmount !== undefined ? q.totalAmount : q.items.reduce((s: number, it: any) => s + it.quantity * (it.price || it.unitPrice) * (1 + it.tax / 100), 0);
+            const qId = q._id || q.id;
+            const qNumber = q.quotationId || q.number;
+            const qCustomerName = q.customerSnapshot?.customerName || q.customerName;
+
             return (
-              <div key={q.id} className="p-4">
+              <div key={qId} className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-medium">{q.number}</div>
-                    <div className="text-sm text-muted-foreground truncate">{q.customerName}</div>
+                    <div className="font-medium">{qNumber}</div>
+                    <div className="text-sm text-muted-foreground truncate">{qCustomerName}</div>
                   </div>
                   <StatusBadge status={q.status} />
                 </div>
-                <div className="mt-3 flex items-end justify-between gap-3">
+                <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-xs text-muted-foreground">{new Date(q.createdAt).toLocaleDateString("en-IN")}</div>
                     <div className="font-semibold mt-0.5">{formatINR(total)}</div>
                   </div>
-                  <div className="flex gap-1">
-                    <IconBtn onClick={() => { downloadQuotationPDF(q); toast.success("PDF downloaded"); }} label="Download"><Download className="w-4 h-4" /></IconBtn>
-                    <IconBtn onClick={() => { store.deleteQuotation(q.id); toast.success("Deleted"); }} label="Delete"><Trash2 className="w-4 h-4 text-destructive" /></IconBtn>
+                  <div className="flex items-center gap-1.5">
+                    {/* Send */}
+                    <IconBtn onClick={() => setShareQuotationId(qId)} label="Send"><Send className="w-4 h-4 text-blue-600" /></IconBtn>
+                    {/* Copy */}
+                    <Link to={`/quotations/new?copyFrom=${qId}`} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center transition-colors focus:outline-none"><Copy className="w-4 h-4" /></Link>
+                    {/* Edit */}
+                    <Link to={`/quotations/edit/${qId}`} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center transition-colors focus:outline-none"><Edit className="w-4 h-4 text-primary" /></Link>
+                    {/* Delete */}
+                    <IconBtn onClick={() => handleDelete(qId)} label="Delete"><Trash2 className="w-4 h-4 text-destructive" /></IconBtn>
+                    {/* Status */}
+                    <div className="relative">
+                      <button
+                        onClick={() => setActiveStatusMenuId(activeStatusMenuId === qId ? null : qId)}
+                        className={`w-9 h-9 rounded-lg border transition-all flex items-center justify-center focus:outline-none ${getStatusOutlineClass(q.status)}`}
+                        title={`Status: ${q.status}`}
+                      >
+                        <Activity className="w-4 h-4" />
+                      </button>
+                      {activeStatusMenuId === qId && (
+                        <div className="absolute right-0 bottom-full mb-1 w-32 rounded-xl border border-border bg-popover shadow-elegant py-1 z-30">
+                          {(["Accepted", "Rejected"] as const).map((s) => (
+                            <button
+                              key={s}
+                              onClick={() => handleUpdateStatus(qId, s)}
+                              className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted font-medium transition-colors focus:outline-none"
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             );
           })}
-          {!filtered.length && <div className="p-10 text-center text-muted-foreground text-sm">No quotations found.</div>}
+          {loading && <div className="p-10 text-center text-muted-foreground text-sm">Loading quotations...</div>}
+          {!loading && !filtered.length && <div className="p-10 text-center text-muted-foreground text-sm">No quotations found.</div>}
         </div>
       </div>
+
+      {shareQuotationId && (
+        <ShareDialog
+          quotationId={shareQuotationId}
+          onClose={() => setShareQuotationId(null)}
+          onSend={(id, markSent) => {
+            if (markSent) handleUpdateStatus(id, "Sent");
+            setShareQuotationId(null);
+            toast.success("Quotation shared successfully");
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -186,6 +360,36 @@ function StatusBadge({ status }: { status: string }) {
 
 function IconBtn({ children, onClick, label }: { children: React.ReactNode; onClick: () => void; label: string }) {
   return (
-    <button onClick={onClick} aria-label={label} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center transition-colors">{children}</button>
+    <button onClick={onClick} aria-label={label} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center transition-colors focus:outline-none">{children}</button>
+  );
+}
+
+function ShareDialog({ quotationId, onClose, onSend }: { quotationId: string; onClose: () => void; onSend: (id: string, markSent: boolean) => void }) {
+  const [email, setEmail] = useState("");
+  const [markSent, setMarkSent] = useState(true);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-elegant animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="font-display font-semibold text-lg flex items-center gap-2"><Send className="w-4 h-4 text-primary" /> Share Quotation</h2>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg border border-border hover:bg-muted grid place-items-center"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <label className="block">
+            <span className="text-xs font-medium text-muted-foreground">Recipient Email</span>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="customer@company.com" className="w-full mt-1.5 px-3 py-2.5 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring text-sm" autoFocus />
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={markSent} onChange={(e) => setMarkSent(e.target.checked)} className="rounded text-primary focus:ring-primary h-4 w-4" />
+            <span className="text-sm font-medium">Mark quotation as Sent</span>
+          </label>
+        </div>
+        <div className="px-5 py-4 border-t border-border flex justify-end gap-2 bg-muted/20 rounded-b-2xl">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl border border-border bg-card hover:bg-muted text-sm font-medium transition-colors">Cancel</button>
+          <button onClick={() => { if (!email) { toast.error("Enter an email"); return; } onSend(quotationId, markSent); }} className="px-4 py-2 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-medium shadow-elegant hover:opacity-95 transition-opacity">Send Email</button>
+        </div>
+      </div>
+    </div>
   );
 }

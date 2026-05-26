@@ -8,17 +8,12 @@ import { toast } from "sonner";
 import { api, ApiClientError } from "@/lib/api";
 import { downloadQuotationPDF } from "@/lib/pdf";
 
-export const Route = createFileRoute("/quotations/new")({
-  head: () => ({ meta: [{ title: "New Quotation — Indux" }] }),
-  validateSearch: (search: Record<string, unknown>) => {
-    return {
-      copyFrom: search.copyFrom as string | undefined,
-    }
-  },
+export const Route = createFileRoute("/quotations/edit/$id")({
+  head: () => ({ meta: [{ title: "Edit Quotation — Indux" }] }),
   beforeLoad: () => {
     if (!isAuthenticated()) throw redirect({ to: "/login" });
   },
-  component: () => <AppShell><NewQuotation /></AppShell>,
+  component: () => <AppShell><EditQuotation /></AppShell>,
 });
 
 // ── API type for customer ──────────────────────────────────────────────
@@ -64,9 +59,9 @@ interface QuotationItemLocal {
   image?: string;
 }
 
-function NewQuotation() {
+function EditQuotation() {
   const navigate = useNavigate();
-  const { copyFrom } = Route.useSearch();
+  const { id } = Route.useParams();
 
   // ── Customer list from API ──────────────────────────────────────────
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
@@ -120,14 +115,17 @@ function NewQuotation() {
   const [followUp, setFollowUp] = useState<string>("");
   const pickerRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(!!copyFrom);
+  const [initialLoading, setInitialLoading] = useState(true);
 
-  // Load existing quotation data if copyFrom is provided
+  // ── Add Customer Dialog state ──────────────────────────────────────
+  const [showCustomerDialog, setShowCustomerDialog] = useState(false);
+  const [dialogPrefillName, setDialogPrefillName] = useState("");
+
+  // Load existing quotation data
   useEffect(() => {
-    if (!copyFrom) return;
-    const loadCopy = async () => {
+    const loadQuotation = async () => {
       try {
-        const data = await api.get<any>(`/quotations/${copyFrom}`);
+        const data = await api.get<any>(`/quotations/${id}`);
         if (data) {
           setSelectedCustomerId(data.customerId);
           setSelectedCustomerName(data.customerSnapshot?.customerName || "");
@@ -162,18 +160,14 @@ function NewQuotation() {
           })));
         }
       } catch (err) {
-        console.error("Failed to load quotation for copying", err);
-        toast.error("Failed to load quotation for copying");
+        console.error("Failed to load quotation", err);
+        toast.error("Failed to load quotation for editing");
       } finally {
         setInitialLoading(false);
       }
     };
-    loadCopy();
-  }, [copyFrom]);
-
-  // ── Add Customer Dialog state ──────────────────────────────────────
-  const [showCustomerDialog, setShowCustomerDialog] = useState(false);
-  const [dialogPrefillName, setDialogPrefillName] = useState("");
+    loadQuotation();
+  }, [id]);
 
   // Close picker when clicking outside
   useEffect(() => {
@@ -189,13 +183,9 @@ function NewQuotation() {
   }, [pickerOpen]);
 
   const totals = useMemo(() => {
-    // Item-level subtotal (before overall tax/discount)
     const sub = items.reduce((s, it) => s + it.quantity * it.price, 0);
-    // Item-level tax totals
     const itemTax = items.reduce((s, it) => s + (it.quantity * it.price * it.tax) / 100, 0);
-    // Item-level discount totals
     const itemDiscount = items.reduce((s, it) => s + (it.discount || 0), 0);
-    // Overall tax & discount from billing
     const overallTaxAmount = (sub * billing.taxPercent) / 100;
     const overallDiscountAmount = (sub * billing.discountPercent) / 100;
     const totalTax = itemTax + overallTaxAmount;
@@ -204,13 +194,13 @@ function NewQuotation() {
     return { sub, tax: totalTax, discount: totalDiscount, grand: Math.max(0, grand) };
   }, [items, billing.taxPercent, billing.discountPercent]);
 
-  const addItem = (id: string) => {
-    const found = products.find((i) => i._id === id);
+  const addItem = (productId: string) => {
+    const found = products.find((i) => i._id === productId);
     if (!found) return;
-    if (items.some((it) => it.productId === id)) { toast.message("Already added"); return; }
+    if (items.some((it) => it.productId === productId)) { toast.message("Already added"); return; }
     const img = found.productImages?.find((i) => i.type === "product")?.url || found.productImages?.[0]?.url;
     setItems((p) => [...p, {
-      productId: id,
+      productId: productId,
       name: found.productName,
       sku: found.sku || "",
       hsnNumber: found.hsnNumber || "",
@@ -225,8 +215,8 @@ function NewQuotation() {
     setPickerOpen(false); setPickQ("");
   };
 
-  const updateItem = (id: string, patch: Partial<QuotationItemLocal>) => setItems((p) => p.map((it) => it.productId === id ? { ...it, ...patch } : it));
-  const removeItem = (id: string) => setItems((p) => p.filter((it) => it.productId !== id));
+  const updateItem = (productId: string, patch: Partial<QuotationItemLocal>) => setItems((p) => p.map((it) => it.productId === productId ? { ...it, ...patch } : it));
+  const removeItem = (productId: string) => setItems((p) => p.filter((it) => it.productId !== productId));
 
   const addTerm = () => { if (!newTerm.trim()) return; setTerms((p) => [...p, newTerm.trim()]); setNewTerm(""); };
 
@@ -234,7 +224,6 @@ function NewQuotation() {
     if (!selectedCustomerId) { toast.error("Please select a customer"); return; }
     if (!items.length) { toast.error("Add at least one item"); return; }
 
-    // Map display preference
     let displayPref: "Customer Name" | "Company Name" | "Both" = "Both";
     if (billing.display === "Print Person Name" || billing.display === "Customer Name") displayPref = "Customer Name";
     else if (billing.display === "Print Company Name" || billing.display === "Company Name") displayPref = "Company Name";
@@ -243,7 +232,6 @@ function NewQuotation() {
     const payload = {
       customerId: selectedCustomerId,
       followUpDate: followUp || "",
-      status: "Draft" as const,
       displayPreference: displayPref,
       termsAndConditions: terms,
       notes,
@@ -263,31 +251,32 @@ function NewQuotation() {
 
     setSaving(true);
     try {
-      const created = await api.post<any>("/quotations", payload);
-      toast.success(`Quotation ${created?.quotationId || ""} created successfully`);
+      // Put request to update quotation
+      const updated = await api.put<any>(`/quotations/${id}`, payload);
+      toast.success(`Quotation updated successfully`);
 
-      if (alsoDownload && created) {
+      if (alsoDownload && updated) {
         try {
           const mappedForPdf = {
-            id: created._id || "",
-            number: created.quotationId || "QUO-0000",
-            customerName: created.customerSnapshot?.customerName || "",
-            customerEmail: created.customerSnapshot?.email || "",
-            customerPhone: created.customerSnapshot?.phoneNumber || "",
-            companyName: created.customerSnapshot?.companyName || "",
-            gstNumber: created.customerSnapshot?.gstNumber || "",
-            notes: created.notes || "",
-            terms: created.termsAndConditions || [],
-            items: (created.items || []).map((it: any) => ({
+            id: updated._id || "",
+            number: updated.quotationId || "QUO-0000",
+            customerName: updated.customerSnapshot?.customerName || "",
+            customerEmail: updated.customerSnapshot?.email || "",
+            customerPhone: updated.customerSnapshot?.phoneNumber || "",
+            companyName: updated.customerSnapshot?.companyName || "",
+            gstNumber: updated.customerSnapshot?.gstNumber || "",
+            notes: updated.notes || "",
+            terms: updated.termsAndConditions || [],
+            items: (updated.items || []).map((it: any) => ({
               itemId: it.productId,
               name: it.productSnapshot?.productName || "",
               quantity: it.quantity,
               price: it.unitPrice,
               tax: it.tax,
             })),
-            status: created.status || "Draft",
-            followUpDate: created.followUpDate ? new Date(created.followUpDate).toISOString().split("T")[0] : undefined,
-            createdAt: created.createdAt || new Date().toISOString(),
+            status: updated.status || "Draft",
+            followUpDate: updated.followUpDate ? new Date(updated.followUpDate).toISOString().split("T")[0] : undefined,
+            createdAt: updated.createdAt || new Date().toISOString(),
           };
           downloadQuotationPDF(mappedForPdf);
           toast.success("PDF download triggered");
@@ -310,11 +299,10 @@ function NewQuotation() {
     }
   };
 
-  // ── When a customer is selected from the dropdown ───────────────────
-  const onCustomerSelected = (id: string, label: string) => {
-    setSelectedCustomerId(id);
+  const onCustomerSelected = (cid: string, label: string) => {
+    setSelectedCustomerId(cid);
     setSelectedCustomerName(label);
-    const c = customers.find((cu) => cu._id === id);
+    const c = customers.find((cu) => cu._id === cid);
     if (c) {
       setCustomer({ name: c.customerName, email: c.email || "", phone: c.phoneNumber || "" });
       setBilling((prev) => ({
@@ -325,15 +313,12 @@ function NewQuotation() {
     }
   };
 
-  // ── When "Add new" is clicked in the SearchableSelect dropdown ──────
   const onAddNewCustomer = (name: string) => {
     setDialogPrefillName(name);
     setShowCustomerDialog(true);
   };
 
-  // ── Callback when a new customer is created via the dialog ──────────
   const onCustomerCreated = (c: CustomerRecord) => {
-    // Add to local customer list so the dropdown reflects it immediately
     setCustomers((prev) => [c, ...prev]);
     setSelectedCustomerId(c._id);
     setSelectedCustomerName(c.customerName);
@@ -362,22 +347,21 @@ function NewQuotation() {
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="font-display text-3xl sm:text-4xl font-semibold">New Quotation</h1>
-          <p className="text-muted-foreground text-sm mt-1">Build a polished quote in minutes — pick items, set taxes, export PDF.</p>
+          <h1 className="font-display text-3xl sm:text-4xl font-semibold">Edit Quotation</h1>
+          <p className="text-muted-foreground text-sm mt-1">Modify details and save your changes.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => save(false)} disabled={saving} className="px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted font-medium text-sm disabled:opacity-60 disabled:cursor-not-allowed">
-            {saving ? <><Loader2 className="w-4 h-4 animate-spin inline mr-1" /> Generating...</> : "Generate"}
+            {saving ? <><Loader2 className="w-4 h-4 animate-spin inline mr-1" /> Saving...</> : "Save"}
           </button>
           <button onClick={() => save(true)} disabled={saving} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 text-sm disabled:opacity-60 disabled:cursor-not-allowed">
-            <FileText className="w-4 h-4" /> Generate & download
+            <FileText className="w-4 h-4" /> Save & download
           </button>
         </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          {/* Customer */}
           <Section icon={<User className="w-5 h-5" />} title="Customer Details" right={
             <button onClick={() => { setDialogPrefillName(""); setShowCustomerDialog(true); }} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-medium shadow-elegant hover:opacity-95">
               <Plus className="w-4 h-4" /> Add Customer
@@ -401,7 +385,6 @@ function NewQuotation() {
             </div>
           </Section>
 
-          {/* Billing */}
           <Section icon={<Calculator className="w-5 h-5" />} title="Billing Preferences">
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label="Company Name"><input value={billing.companyName} onChange={(e) => setBilling({ ...billing, companyName: e.target.value })} className={input} placeholder="Enter Company Name" /></Field>
@@ -420,7 +403,6 @@ function NewQuotation() {
             </div>
           </Section>
 
-          {/* Items */}
           <Section icon={<ListChecks className="w-5 h-5" />} title="Items" right={
             <div ref={pickerRef} className="relative">
               <button onClick={() => setPickerOpen((o) => !o)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-medium shadow-elegant"><Plus className="w-4 h-4" /> Add Item</button>
@@ -492,12 +474,10 @@ function NewQuotation() {
         </div>
 
         <div className="space-y-6">
-          {/* Notes */}
           <Section icon={<StickyNote className="w-5 h-5" />} title="Notes">
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="Add any additional notes..." className={`${input} resize-none`} />
           </Section>
 
-          {/* Terms */}
           <Section title="Terms & Conditions">
             <div className="space-y-2">
               {terms.map((t, i) => (
@@ -514,7 +494,6 @@ function NewQuotation() {
             </div>
           </Section>
 
-          {/* Totals */}
           <Section title="Summary">
             <dl className="text-sm space-y-2">
               <Row label="Subtotal" value={formatINR(totals.sub)} />
@@ -527,7 +506,6 @@ function NewQuotation() {
         </div>
       </div>
 
-      {/* ── Add Customer Dialog ─────────────────────────────────────── */}
       {showCustomerDialog && (
         <AddCustomerDialog
           onClose={() => { setShowCustomerDialog(false); setDialogPrefillName(""); }}
@@ -539,7 +517,6 @@ function NewQuotation() {
   );
 }
 
-// ── Add Customer Dialog ────────────────────────────────────────────────
 function AddCustomerDialog({
   onClose,
   onCreated,
@@ -580,14 +557,11 @@ function AddCustomerDialog({
       return;
     }
     setSubmitting(true);
-    console.log("[Customer] Creating customer:", form.customerName);
     try {
       const created = await api.post<CustomerRecord>("/customers", form);
-      console.log("[Customer] Created successfully:", created?.customerCode);
       toast.success(`Customer ${created?.customerCode || ""} created`);
       onCreated(created);
     } catch (err) {
-      console.error("[Customer] Create failed:", err);
       if (err instanceof ApiClientError) {
         toast.error(err.message);
       } else {
@@ -605,7 +579,6 @@ function AddCustomerDialog({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
     >
       <div className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-elegant animate-in fade-in zoom-in-95 duration-200">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-accent grid place-items-center text-accent-foreground">
@@ -618,7 +591,6 @@ function AddCustomerDialog({
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label="Customer Name *">
@@ -644,7 +616,6 @@ function AddCustomerDialog({
             <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className={`${input} resize-none`} placeholder="Any additional notes about this customer..." />
           </Field>
 
-          {/* Actions */}
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-sm font-medium">
               Cancel
@@ -663,7 +634,6 @@ function AddCustomerDialog({
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────
 const input = "w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring text-sm";
 
 function Section({ title, icon, right, children }: { title: string; icon?: React.ReactNode; right?: React.ReactNode; children: React.ReactNode }) {
@@ -694,7 +664,6 @@ function Row({ label, value }: { label: React.ReactNode; value: React.ReactNode 
   return <div className="flex items-center justify-between"><dt className="text-muted-foreground">{label}</dt><dd>{value}</dd></div>;
 }
 
-// ── SearchableSelect (same pattern as inventory dropdowns) ─────────────
 function SearchableSelect({
   value, options, onChange, onAdd, placeholder = "Search…", addLabel = "Add new", disabled = false,
 }: {
@@ -772,4 +741,3 @@ function SearchableSelect({
     </div>
   );
 }
-

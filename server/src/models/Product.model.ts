@@ -1,9 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import {
-  UOM_VALUES,
   PRODUCT_STATUS_VALUES,
   IMAGE_TYPE_VALUES,
-  type UOM,
   type ProductStatus,
   type ImageType,
 } from '../utils/constants';
@@ -25,29 +23,19 @@ export interface IProduct {
   productName: string;
   slug: string;
   productImages: IProductImage[];
-  sku: string;
   hsnNumber?: string;
   description?: string;
-  departmentId: mongoose.Types.ObjectId;
-  categoryId?: mongoose.Types.ObjectId;
-  brandId?: mongoose.Types.ObjectId;
   unitPrice: number;
-  defaultDiscount: number;
-  taxPercentage: number;
-  stockQuantity: number;
-  batchNo?: string;
-  color?: string;
-  productN?: string;
-  size?: string;
-  dimensions?: string;
-  uom: UOM;
+  sizes?: string[];
   status: ProductStatus;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface IProductDocument extends IProduct, Document {}
+export interface IProductDocument extends Omit<IProduct, 'sizes'>, Document {
+  sizes: string[];
+}
 export interface IProductModel extends Model<IProductDocument> {
   generateProductId(): Promise<string>;
 }
@@ -90,14 +78,6 @@ const productSchema = new Schema<IProductDocument, IProductModel>(
       type: [productImageSchema],
       default: [],
     },
-    sku: {
-      type: String,
-      required: [true, 'SKU is required'],
-      unique: true,
-      trim: true,
-      uppercase: true,
-      index: true,
-    },
     hsnNumber: {
       type: String,
       trim: true,
@@ -108,78 +88,15 @@ const productSchema = new Schema<IProductDocument, IProductModel>(
       trim: true,
       default: '',
     },
-    departmentId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Department',
-      required: [true, 'Department is required'],
-      index: true,
-    },
-    categoryId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Category',
-      default: null,
-    },
-    brandId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Brand',
-      default: null,
-    },
     unitPrice: {
       type: Number,
       required: [true, 'Unit price is required'],
       min: [0, 'Price cannot be negative'],
       default: 0,
     },
-    defaultDiscount: {
-      type: Number,
-      min: [0, 'Discount cannot be negative'],
-      max: [100, 'Discount cannot exceed 100%'],
-      default: 0,
-    },
-    taxPercentage: {
-      type: Number,
-      min: [0, 'Tax cannot be negative'],
-      max: [100, 'Tax cannot exceed 100%'],
-      default: 18,
-    },
-    stockQuantity: {
-      type: Number,
-      min: [0, 'Stock quantity cannot be negative'],
-      default: 0,
-    },
-    batchNo: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    color: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    productN: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    size: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    dimensions: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    uom: {
-      type: String,
-      enum: {
-        values: [...UOM_VALUES] satisfies string[],
-        message: `UOM must be one of: ${UOM_VALUES.join(', ')}`,
-      },
-      required: [true, 'Unit of measure is required'],
-      default: 'pcs',
+    sizes: {
+      type: [String],
+      default: [],
     },
     status: {
       type: String,

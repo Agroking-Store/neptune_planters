@@ -2,7 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { FileText, Package, LogOut, Plus, Menu, X, Sparkles, PackagePlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDB } from "@/lib/store";
-import { useLogout } from "@/lib/auth";
+import { useLogout, useMe } from "@/lib/auth";
 
 const nav = [
     { to: "/dashboard", label: "Quotations", icon: FileText },
@@ -16,6 +16,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const { location } = useRouterState();
     const [open, setOpen] = useState(false);
     const logoutMutation = useLogout();
+    const { data: user } = useMe();
 
     const handleLogout = () => {
         console.log("[Logout] User logged out");
@@ -44,25 +45,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <Sparkles className="w-4 h-4 text-primary-foreground" />
                         </div>
                         <div className="min-w-0">
-                            <div className="font-display font-semibold text-sm leading-tight truncate">Indux</div>
+                            <div className="font-display font-semibold text-sm leading-tight truncate">Neptune Planters</div>
                             <div className="text-[10px] text-muted-foreground truncate">Quotation suite</div>
                         </div>
                     </Link>
 
                     <div className="ml-auto flex items-center gap-2">
-                        <Link
-                            to="/quotations/new"
-                            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-medium shadow-elegant hover:opacity-95"
-                        >
-                            <Plus className="w-4 h-4" /> New Quotation
-                        </Link>
                         <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-border">
                             <div className="w-8 h-8 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground font-semibold text-xs">
-                                {(db.user?.name || "U").slice(0, 1).toUpperCase()}
+                                {(user?.name || "U").slice(0, 1).toUpperCase()}
                             </div>
                             <div className="min-w-0 hidden md:block">
-                                <div className="text-xs font-medium truncate max-w-[140px]">{db.user?.name || "Guest"}</div>
-                                <div className="text-[10px] text-muted-foreground truncate max-w-[140px]">{db.user?.email || "—"}</div>
+                                <div className="text-xs font-medium truncate max-w-[140px]">{user?.name || "Guest"}</div>
+                                <div className="text-[10px] text-muted-foreground truncate max-w-[140px]">{user?.email || "—"}</div>
                             </div>
                         </div>
                     </div>
@@ -87,7 +82,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         <Sparkles className="w-5 h-5 text-primary-foreground" />
                     </div>
                     <div className="min-w-0">
-                        <div className="font-display font-semibold text-base leading-tight">Indux</div>
+                        <div className="font-display font-semibold text-base leading-tight">Neptune Planters</div>
                         <div className="text-xs text-muted-foreground">Quotation suite</div>
                     </div>
                     <button className="ml-auto p-2 rounded-lg hover:bg-sidebar-accent" onClick={() => setOpen(false)} aria-label="Close">
@@ -96,13 +91,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-                    <Link
-                        to="/quotations/new"
-                        className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 transition-opacity"
-                    >
-                        <Plus className="w-4 h-4" /> New Quotation
-                    </Link>
-                    <div className="h-2" />
                     {nav.map(({ to, label, icon: Icon }) => {
                         const active = location.pathname === to || (to !== "/inventory/new" && location.pathname.startsWith(to));
                         return (
@@ -120,11 +108,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <div className="p-4 border-t border-sidebar-border">
                     <div className="flex items-center gap-3 mb-3">
                         <div className="w-9 h-9 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground font-semibold text-sm">
-                            {(db.user?.name || "U").slice(0, 1).toUpperCase()}
+                            {(user?.name || "U").slice(0, 1).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                            <div className="text-sm font-medium truncate">{db.user?.name || "Guest"}</div>
-                            <div className="text-xs text-muted-foreground truncate">{db.user?.email || "—"}</div>
+                            <div className="text-sm font-medium truncate">{user?.name || "Guest"}</div>
+                            <div className="text-xs text-muted-foreground truncate">{user?.email || "—"}</div>
                         </div>
                     </div>
                     <button

@@ -4,7 +4,7 @@ import { ArrowRight, Sparkles, Mail, Lock, Loader2 } from "lucide-react";
 import { useLogin } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Sign in — Indux" }, { name: "description", content: "Sign in to manage your quotations and inventory." }] }),
+  head: () => ({ meta: [{ title: "Sign in | Neptune" }, { name: "description", content: "Sign in to manage your quotations and inventory." }] }),
   component: Login,
 });
 
@@ -56,7 +56,7 @@ function Login() {
             <div className="w-9 h-9 rounded-xl bg-gradient-primary grid place-items-center shadow-elegant">
               <Sparkles className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-display font-semibold text-lg">Indux</span>
+            <span className="font-display font-semibold text-lg">Neptune Planters</span>
           </Link>
           <h1 className="font-display text-3xl sm:text-4xl font-semibold">Welcome back</h1>
           <p className="mt-2 text-muted-foreground">Sign in to your workspace to continue.</p>
