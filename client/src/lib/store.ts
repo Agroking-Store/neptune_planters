@@ -23,7 +23,8 @@ export type QuotationItem = {
   name: string;
   quantity: number;
   price: number;
-  tax: number; // percent
+  selectedSize?: string;
+  selectedTexture?: string;
 };
 
 export type Quotation = {

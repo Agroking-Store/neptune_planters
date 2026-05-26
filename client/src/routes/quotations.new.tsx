@@ -46,6 +46,8 @@ interface ProductRecord {
   defaultDiscount: number;
   size?: string;
   uom?: string;
+  description?: string;
+  sizes?: string[];
   productImages?: { type: string; url: string }[];
 }
 
@@ -55,12 +57,13 @@ interface QuotationItemLocal {
   name: string;
   sku: string;
   hsnNumber: string;
-  size: string;
-  uom: string;
+  description: string;
   quantity: number;
   price: number;
-  discount: number;   // item-level discount amount
-  tax: number;        // item-level tax %
+  selectedSize: string;
+  selectedTexture: string;
+  availableSizes: string[];
+  availableTextures: string[];
   image?: string;
 }
 
@@ -110,8 +113,6 @@ function NewQuotation() {
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [selectedCustomerName, setSelectedCustomerName] = useState("");
   const [customer, setCustomer] = useState({ name: "", email: "", phone: "" });
-  const [billing, setBilling] = useState({ companyName: "", gstNumber: "", display: "Both", taxPercent: 0, discountPercent: 0 });
-  const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState<string[]>(["100% secure payment", "No warranty"]);
   const [newTerm, setNewTerm] = useState("");
   const [items, setItems] = useState<QuotationItemLocal[]>([]);
@@ -136,14 +137,6 @@ function NewQuotation() {
             email: data.customerSnapshot?.email || "",
             phone: data.customerSnapshot?.phoneNumber || "",
           });
-          setBilling({
-            companyName: data.customerSnapshot?.companyName || "",
-            gstNumber: data.customerSnapshot?.gstNumber || "",
-            display: data.displayPreference || "Both",
-            taxPercent: 0, 
-            discountPercent: 0,
-          });
-          setNotes(data.notes || "");
           setTerms(data.termsAndConditions || []);
           if (data.followUpDate) {
             setFollowUp(new Date(data.followUpDate).toISOString().split("T")[0]);
@@ -153,12 +146,13 @@ function NewQuotation() {
             name: it.productSnapshot?.productName || "",
             sku: it.productSnapshot?.sku || "",
             hsnNumber: it.productSnapshot?.hsnNumber || "",
-            size: it.productSnapshot?.size || "",
-            uom: it.productSnapshot?.uom || "",
+            description: it.productSnapshot?.description || "",
             quantity: it.quantity || 1,
             price: it.unitPrice || 0,
-            discount: it.discount || 0,
-            tax: it.tax || 0,
+            selectedSize: it.selectedSize || "",
+            selectedTexture: it.selectedTexture || "",
+            availableSizes: [],
+            availableTextures: [],
           })));
         }
       } catch (err) {
@@ -189,37 +183,31 @@ function NewQuotation() {
   }, [pickerOpen]);
 
   const totals = useMemo(() => {
-    // Item-level subtotal (before overall tax/discount)
-    const sub = items.reduce((s, it) => s + it.quantity * it.price, 0);
-    // Item-level tax totals
-    const itemTax = items.reduce((s, it) => s + (it.quantity * it.price * it.tax) / 100, 0);
-    // Item-level discount totals
-    const itemDiscount = items.reduce((s, it) => s + (it.discount || 0), 0);
-    // Overall tax & discount from billing
-    const overallTaxAmount = (sub * billing.taxPercent) / 100;
-    const overallDiscountAmount = (sub * billing.discountPercent) / 100;
-    const totalTax = itemTax + overallTaxAmount;
-    const totalDiscount = itemDiscount + overallDiscountAmount;
-    const grand = sub + totalTax - totalDiscount;
-    return { sub, tax: totalTax, discount: totalDiscount, grand: Math.max(0, grand) };
-  }, [items, billing.taxPercent, billing.discountPercent]);
+    const grand = items.reduce((s, it) => s + it.quantity * it.price, 0);
+    const tax = grand - (grand / 1.18);
+    const sub = grand - tax;
+    return { sub, tax, grand: Math.max(0, grand) };
+  }, [items]);
 
   const addItem = (id: string) => {
     const found = products.find((i) => i._id === id);
     if (!found) return;
     if (items.some((it) => it.productId === id)) { toast.message("Already added"); return; }
     const img = found.productImages?.find((i) => i.type === "product")?.url || found.productImages?.[0]?.url;
+    const textures = found.productImages?.filter((i) => i.type === "texture").map((i) => i.url) || [];
+    const sizes = found.sizes || [];
     setItems((p) => [...p, {
       productId: id,
       name: found.productName,
       sku: found.sku || "",
       hsnNumber: found.hsnNumber || "",
-      size: found.size || "",
-      uom: found.uom || "",
+      description: found.description || "",
       quantity: 1,
       price: found.unitPrice,
-      discount: 0,
-      tax: found.taxPercentage ?? 18,
+      selectedSize: sizes[0] || "",
+      selectedTexture: textures[0] || img || "",
+      availableSizes: sizes,
+      availableTextures: textures,
       image: img,
     }]);
     setPickerOpen(false); setPickQ("");
@@ -234,31 +222,26 @@ function NewQuotation() {
     if (!selectedCustomerId) { toast.error("Please select a customer"); return; }
     if (!items.length) { toast.error("Add at least one item"); return; }
 
-    // Map display preference
-    let displayPref: "Customer Name" | "Company Name" | "Both" = "Both";
-    if (billing.display === "Print Person Name" || billing.display === "Customer Name") displayPref = "Customer Name";
-    else if (billing.display === "Print Company Name" || billing.display === "Company Name") displayPref = "Company Name";
-    else displayPref = "Both";
-
     const payload = {
       customerId: selectedCustomerId,
       followUpDate: followUp || "",
       status: "Draft" as const,
-      displayPreference: displayPref,
       termsAndConditions: terms,
-      notes,
-      subtotal: totals.sub,
-      tax: totals.tax,
-      discount: totals.discount,
       totalAmount: totals.grand,
-      items: items.map((it) => ({
-        productId: it.productId,
-        quantity: it.quantity,
-        unitPrice: it.price,
-        discount: it.discount || 0,
-        tax: it.tax,
-        total: Math.round((it.quantity * it.price + (it.quantity * it.price * it.tax) / 100 - (it.discount || 0)) * 100) / 100,
-      })),
+      items: items.map((it) => {
+        const p = products.find((pr) => pr._id === it.productId);
+        const productImage = it.image || p?.productImages?.find(i => i.type === "product")?.url || p?.productImages?.[0]?.url;
+        const availableSizes = it.availableSizes?.length ? it.availableSizes : (p?.sizes || []);
+        const availableTextures = it.availableTextures?.length ? it.availableTextures : (p?.productImages?.filter((i) => i.type === "texture").map((i) => i.url) || []);
+        return {
+          productId: it.productId,
+          quantity: it.quantity,
+          unitPrice: it.price,
+          selectedSize: it.selectedSize || availableSizes[0] || "",
+          selectedTexture: it.selectedTexture || availableTextures[0] || productImage || "",
+          total: Math.round((it.quantity * it.price) * 100) / 100,
+        };
+      }),
     };
 
     setSaving(true);
@@ -276,14 +259,15 @@ function NewQuotation() {
             customerPhone: created.customerSnapshot?.phoneNumber || "",
             companyName: created.customerSnapshot?.companyName || "",
             gstNumber: created.customerSnapshot?.gstNumber || "",
-            notes: created.notes || "",
+            notes: "",
             terms: created.termsAndConditions || [],
             items: (created.items || []).map((it: any) => ({
               itemId: it.productId,
               name: it.productSnapshot?.productName || "",
               quantity: it.quantity,
               price: it.unitPrice,
-              tax: it.tax,
+              selectedSize: it.selectedSize,
+              selectedTexture: it.selectedTexture,
             })),
             status: created.status || "Draft",
             followUpDate: created.followUpDate ? new Date(created.followUpDate).toISOString().split("T")[0] : undefined,
@@ -317,11 +301,6 @@ function NewQuotation() {
     const c = customers.find((cu) => cu._id === id);
     if (c) {
       setCustomer({ name: c.customerName, email: c.email || "", phone: c.phoneNumber || "" });
-      setBilling((prev) => ({
-        ...prev,
-        companyName: c.companyName || "",
-        gstNumber: c.gstNumber || "",
-      }));
     }
   };
 
@@ -338,11 +317,6 @@ function NewQuotation() {
     setSelectedCustomerId(c._id);
     setSelectedCustomerName(c.customerName);
     setCustomer({ name: c.customerName, email: c.email || "", phone: c.phoneNumber || "" });
-    setBilling((prev) => ({
-      ...prev,
-      companyName: c.companyName || "",
-      gstNumber: c.gstNumber || "",
-    }));
     setShowCustomerDialog(false);
     setDialogPrefillName("");
   };
@@ -401,24 +375,7 @@ function NewQuotation() {
             </div>
           </Section>
 
-          {/* Billing */}
-          <Section icon={<Calculator className="w-5 h-5" />} title="Billing Preferences">
-            <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Company Name"><input value={billing.companyName} onChange={(e) => setBilling({ ...billing, companyName: e.target.value })} className={input} placeholder="Enter Company Name" /></Field>
-              <Field label="GST Number"><input value={billing.gstNumber} onChange={(e) => setBilling({ ...billing, gstNumber: e.target.value })} className={input} placeholder="27AAAPL1234C1Z5" /></Field>
-              <Field label="Display Preference">
-                <select value={billing.display} onChange={(e) => setBilling({ ...billing, display: e.target.value })} className={input}>
-                  <option value="Customer Name">Customer Name</option><option value="Company Name">Company Name</option><option value="Both">Both</option>
-                </select>
-              </Field>
-              <Field label="Overall Tax %">
-                <input type="number" min={0} max={100} value={billing.taxPercent} onChange={(e) => setBilling({ ...billing, taxPercent: Math.min(100, Math.max(0, +e.target.value || 0)) })} className={input} placeholder="0" />
-              </Field>
-              <Field label="Overall Discount %">
-                <input type="number" min={0} max={100} value={billing.discountPercent} onChange={(e) => setBilling({ ...billing, discountPercent: Math.min(100, Math.max(0, +e.target.value || 0)) })} className={input} placeholder="0" />
-              </Field>
-            </div>
-          </Section>
+
 
           {/* Items */}
           <Section icon={<ListChecks className="w-5 h-5" />} title="Items" right={
@@ -458,44 +415,69 @@ function NewQuotation() {
               </div>
             ) : (
               <div className="space-y-3">
-                {items.map((it) => (
-                  <div key={it.productId} className="rounded-xl border border-border p-3 sm:p-4 grid grid-cols-2 sm:grid-cols-12 gap-3 items-center">
-                    <div className="col-span-2 sm:col-span-3 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-accent overflow-hidden grid place-items-center shrink-0">
-                        {it.image ? <img src={it.image} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{it.name.slice(0, 2)}</span>}
+                {items.map((it) => {
+                  const p = products.find((pr) => pr._id === it.productId);
+                  const productImage = it.image || p?.productImages?.find(i => i.type === "product")?.url || p?.productImages?.[0]?.url;
+                  const productDescription = it.description || p?.description || "";
+                  const availableSizes = it.availableSizes?.length ? it.availableSizes : (p?.sizes || []);
+                  const availableTextures = it.availableTextures?.length ? it.availableTextures : (p?.productImages?.filter((i) => i.type === "texture").map((i) => i.url) || []);
+                  const currentTexture = it.selectedTexture || availableTextures[0] || productImage || "";
+                  return (
+                  <div key={it.productId} className="rounded-xl border border-border p-3 sm:p-4 flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center gap-3 w-full sm:w-1/3 min-w-[200px]">
+                      <div className="w-10 h-10 rounded-lg bg-accent overflow-hidden grid place-items-center shrink-0 border border-border/50">
+                        {productImage ? <img src={productImage} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{it.name.slice(0, 2)}</span>}
                       </div>
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{it.name}</div>
-                        <div className="text-xs text-muted-foreground">{it.sku}{it.uom ? ` • ${it.uom}` : ""}</div>
+                      <div className="min-w-0 relative group">
+                        <div className="font-medium truncate cursor-help group-hover:text-primary transition-colors">{it.name}</div>
+                        <div className="text-xs text-muted-foreground truncate">{it.hsnNumber ? `HSN: ${it.hsnNumber}` : ""}</div>
+                        {productDescription && (
+                          <div className="absolute left-0 bottom-full mb-2.5 hidden group-hover:block w-64 p-3 bg-popover border border-border rounded-xl shadow-xl text-xs leading-relaxed z-50 pointer-events-none break-words whitespace-normal text-popover-foreground animate-in fade-in zoom-in-95 duration-200">
+                            {productDescription}
+                            <div className="absolute -bottom-1.5 left-4 w-3 h-3 bg-popover border-b border-r border-border transform rotate-45 rounded-sm"></div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <Field className="sm:col-span-2" label="Qty">
-                      <input type="number" min={1} value={it.quantity} onChange={(e) => updateItem(it.productId, { quantity: Math.max(1, +e.target.value || 1) })} className={input} />
-                    </Field>
-                    <Field className="sm:col-span-2" label="Price">
-                      <input type="number" min={0} value={it.price} onChange={(e) => updateItem(it.productId, { price: Math.max(0, +e.target.value || 0) })} className={input} />
-                    </Field>
-                    <Field className="sm:col-span-2" label="Tax %">
-                      <input type="number" min={0} max={100} value={it.tax} onChange={(e) => updateItem(it.productId, { tax: Math.min(100, Math.max(0, +e.target.value || 0)) })} className={input} />
-                    </Field>
-                    <Field className="sm:col-span-2" label="Discount ₹">
-                      <input type="number" min={0} value={it.discount} onChange={(e) => updateItem(it.productId, { discount: Math.max(0, +e.target.value || 0) })} className={input} />
-                    </Field>
-                    <div className="sm:col-span-1 flex sm:justify-end">
-                      <button onClick={() => removeItem(it.productId)} className="w-9 h-9 rounded-lg border border-border hover:bg-muted grid place-items-center" aria-label="Remove"><Trash2 className="w-4 h-4 text-destructive" /></button>
+                    <div className="flex flex-1 items-center gap-4 justify-end">
+                      <Field label="Qty" className="w-20">
+                        <input type="number" min={1} value={it.quantity} onChange={(e) => updateItem(it.productId, { quantity: Math.max(1, +e.target.value || 1) })} className={input} />
+                      </Field>
+                      <Field label="Price" className="w-24">
+                        <input type="number" min={0} value={it.price} onChange={(e) => updateItem(it.productId, { price: Math.max(0, +e.target.value || 0) })} className={input} />
+                      </Field>
+                      <Field label="Size Variant" className="w-32">
+                        {availableSizes.length > 0 ? (
+                          <select value={it.selectedSize} onChange={(e) => updateItem(it.productId, { selectedSize: e.target.value })} className={input}>
+                            {availableSizes.map((sz) => <option key={sz} value={sz}>{sz}</option>)}
+                          </select>
+                        ) : (
+                          <span className="text-sm text-muted-foreground py-2 block">N/A</span>
+                        )}
+                      </Field>
+                      <Field label="Texture Variant" className="w-24">
+                        {availableTextures.length > 0 ? (
+                          <TextureDropdown
+                            textures={availableTextures}
+                            value={currentTexture}
+                            onChange={(val) => updateItem(it.productId, { selectedTexture: val })}
+                          />
+                        ) : (
+                          <span className="text-sm text-muted-foreground py-2 block">N/A</span>
+                        )}
+                      </Field>
+                      <button onClick={() => removeItem(it.productId)} className="w-9 h-9 rounded-lg border border-border hover:bg-muted grid place-items-center self-end mb-0.5 shrink-0" aria-label="Remove"><Trash2 className="w-4 h-4 text-destructive" /></button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Section>
         </div>
 
         <div className="space-y-6">
-          {/* Notes */}
-          <Section icon={<StickyNote className="w-5 h-5" />} title="Notes">
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="Add any additional notes..." className={`${input} resize-none`} />
-          </Section>
+
 
           {/* Terms */}
           <Section title="Terms & Conditions">
@@ -518,8 +500,7 @@ function NewQuotation() {
           <Section title="Summary">
             <dl className="text-sm space-y-2">
               <Row label="Subtotal" value={formatINR(totals.sub)} />
-              <Row label="Tax" value={formatINR(totals.tax)} />
-              <Row label="Discount" value={<span className="text-destructive">-{formatINR(totals.discount)}</span>} />
+              <Row label="Tax (18%)" value={formatINR(totals.tax)} />
               <div className="border-t border-border my-2" />
               <Row label={<span className="font-semibold">Grand Total</span>} value={<span className="font-display text-xl font-semibold">{formatINR(totals.grand)}</span>} />
             </dl>
@@ -773,3 +754,43 @@ function SearchableSelect({
   );
 }
 
+// ── TextureDropdown ────────────────────────────────────────────────────
+function TextureDropdown({ textures, value, onChange }: { textures: string[]; value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  return (
+    <div ref={wrapRef} className="relative w-max">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-10 h-10 rounded-lg border border-border bg-background overflow-hidden hover:opacity-80 transition-opacity grid place-items-center"
+      >
+        {value ? <img src={value} alt="Texture" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-accent text-xs flex items-center justify-center text-muted-foreground">None</div>}
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-2 right-0 sm:left-0 sm:right-auto bg-popover border border-border rounded-xl shadow-elegant p-2 grid grid-cols-3 gap-2 w-max">
+          {textures.map((tx) => (
+            <button
+              key={tx}
+              type="button"
+              onClick={() => { onChange(tx); setOpen(false); }}
+              className={`w-10 h-10 rounded-lg overflow-hidden border-2 transition-colors ${value === tx ? "border-primary" : "border-transparent hover:border-border"}`}
+            >
+              <img src={tx} alt="Texture" className="w-full h-full object-cover" />
+            </button>
+          ))}
+          {textures.length === 0 && <span className="text-xs text-muted-foreground p-2 col-span-3">No textures</span>}
+        </div>
+      )}
+    </div>
+  );
+}

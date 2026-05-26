@@ -182,22 +182,10 @@ export async function downloadQuotationPDF(q: Quotation, inventory: InventoryIte
 
   // ===== TOTALS =====
   const totals = (() => {
-    const gross = q.items.reduce((s, it) => s + it.quantity * it.price, 0);
-    const discAmt = q.items.reduce((s, it) => {
-      const inv = invMap.get(it.itemId);
-      const d = 0; // Discount removed from product
-      return s + (it.quantity * it.price * d) / 100;
-    }, 0);
-    const subAfterDisc = gross - discAmt;
-    const taxAmt = q.items.reduce((s, it) => {
-      const inv = invMap.get(it.itemId);
-      const d = 0; // Discount removed from product
-      return s + (it.quantity * it.price * (1 - d / 100) * it.tax) / 100;
-    }, 0);
-    const grand = subAfterDisc + taxAmt;
-    const discPct = gross > 0 ? Math.round((discAmt / gross) * 100) : 0;
-    const taxPct = subAfterDisc > 0 ? Math.round((taxAmt / subAfterDisc) * 100) : 0;
-    return { gross, discAmt, subAfterDisc, taxAmt, grand, discPct, taxPct };
+    const grand = q.items.reduce((s, it) => s + it.quantity * it.price, 0);
+    const taxAmt = grand - (grand / 1.18);
+    const sub = grand - taxAmt;
+    return { grand, taxAmt, sub };
   })();
 
   const totH = 120;
@@ -216,9 +204,8 @@ export async function downloadQuotationPDF(q: Quotation, inventory: InventoryIte
     doc.setFont("helvetica", "bold");
     doc.text(val, rowsX2, ry, { align: "right" });
   };
-  drawTotRow("Subtotal", inr(totals.gross), y + 32);
-  drawTotRow(`Discount (${totals.discPct}%)`, `- ${inr(totals.discAmt)}`, y + 54, PRIMARY);
-  drawTotRow(`TAX (${totals.taxPct}%)`, inr(totals.taxAmt), y + 76);
+  drawTotRow("Subtotal", inr(totals.sub), y + 32);
+  drawTotRow(`TAX (18%)`, inr(totals.taxAmt), y + 54);
 
   setDraw(doc, OUTLINE);
   doc.setLineWidth(0.5);
@@ -256,8 +243,7 @@ export async function downloadQuotationPDF(q: Quotation, inventory: InventoryIte
   // ===== ITEM CARDS (new layout matching reference) =====
   q.items.forEach((it) => {
     const inv = invMap.get(it.itemId);
-    const discPct = 0; // Discount removed from product
-    const unitAfter = it.price * (1 - discPct / 100);
+    const unitAfter = it.price;
     const lineTotal = unitAfter * it.quantity;
 
     // Outer card (cream) — wraps top images and bottom white panel
@@ -318,11 +304,11 @@ export async function downloadQuotationPDF(q: Quotation, inventory: InventoryIte
     setText(doc, INK);
     doc.text((it.name || inv?.name || "—").toUpperCase(), bX + 18, bY + 30);
 
-    // Dimensions
+    // Dimensions (Sizes)
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     setText(doc, ON_SURFACE_VAR);
-    if (inv?.sizes && inv.sizes.length > 0) doc.text(inv.sizes.join(", "), bX + 18, bY + 48);
+    if (it.selectedSize) doc.text(it.selectedSize, bX + 18, bY + 48);
 
     // Color swatch + name
     const cYpos = bY + 66;
@@ -334,17 +320,6 @@ export async function downloadQuotationPDF(q: Quotation, inventory: InventoryIte
 
     // Right: prices
     const prX = bX + bW - 18;
-    if (discPct > 0) {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(11);
-      setText(doc, SECONDARY);
-      const orig = inr(it.price);
-      doc.text(orig, prX, bY + 28, { align: "right" });
-      const w = doc.getTextWidth(orig);
-      setDraw(doc, SECONDARY);
-      doc.setLineWidth(0.7);
-      doc.line(prX - w, bY + 25, prX, bY + 25);
-    }
     // " /ea" suffix
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);

@@ -98,6 +98,8 @@ export async function createQuotation(
       unitPrice: item.unitPrice,
       discount: lineDiscount,
       tax: item.tax || 0,
+      selectedSize: item.selectedSize || '',
+      selectedTexture: item.selectedTexture || '',
       total: Math.round(lineTotal * 100) / 100,
     });
   }
@@ -200,6 +202,8 @@ export async function updateQuotation(
       unitPrice: item.unitPrice,
       discount: lineDiscount,
       tax: item.tax || 0,
+      selectedSize: item.selectedSize || '',
+      selectedTexture: item.selectedTexture || '',
       total: Math.round(lineTotal * 100) / 100,
     });
   }

@@ -18,6 +18,7 @@ export interface IProductSnapshot {
   productName: string;
   sku: string;
   hsnNumber?: string;
+  description?: string;
   size?: string;
   uom?: string;
 }
@@ -30,8 +31,8 @@ export interface IQuotationItem {
   productSnapshot: IProductSnapshot;
   quantity: number;
   unitPrice: number;
-  discount: number;
-  tax: number;
+  selectedSize?: string;
+  selectedTexture?: string;
   total: number;
 }
 
@@ -48,12 +49,7 @@ export interface IQuotation {
   createdDate: Date;
   followUpDate?: Date;
   status: QuotationStatus;
-  displayPreference: DisplayPreference;
   termsAndConditions: string[];
-  notes?: string;
-  subtotal: number;
-  tax: number;
-  discount: number;
   totalAmount: number;
   items: IQuotationItem[];
   createdBy: mongoose.Types.ObjectId;
@@ -85,6 +81,7 @@ const productSnapshotSchema = new Schema<IProductSnapshot>(
     productName: { type: String, required: true },
     sku: { type: String, default: '' },
     hsnNumber: { type: String, default: '' },
+    description: { type: String, default: '' },
     size: { type: String, default: '' },
     uom: { type: String, default: '' },
   },
@@ -112,15 +109,13 @@ const quotationItemSchema = new Schema<IQuotationItem>(
       required: [true, 'Unit price is required'],
       min: [0, 'Price cannot be negative'],
     },
-    discount: {
-      type: Number,
-      min: [0, 'Discount cannot be negative'],
-      default: 0,
+    selectedSize: {
+      type: String,
+      default: '',
     },
-    tax: {
-      type: Number,
-      min: [0, 'Tax cannot be negative'],
-      default: 0,
+    selectedTexture: {
+      type: String,
+      default: '',
     },
     total: {
       type: Number,
@@ -167,37 +162,9 @@ const quotationSchema = new Schema<IQuotationDocument, IQuotationModel>(
       },
       default: 'Draft',
     },
-    displayPreference: {
-      type: String,
-      enum: {
-        values: ['Customer Name', 'Company Name', 'Both'],
-        message: 'Display preference must be Customer Name, Company Name, or Both',
-      },
-      default: 'Both',
-    },
     termsAndConditions: {
       type: [String],
       default: [],
-    },
-    notes: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    subtotal: {
-      type: Number,
-      min: [0, 'Subtotal cannot be negative'],
-      default: 0,
-    },
-    tax: {
-      type: Number,
-      min: [0, 'Tax cannot be negative'],
-      default: 0,
-    },
-    discount: {
-      type: Number,
-      min: [0, 'Discount cannot be negative'],
-      default: 0,
     },
     totalAmount: {
       type: Number,

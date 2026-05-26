@@ -14,6 +14,7 @@ const quotationItemSchema = z.object({
       productName: z.string().default(''),
       sku: z.string().default(''),
       hsnNumber: z.string().default(''),
+      description: z.string().default(''),
       size: z.string().default(''),
       uom: z.string().default(''),
     })
@@ -28,9 +29,8 @@ const quotationItemSchema = z.object({
     .number({ required_error: 'Unit price is required' })
     .min(0, 'Price cannot be negative'),
 
-  discount: z.number().min(0).default(0),
-
-  tax: z.number().min(0).default(0),
+  selectedSize: z.string().optional().default(''),
+  selectedTexture: z.string().optional().default(''),
 
   total: z.number().min(0).default(0),
 });
@@ -49,18 +49,9 @@ export const createQuotationSchema = z.object({
     .enum(['Draft', 'Sent', 'Accepted', 'Rejected'])
     .default('Draft'),
 
-  displayPreference: z
-    .enum(['Customer Name', 'Company Name', 'Both'])
-    .default('Both'),
-
   termsAndConditions: z.array(z.string()).default([]),
 
-  notes: z.string().trim().optional().default(''),
-
   // Overall billing values
-  subtotal: z.number().min(0).default(0),
-  tax: z.number().min(0).default(0),
-  discount: z.number().min(0).default(0),
   totalAmount: z.number().min(0).default(0),
 
   items: z
