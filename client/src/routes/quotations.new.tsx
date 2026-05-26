@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { isAuthenticated } from "@/lib/auth";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Trash2, FileText, Calculator, User, StickyNote, ListChecks, Search } from "lucide-react";
+import { Plus, Trash2, FileText, Calculator, User, StickyNote, ListChecks, Search, X, Loader2, Check, ChevronDown } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { store, useDB, formatINR, type QuotationItem } from "@/lib/store";
+import { formatINR } from "@/lib/store";
 import { toast } from "sonner";
+import { api, ApiClientError } from "@/lib/api";
 import { downloadQuotationPDF } from "@/lib/pdf";
 
 export const Route = createFileRoute("/quotations/new")({
@@ -15,20 +16,108 @@ export const Route = createFileRoute("/quotations/new")({
   component: () => <AppShell><NewQuotation /></AppShell>,
 });
 
+// ── API type for customer ──────────────────────────────────────────────
+interface CustomerRecord {
+  _id: string;
+  customerCode: string;
+  customerName: string;
+  email?: string;
+  phoneNumber?: string;
+  companyName?: string;
+  gstNumber?: string;
+  address?: string;
+  notes?: string;
+}
+
+// ── API type for product (from inventory) ─────────────────────────────
+interface ProductRecord {
+  _id: string;
+  productId: string;
+  productName: string;
+  sku: string;
+  hsnNumber?: string;
+  unitPrice: number;
+  taxPercentage: number;
+  defaultDiscount: number;
+  size?: string;
+  uom?: string;
+  productImages?: { type: string; url: string }[];
+}
+
+// ── Local quotation item shape ────────────────────────────────────────
+interface QuotationItemLocal {
+  productId: string;  // MongoDB _id
+  name: string;
+  sku: string;
+  hsnNumber: string;
+  size: string;
+  uom: string;
+  quantity: number;
+  price: number;
+  discount: number;   // item-level discount amount
+  tax: number;        // item-level tax %
+  image?: string;
+}
+
 function NewQuotation() {
-  const db = useDB();
   const navigate = useNavigate();
 
+  // ── Customer list from API ──────────────────────────────────────────
+  const [customers, setCustomers] = useState<CustomerRecord[]>([]);
+  const [customersLoading, setCustomersLoading] = useState(true);
+
+  const fetchCustomers = async () => {
+    try {
+      const res = await api.get<CustomerRecord[]>("/customers");
+      setCustomers(res ?? []);
+    } catch (err) {
+      console.error("[Quotation] Failed to load customers:", err);
+    } finally {
+      setCustomersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchCustomers();
+  }, []);
+
+  // ── Products from backend ───────────────────────────────────────────
+  const [products, setProducts] = useState<ProductRecord[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+
+  const fetchProducts = async () => {
+    try {
+      const res = await api.get<ProductRecord[]>("/inventory/products");
+      setProducts(res ?? []);
+    } catch (err) {
+      console.error("[Quotation] Failed to load products:", err);
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchProducts();
+  }, []);
+
+  // ── Form state ──────────────────────────────────────────────────────
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [selectedCustomerName, setSelectedCustomerName] = useState("");
   const [customer, setCustomer] = useState({ name: "", email: "", phone: "" });
-  const [billing, setBilling] = useState({ companyName: "", gstNumber: "", display: "Print Person Name" });
+  const [billing, setBilling] = useState({ companyName: "", gstNumber: "", display: "Both", taxPercent: 0, discountPercent: 0 });
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState<string[]>(["100% secure payment", "No warranty"]);
   const [newTerm, setNewTerm] = useState("");
-  const [items, setItems] = useState<QuotationItem[]>([]);
+  const [items, setItems] = useState<QuotationItemLocal[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickQ, setPickQ] = useState("");
   const [followUp, setFollowUp] = useState<string>("");
   const pickerRef = useRef<HTMLDivElement>(null);
+  const [saving, setSaving] = useState(false);
+
+  // ── Add Customer Dialog state ──────────────────────────────────────
+  const [showCustomerDialog, setShowCustomerDialog] = useState(false);
+  const [dialogPrefillName, setDialogPrefillName] = useState("");
 
   // Close picker when clicking outside
   useEffect(() => {
@@ -44,38 +133,165 @@ function NewQuotation() {
   }, [pickerOpen]);
 
   const totals = useMemo(() => {
+    // Item-level subtotal (before overall tax/discount)
     const sub = items.reduce((s, it) => s + it.quantity * it.price, 0);
-    const tax = items.reduce((s, it) => s + (it.quantity * it.price * it.tax) / 100, 0);
-    return { sub, tax, grand: sub + tax };
-  }, [items]);
+    // Item-level tax totals
+    const itemTax = items.reduce((s, it) => s + (it.quantity * it.price * it.tax) / 100, 0);
+    // Item-level discount totals
+    const itemDiscount = items.reduce((s, it) => s + (it.discount || 0), 0);
+    // Overall tax & discount from billing
+    const overallTaxAmount = (sub * billing.taxPercent) / 100;
+    const overallDiscountAmount = (sub * billing.discountPercent) / 100;
+    const totalTax = itemTax + overallTaxAmount;
+    const totalDiscount = itemDiscount + overallDiscountAmount;
+    const grand = sub + totalTax - totalDiscount;
+    return { sub, tax: totalTax, discount: totalDiscount, grand: Math.max(0, grand) };
+  }, [items, billing.taxPercent, billing.discountPercent]);
 
   const addItem = (id: string) => {
-    const found = db.inventory.find((i) => i.id === id);
+    const found = products.find((i) => i._id === id);
     if (!found) return;
-    if (items.some((it) => it.itemId === id)) { toast.message("Already added"); return; }
-    setItems((p) => [...p, { itemId: id, name: found.name, price: found.price, quantity: 1, tax: 18 }]);
+    if (items.some((it) => it.productId === id)) { toast.message("Already added"); return; }
+    const img = found.productImages?.find((i) => i.type === "product")?.url || found.productImages?.[0]?.url;
+    setItems((p) => [...p, {
+      productId: id,
+      name: found.productName,
+      sku: found.sku || "",
+      hsnNumber: found.hsnNumber || "",
+      size: found.size || "",
+      uom: found.uom || "",
+      quantity: 1,
+      price: found.unitPrice,
+      discount: 0,
+      tax: found.taxPercentage ?? 18,
+      image: img,
+    }]);
     setPickerOpen(false); setPickQ("");
   };
 
-  const updateItem = (id: string, patch: Partial<QuotationItem>) => setItems((p) => p.map((it) => it.itemId === id ? { ...it, ...patch } : it));
-  const removeItem = (id: string) => setItems((p) => p.filter((it) => it.itemId !== id));
+  const updateItem = (id: string, patch: Partial<QuotationItemLocal>) => setItems((p) => p.map((it) => it.productId === id ? { ...it, ...patch } : it));
+  const removeItem = (id: string) => setItems((p) => p.filter((it) => it.productId !== id));
 
   const addTerm = () => { if (!newTerm.trim()) return; setTerms((p) => [...p, newTerm.trim()]); setNewTerm(""); };
 
-  const save = (alsoDownload = false) => {
-    if (!customer.name) { toast.error("Customer name is required"); return; }
+  const save = async (alsoDownload = false) => {
+    if (!selectedCustomerId) { toast.error("Please select a customer"); return; }
     if (!items.length) { toast.error("Add at least one item"); return; }
-    const q = store.addQuotation({
-      customerName: customer.name, customerEmail: customer.email, customerPhone: customer.phone,
-      companyName: billing.companyName, gstNumber: billing.gstNumber,
-      notes, terms, items, status: "Draft", followUpDate: followUp || undefined,
-    });
-    toast.success(`Quotation ${q.number} created`);
-    if (alsoDownload) downloadQuotationPDF(q);
-    navigate({ to: "/dashboard" });
+
+    // Map display preference
+    let displayPref: "Customer Name" | "Company Name" | "Both" = "Both";
+    if (billing.display === "Print Person Name" || billing.display === "Customer Name") displayPref = "Customer Name";
+    else if (billing.display === "Print Company Name" || billing.display === "Company Name") displayPref = "Company Name";
+    else displayPref = "Both";
+
+    const payload = {
+      customerId: selectedCustomerId,
+      followUpDate: followUp || "",
+      status: "Draft" as const,
+      displayPreference: displayPref,
+      termsAndConditions: terms,
+      notes,
+      subtotal: totals.sub,
+      tax: totals.tax,
+      discount: totals.discount,
+      totalAmount: totals.grand,
+      items: items.map((it) => ({
+        productId: it.productId,
+        quantity: it.quantity,
+        unitPrice: it.price,
+        discount: it.discount || 0,
+        tax: it.tax,
+        total: Math.round((it.quantity * it.price + (it.quantity * it.price * it.tax) / 100 - (it.discount || 0)) * 100) / 100,
+      })),
+    };
+
+    setSaving(true);
+    try {
+      const created = await api.post<any>("/quotations", payload);
+      toast.success(`Quotation ${created?.quotationId || ""} created successfully`);
+
+      if (alsoDownload && created) {
+        try {
+          const mappedForPdf = {
+            id: created._id || "",
+            number: created.quotationId || "QUO-0000",
+            customerName: created.customerSnapshot?.customerName || "",
+            customerEmail: created.customerSnapshot?.email || "",
+            customerPhone: created.customerSnapshot?.phoneNumber || "",
+            companyName: created.customerSnapshot?.companyName || "",
+            gstNumber: created.customerSnapshot?.gstNumber || "",
+            notes: created.notes || "",
+            terms: created.termsAndConditions || [],
+            items: (created.items || []).map((it: any) => ({
+              itemId: it.productId,
+              name: it.productSnapshot?.productName || "",
+              quantity: it.quantity,
+              price: it.unitPrice,
+              tax: it.tax,
+            })),
+            status: created.status || "Draft",
+            followUpDate: created.followUpDate ? new Date(created.followUpDate).toISOString().split("T")[0] : undefined,
+            createdAt: created.createdAt || new Date().toISOString(),
+          };
+          downloadQuotationPDF(mappedForPdf);
+          toast.success("PDF download triggered");
+        } catch (pdfErr) {
+          console.error("[Quotation] PDF download failed:", pdfErr);
+          toast.error("Failed to generate PDF. You can download it from the dashboard.");
+        }
+      }
+
+      navigate({ to: "/dashboard" });
+    } catch (err) {
+      console.error("[Quotation] Save failed:", err);
+      if (err instanceof ApiClientError) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to save quotation. Please try again.");
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const pickerResults = db.inventory.filter((i) => !pickQ || i.name.toLowerCase().includes(pickQ.toLowerCase()) || i.sku.toLowerCase().includes(pickQ.toLowerCase()));
+  // ── When a customer is selected from the dropdown ───────────────────
+  const onCustomerSelected = (id: string, label: string) => {
+    setSelectedCustomerId(id);
+    setSelectedCustomerName(label);
+    const c = customers.find((cu) => cu._id === id);
+    if (c) {
+      setCustomer({ name: c.customerName, email: c.email || "", phone: c.phoneNumber || "" });
+      setBilling((prev) => ({
+        ...prev,
+        companyName: c.companyName || "",
+        gstNumber: c.gstNumber || "",
+      }));
+    }
+  };
+
+  // ── When "Add new" is clicked in the SearchableSelect dropdown ──────
+  const onAddNewCustomer = (name: string) => {
+    setDialogPrefillName(name);
+    setShowCustomerDialog(true);
+  };
+
+  // ── Callback when a new customer is created via the dialog ──────────
+  const onCustomerCreated = (c: CustomerRecord) => {
+    // Add to local customer list so the dropdown reflects it immediately
+    setCustomers((prev) => [c, ...prev]);
+    setSelectedCustomerId(c._id);
+    setSelectedCustomerName(c.customerName);
+    setCustomer({ name: c.customerName, email: c.email || "", phone: c.phoneNumber || "" });
+    setBilling((prev) => ({
+      ...prev,
+      companyName: c.companyName || "",
+      gstNumber: c.gstNumber || "",
+    }));
+    setShowCustomerDialog(false);
+    setDialogPrefillName("");
+  };
+
+  const pickerResults = products.filter((i) => !pickQ || i.productName.toLowerCase().includes(pickQ.toLowerCase()) || i.sku.toLowerCase().includes(pickQ.toLowerCase()));
 
   return (
     <div className="space-y-6">
@@ -85,8 +301,10 @@ function NewQuotation() {
           <p className="text-muted-foreground text-sm mt-1">Build a polished quote in minutes — pick items, set taxes, export PDF.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => save(false)} className="px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted font-medium text-sm">Save as draft</button>
-          <button onClick={() => save(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 text-sm">
+          <button onClick={() => save(false)} disabled={saving} className="px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted font-medium text-sm disabled:opacity-60 disabled:cursor-not-allowed">
+            {saving ? <><Loader2 className="w-4 h-4 animate-spin inline mr-1" /> Generating...</> : "Generate"}
+          </button>
+          <button onClick={() => save(true)} disabled={saving} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 text-sm disabled:opacity-60 disabled:cursor-not-allowed">
             <FileText className="w-4 h-4" /> Generate & download
           </button>
         </div>
@@ -95,9 +313,23 @@ function NewQuotation() {
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {/* Customer */}
-          <Section icon={<User className="w-5 h-5" />} title="Customer Details">
+          <Section icon={<User className="w-5 h-5" />} title="Customer Details" right={
+            <button onClick={() => { setDialogPrefillName(""); setShowCustomerDialog(true); }} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-medium shadow-elegant hover:opacity-95">
+              <Plus className="w-4 h-4" /> Add Customer
+            </button>
+          }>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Customer Name *"><input value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} className={input} placeholder="John Doe" /></Field>
+              <Field label="Select Customer *">
+                <SearchableSelect
+                  value={selectedCustomerName}
+                  options={customers.map((c) => ({ id: c._id, label: c.customerName }))}
+                  onChange={onCustomerSelected}
+                  onAdd={onAddNewCustomer}
+                  placeholder={customersLoading ? "Loading customers…" : "Search customer…"}
+                  addLabel="Add customer"
+                  disabled={customersLoading}
+                />
+              </Field>
               <Field label="Email"><input value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} className={input} placeholder="john@company.com" /></Field>
               <Field label="Phone"><input value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} className={input} placeholder="+91 98XXXXXXXX" /></Field>
               <Field label="Follow-up Date"><input type="date" value={followUp} onChange={(e) => setFollowUp(e.target.value)} className={input} /></Field>
@@ -111,8 +343,14 @@ function NewQuotation() {
               <Field label="GST Number"><input value={billing.gstNumber} onChange={(e) => setBilling({ ...billing, gstNumber: e.target.value })} className={input} placeholder="27AAAPL1234C1Z5" /></Field>
               <Field label="Display Preference">
                 <select value={billing.display} onChange={(e) => setBilling({ ...billing, display: e.target.value })} className={input}>
-                  <option>Print Person Name</option><option>Print Company Name</option><option>Both</option>
+                  <option value="Customer Name">Customer Name</option><option value="Company Name">Company Name</option><option value="Both">Both</option>
                 </select>
+              </Field>
+              <Field label="Overall Tax %">
+                <input type="number" min={0} max={100} value={billing.taxPercent} onChange={(e) => setBilling({ ...billing, taxPercent: Math.min(100, Math.max(0, +e.target.value || 0)) })} className={input} placeholder="0" />
+              </Field>
+              <Field label="Overall Discount %">
+                <input type="number" min={0} max={100} value={billing.discountPercent} onChange={(e) => setBilling({ ...billing, discountPercent: Math.min(100, Math.max(0, +e.target.value || 0)) })} className={input} placeholder="0" />
               </Field>
             </div>
           </Section>
@@ -128,18 +366,22 @@ function NewQuotation() {
                     <input value={pickQ} onChange={(e) => setPickQ(e.target.value)} placeholder="Search inventory..." className={`${input} pl-10`} />
                   </div>
                   <div className="mt-2 max-h-64 overflow-y-auto divide-y divide-border">
-                    {pickerResults.map((it) => (
-                      <button key={it.id} onClick={() => addItem(it.id)} className="w-full flex items-center gap-3 p-2.5 hover:bg-muted rounded-lg text-left">
+                    {productsLoading && <div className="p-4 text-center text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin inline mr-1" /> Loading products…</div>}
+                    {!productsLoading && pickerResults.map((it) => {
+                      const img = it.productImages?.find((i) => i.type === "product")?.url || it.productImages?.[0]?.url;
+                      return (
+                      <button key={it._id} onClick={() => addItem(it._id)} className="w-full flex items-center gap-3 p-2.5 hover:bg-muted rounded-lg text-left">
                         <div className="w-10 h-10 rounded-lg bg-accent overflow-hidden grid place-items-center">
-                          {it.image ? <img src={it.image} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{it.name.slice(0, 2)}</span>}
+                          {img ? <img src={img} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{it.productName.slice(0, 2)}</span>}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">{it.name}</div>
-                          <div className="text-xs text-muted-foreground truncate">{it.sku} • {formatINR(it.price)}</div>
+                          <div className="text-sm font-medium truncate">{it.productName}</div>
+                          <div className="text-xs text-muted-foreground truncate">{it.sku} • {formatINR(it.unitPrice)}</div>
                         </div>
                       </button>
-                    ))}
-                    {!pickerResults.length && <div className="p-4 text-center text-sm text-muted-foreground">No items.</div>}
+                    );
+                    })}
+                    {!productsLoading && !pickerResults.length && <div className="p-4 text-center text-sm text-muted-foreground">No items.</div>}
                   </div>
                 </div>
               )}
@@ -152,22 +394,30 @@ function NewQuotation() {
             ) : (
               <div className="space-y-3">
                 {items.map((it) => (
-                  <div key={it.itemId} className="rounded-xl border border-border p-3 sm:p-4 grid grid-cols-2 sm:grid-cols-12 gap-3 items-center">
-                    <div className="col-span-2 sm:col-span-5">
-                      <div className="font-medium truncate">{it.name}</div>
-                      <div className="text-xs text-muted-foreground">Unit price {formatINR(it.price)}</div>
+                  <div key={it.productId} className="rounded-xl border border-border p-3 sm:p-4 grid grid-cols-2 sm:grid-cols-12 gap-3 items-center">
+                    <div className="col-span-2 sm:col-span-3 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-accent overflow-hidden grid place-items-center shrink-0">
+                        {it.image ? <img src={it.image} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{it.name.slice(0, 2)}</span>}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{it.name}</div>
+                        <div className="text-xs text-muted-foreground">{it.sku}{it.uom ? ` • ${it.uom}` : ""}</div>
+                      </div>
                     </div>
                     <Field className="sm:col-span-2" label="Qty">
-                      <input type="number" min={1} value={it.quantity} onChange={(e) => updateItem(it.itemId, { quantity: Math.max(1, +e.target.value || 1) })} className={input} />
+                      <input type="number" min={1} value={it.quantity} onChange={(e) => updateItem(it.productId, { quantity: Math.max(1, +e.target.value || 1) })} className={input} />
                     </Field>
                     <Field className="sm:col-span-2" label="Price">
-                      <input type="number" min={0} value={it.price} onChange={(e) => updateItem(it.itemId, { price: Math.max(0, +e.target.value || 0) })} className={input} />
+                      <input type="number" min={0} value={it.price} onChange={(e) => updateItem(it.productId, { price: Math.max(0, +e.target.value || 0) })} className={input} />
                     </Field>
                     <Field className="sm:col-span-2" label="Tax %">
-                      <input type="number" min={0} max={100} value={it.tax} onChange={(e) => updateItem(it.itemId, { tax: Math.min(100, Math.max(0, +e.target.value || 0)) })} className={input} />
+                      <input type="number" min={0} max={100} value={it.tax} onChange={(e) => updateItem(it.productId, { tax: Math.min(100, Math.max(0, +e.target.value || 0)) })} className={input} />
+                    </Field>
+                    <Field className="sm:col-span-2" label="Discount ₹">
+                      <input type="number" min={0} value={it.discount} onChange={(e) => updateItem(it.productId, { discount: Math.max(0, +e.target.value || 0) })} className={input} />
                     </Field>
                     <div className="sm:col-span-1 flex sm:justify-end">
-                      <button onClick={() => removeItem(it.itemId)} className="w-9 h-9 rounded-lg border border-border hover:bg-muted grid place-items-center" aria-label="Remove"><Trash2 className="w-4 h-4 text-destructive" /></button>
+                      <button onClick={() => removeItem(it.productId)} className="w-9 h-9 rounded-lg border border-border hover:bg-muted grid place-items-center" aria-label="Remove"><Trash2 className="w-4 h-4 text-destructive" /></button>
                     </div>
                   </div>
                 ))}
@@ -204,16 +454,151 @@ function NewQuotation() {
             <dl className="text-sm space-y-2">
               <Row label="Subtotal" value={formatINR(totals.sub)} />
               <Row label="Tax" value={formatINR(totals.tax)} />
+              <Row label="Discount" value={<span className="text-destructive">-{formatINR(totals.discount)}</span>} />
               <div className="border-t border-border my-2" />
               <Row label={<span className="font-semibold">Grand Total</span>} value={<span className="font-display text-xl font-semibold">{formatINR(totals.grand)}</span>} />
             </dl>
           </Section>
         </div>
       </div>
+
+      {/* ── Add Customer Dialog ─────────────────────────────────────── */}
+      {showCustomerDialog && (
+        <AddCustomerDialog
+          onClose={() => { setShowCustomerDialog(false); setDialogPrefillName(""); }}
+          onCreated={onCustomerCreated}
+          prefillName={dialogPrefillName}
+        />
+      )}
     </div>
   );
 }
 
+// ── Add Customer Dialog ────────────────────────────────────────────────
+function AddCustomerDialog({
+  onClose,
+  onCreated,
+  prefillName = "",
+}: {
+  onClose: () => void;
+  onCreated: (c: CustomerRecord) => void;
+  prefillName?: string;
+}) {
+  const [form, setForm] = useState({
+    customerName: prefillName,
+    email: "",
+    phoneNumber: "",
+    companyName: "",
+    gstNumber: "",
+    address: "",
+    notes: "",
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  const handleBackdrop = (e: React.MouseEvent) => {
+    if (e.target === backdropRef.current) onClose();
+  };
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.customerName.trim()) {
+      toast.error("Customer name is required");
+      return;
+    }
+    setSubmitting(true);
+    console.log("[Customer] Creating customer:", form.customerName);
+    try {
+      const created = await api.post<CustomerRecord>("/customers", form);
+      console.log("[Customer] Created successfully:", created?.customerCode);
+      toast.success(`Customer ${created?.customerCode || ""} created`);
+      onCreated(created);
+    } catch (err) {
+      console.error("[Customer] Create failed:", err);
+      if (err instanceof ApiClientError) {
+        toast.error(err.message);
+      } else {
+        toast.error("Internal server error. Contact admin.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      ref={backdropRef}
+      onClick={handleBackdrop}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+    >
+      <div className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-elegant animate-in fade-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-accent grid place-items-center text-accent-foreground">
+              <User className="w-5 h-5" />
+            </div>
+            <h2 className="font-display font-semibold text-lg">Add New Customer</h2>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg border border-border hover:bg-muted grid place-items-center">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field label="Customer Name *">
+              <input value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} className={input} placeholder="John Doe" autoFocus />
+            </Field>
+            <Field label="Email">
+              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={input} placeholder="john@company.com" />
+            </Field>
+            <Field label="Phone Number">
+              <input value={form.phoneNumber} onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })} className={input} placeholder="+91 98XXXXXXXX" />
+            </Field>
+            <Field label="Company Name">
+              <input value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} className={input} placeholder="Acme Industries Pvt Ltd" />
+            </Field>
+            <Field label="GST Number">
+              <input value={form.gstNumber} onChange={(e) => setForm({ ...form, gstNumber: e.target.value })} className={input} placeholder="27AAAPL1234C1Z5" />
+            </Field>
+            <Field label="Address">
+              <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className={input} placeholder="123 Main Street, Mumbai" />
+            </Field>
+          </div>
+          <Field label="Notes">
+            <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className={`${input} resize-none`} placeholder="Any additional notes about this customer..." />
+          </Field>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-sm font-medium">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><Plus className="w-4 h-4" /> Create Customer</>}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Styles ─────────────────────────────────────────────────────────────
 const input = "w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring text-sm";
 
 function Section({ title, icon, right, children }: { title: string; icon?: React.ReactNode; right?: React.ReactNode; children: React.ReactNode }) {
@@ -243,3 +628,83 @@ function Field({ label, children, className = "" }: { label: string; children: R
 function Row({ label, value }: { label: React.ReactNode; value: React.ReactNode }) {
   return <div className="flex items-center justify-between"><dt className="text-muted-foreground">{label}</dt><dd>{value}</dd></div>;
 }
+
+// ── SearchableSelect (same pattern as inventory dropdowns) ─────────────
+function SearchableSelect({
+  value, options, onChange, onAdd, placeholder = "Search…", addLabel = "Add new", disabled = false,
+}: {
+  value: string;
+  options: { id: string; label: string }[];
+  onChange: (id: string, label: string) => void;
+  onAdd: (label: string) => void;
+  placeholder?: string;
+  addLabel?: string;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const q = query.trim();
+  const filtered = options.filter((o) => o.label.toLowerCase().includes(q.toLowerCase()));
+  const canAdd = q.length > 0 && !options.some((o) => o.label.toLowerCase() === q.toLowerCase());
+
+  const pick = (opt: { id: string; label: string }) => { onChange(opt.id, opt.label); setOpen(false); setQuery(""); };
+  const add  = () => { if (!canAdd) return; onAdd(q); setOpen(false); setQuery(""); };
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <button
+        type="button"
+        onClick={() => !disabled && setOpen((o) => !o)}
+        disabled={disabled}
+        className={`${input} flex items-center justify-between text-left ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+      >
+        <span className={value ? "" : "text-muted-foreground"}>{value || placeholder}</span>
+        <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+      </button>
+      {open && !disabled && (
+        <div className="absolute z-20 mt-1.5 w-full rounded-xl border border-border bg-popover shadow-elegant overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+            <Search className="w-4 h-4 text-muted-foreground" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (canAdd) add(); else if (filtered[0]) pick(filtered[0]); } }}
+              placeholder={placeholder}
+              className="flex-1 bg-transparent text-sm focus:outline-none"
+            />
+          </div>
+          <div className="max-h-56 overflow-auto py-1">
+            {filtered.map((o) => (
+              <button key={o.id} type="button" onClick={() => pick(o)} className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted text-left">
+                <span>{o.label}</span>
+                {o.label === value && <Check className="w-4 h-4 text-primary" />}
+              </button>
+            ))}
+            {filtered.length === 0 && !canAdd && (
+              <div className="px-3 py-4 text-xs text-muted-foreground text-center">No matches</div>
+            )}
+          </div>
+          {canAdd && (
+            <button type="button" onClick={add} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm border-t border-border bg-accent/40 hover:bg-accent text-left">
+              <Plus className="w-4 h-4 text-primary" />
+              <span className="font-medium">{addLabel}:</span>
+              <span className="text-muted-foreground truncate">{q}</span>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
