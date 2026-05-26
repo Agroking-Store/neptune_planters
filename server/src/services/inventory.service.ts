@@ -60,8 +60,7 @@ export async function getProductById(id: string) {
 // ─────────────────────────────────────────────
 export async function updateProduct(
   id: string,
-  data: CreateProductInput,
-  userId: string
+  data: CreateProductInput
 ): Promise<InstanceType<typeof Product>> {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw ApiError.badRequest('Invalid product ID');

@@ -206,7 +206,7 @@ function NewItem() {
                         value={img} 
                         onPick={() => textureImgRefs.current[i]?.click()} 
                         onClear={() => {}} // Not used here as we remove the whole slot
-                        inputRef={(el) => (textureImgRefs.current[i] = el)} 
+                        inputRef={(el) => { textureImgRefs.current[i] = el; }} 
                         onFile={(f) => handleTextureFile(i, f)} 
                       />
                       <button 

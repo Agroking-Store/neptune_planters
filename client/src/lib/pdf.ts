@@ -185,13 +185,13 @@ export async function downloadQuotationPDF(q: Quotation, inventory: InventoryIte
     const gross = q.items.reduce((s, it) => s + it.quantity * it.price, 0);
     const discAmt = q.items.reduce((s, it) => {
       const inv = invMap.get(it.itemId);
-      const d = inv?.discount ?? 0;
+      const d = 0; // Discount removed from product
       return s + (it.quantity * it.price * d) / 100;
     }, 0);
     const subAfterDisc = gross - discAmt;
     const taxAmt = q.items.reduce((s, it) => {
       const inv = invMap.get(it.itemId);
-      const d = inv?.discount ?? 0;
+      const d = 0; // Discount removed from product
       return s + (it.quantity * it.price * (1 - d / 100) * it.tax) / 100;
     }, 0);
     const grand = subAfterDisc + taxAmt;
@@ -256,7 +256,7 @@ export async function downloadQuotationPDF(q: Quotation, inventory: InventoryIte
   // ===== ITEM CARDS (new layout matching reference) =====
   q.items.forEach((it) => {
     const inv = invMap.get(it.itemId);
-    const discPct = inv?.discount ?? 0;
+    const discPct = 0; // Discount removed from product
     const unitAfter = it.price * (1 - discPct / 100);
     const lineTotal = unitAfter * it.quantity;
 
@@ -322,7 +322,7 @@ export async function downloadQuotationPDF(q: Quotation, inventory: InventoryIte
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     setText(doc, ON_SURFACE_VAR);
-    if (inv?.dimensions) doc.text(inv.dimensions, bX + 18, bY + 48);
+    if (inv?.sizes && inv.sizes.length > 0) doc.text(inv.sizes.join(", "), bX + 18, bY + 48);
 
     // Color swatch + name
     const cYpos = bY + 66;
@@ -330,7 +330,7 @@ export async function downloadQuotationPDF(q: Quotation, inventory: InventoryIte
     doc.circle(bX + 22, cYpos - 3, 4, "F");
     setText(doc, SECONDARY);
     doc.setFontSize(10);
-    doc.text(inv?.color || "Sand stone", bX + 32, cYpos);
+    doc.text("Standard Finish", bX + 32, cYpos);
 
     // Right: prices
     const prX = bX + bW - 18;

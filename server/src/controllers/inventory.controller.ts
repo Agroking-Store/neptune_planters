@@ -53,7 +53,7 @@ export const createProductHandler = asyncHandler(async (req: Request, res: Respo
 // GET /api/inventory/products/:id
 // ─────────────────────────────────────────────
 export const getProductByIdHandler = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   const product = await getProductById(id);
   res.status(200).json(
     ApiResponse.success('Product retrieved successfully', product.toJSON()).toJSON()
@@ -65,7 +65,7 @@ export const getProductByIdHandler = asyncHandler(async (req: Request, res: Resp
 // ─────────────────────────────────────────────
 export const updateProductHandler = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw ApiError.unauthorized();
-  const { id } = req.params;
+  const id = req.params.id as string;
   const body = req.body as Record<string, unknown>;
 
   const result = createProductSchema.safeParse(body);
@@ -75,7 +75,7 @@ export const updateProductHandler = asyncHandler(async (req: Request, res: Respo
     throw ApiError.badRequest('Validation failed', errors);
   }
 
-  const product = await updateProduct(id, result.data, req.user.userId);
+  const product = await updateProduct(id, result.data);
   res.status(200).json(
     ApiResponse.success('Product updated successfully', product.toJSON()).toJSON()
   );
@@ -86,7 +86,7 @@ export const updateProductHandler = asyncHandler(async (req: Request, res: Respo
 // ─────────────────────────────────────────────
 export const deleteProductHandler = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw ApiError.unauthorized();
-  const { id } = req.params;
+  const id = req.params.id as string;
   await deleteProduct(id);
   res.status(200).json(
     ApiResponse.success('Product deleted successfully').toJSON()
