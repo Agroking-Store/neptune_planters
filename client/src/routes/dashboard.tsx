@@ -1,7 +1,7 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { isAuthenticated } from "@/lib/auth";
 import { useMemo, useState, useEffect } from "react";
-import { Download, FileText, Plus, Search, Send, Target, TrendingUp, Trash2, Calendar, Copy, Edit, ChevronDown, CheckCircle, Activity, X } from "lucide-react";
+import { Download, FileText, Plus, Search, Send, Target, TrendingUp, Trash2, Calendar, Copy, Edit, ChevronDown, CheckCircle, Package, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useDB, formatINR, store } from "@/lib/store";
 import { downloadQuotationPDF } from "@/lib/pdf";
@@ -102,12 +102,56 @@ function DashboardInner() {
 
   const getStatusOutlineClass = (s: string) => {
     switch (s) {
-      case "Draft": return "border-amber-500/80 text-amber-600 bg-amber-50/50 hover:bg-amber-100/60 dark:bg-amber-950/20";
-      case "Sent": return "border-blue-500/80 text-blue-600 bg-blue-50/50 hover:bg-blue-100/60 dark:bg-blue-950/20";
+      case "Draft": 
+      case "Sent": 
+        return "border-amber-500/80 text-amber-600 bg-amber-50/50 hover:bg-amber-100/60 dark:bg-amber-950/20";
       case "Accepted": return "border-emerald-500/80 text-emerald-600 bg-emerald-50/50 hover:bg-emerald-100/60 dark:bg-emerald-950/20";
       case "Rejected": return "border-rose-500/80 text-rose-600 bg-rose-50/50 hover:bg-rose-100/60 dark:bg-rose-950/20";
       default: return "border-border text-muted-foreground";
     }
+  };
+
+  const mapToPdf = (q: any) => ({
+    id: q._id || q.id,
+    number: q.quotationId || q.number || "QUO-0000",
+    customerName: q.customerSnapshot?.customerName || q.customerName,
+    customerEmail: q.customerSnapshot?.email || "",
+    customerPhone: q.customerSnapshot?.phoneNumber || q.customerPhone || "",
+    companyName: q.customerSnapshot?.companyName || "",
+    gstNumber: q.customerSnapshot?.gstNumber || "",
+    notes: q.notes || "",
+    terms: q.termsAndConditions || [],
+    items: (q.items || []).map((it: any) => ({
+      itemId: it.productId,
+      name: it.productSnapshot?.productName || it.name,
+      quantity: it.quantity,
+      price: it.unitPrice || it.price,
+      selectedSize: it.selectedSize,
+      selectedTexture: it.selectedTexture,
+      tax: it.tax || 0,
+    })),
+  });
+
+  const handleSendWhatsapp = async (q: any) => {
+    const mapped = mapToPdf(q);
+    await downloadQuotationPDF(mapped as any);
+
+    if (mapped.customerPhone) {
+      const cleanPhone = mapped.customerPhone.replace(/\D/g, "");
+      const msg = encodeURIComponent(`Hello! Here is your quotation: ${mapped.number}. The PDF has been downloaded to your device.`);
+      window.open(`https://wa.me/${cleanPhone}?text=${msg}`, "_blank");
+    } else {
+      toast.info("No phone number found. PDF downloaded.");
+    }
+
+    if (q.status !== "Sent" && q.status !== "Accepted" && q.status !== "Rejected") {
+      handleUpdateStatus(q._id || q.id, "Sent");
+    }
+  };
+
+  const handleDownload = async (q: any) => {
+    const mapped = mapToPdf(q);
+    await downloadQuotationPDF(mapped as any);
   };
 
   const stats = useMemo(() => {
@@ -134,9 +178,14 @@ function DashboardInner() {
           <h1 className="font-display text-3xl sm:text-4xl font-semibold">Quotations</h1>
           <p className="text-muted-foreground mt-1 text-sm">Track every quote, every status, every rupee.</p>
         </div>
-        <Link to="/quotations/new" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95">
-          <Plus className="w-4 h-4" /> New Quotation
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link to="/inventory" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-background border border-border text-foreground font-medium shadow-sm hover:bg-muted transition-colors">
+            <Package className="w-4 h-4" /> Manage Inventory
+          </Link>
+          <Link to="/quotations/new" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95">
+            <Plus className="w-4 h-4" /> New Quotation
+          </Link>
+        </div>
       </div>
 
       {/* Stats grid */}
@@ -218,22 +267,18 @@ function DashboardInner() {
                     <td className="px-4 py-3"><StatusBadge status={q.status} /></td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
-                        {/* Send */}
-                        <IconBtn onClick={() => setShareQuotationId(qId)} label="Send"><Send className="w-4 h-4 text-blue-600" /></IconBtn>
-                        {/* Copy */}
+                        <IconBtn onClick={() => handleSendWhatsapp(q)} label="Send WhatsApp"><Send className="w-4 h-4 text-blue-600" /></IconBtn>
+                        <IconBtn onClick={() => handleDownload(q)} label="Download PDF"><Download className="w-4 h-4 text-emerald-600" /></IconBtn>
                         <Link to={`/quotations/new?copyFrom=${qId}`} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center transition-colors focus:outline-none"><Copy className="w-4 h-4" /></Link>
-                        {/* Edit */}
                         <Link to={`/quotations/edit/${qId}`} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center transition-colors focus:outline-none"><Edit className="w-4 h-4 text-primary" /></Link>
-                        {/* Delete */}
                         <IconBtn onClick={() => handleDelete(qId)} label="Delete"><Trash2 className="w-4 h-4 text-destructive" /></IconBtn>
-                        {/* Status */}
                         <div className="relative">
                           <button
                             onClick={() => setActiveStatusMenuId(activeStatusMenuId === qId ? null : qId)}
                             className={`w-9 h-9 rounded-lg border transition-all flex items-center justify-center focus:outline-none ${getStatusOutlineClass(q.status)}`}
                             title={`Status: ${q.status}`}
                           >
-                            <Activity className="w-4 h-4" />
+                            <CheckCircle className="w-4 h-4" />
                           </button>
                           {activeStatusMenuId === qId && (
                             <div className="absolute right-0 mt-1 w-32 rounded-xl border border-border bg-popover shadow-elegant py-1 z-30">
@@ -283,8 +328,10 @@ function DashboardInner() {
                     <div className="font-semibold mt-0.5">{formatINR(total)}</div>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {/* Send */}
-                    <IconBtn onClick={() => setShareQuotationId(qId)} label="Send"><Send className="w-4 h-4 text-blue-600" /></IconBtn>
+                    {/* Send WhatsApp */}
+                    <IconBtn onClick={() => handleSendWhatsapp(q)} label="Send WhatsApp"><Send className="w-4 h-4 text-blue-600" /></IconBtn>
+                    {/* Download */}
+                    <IconBtn onClick={() => handleDownload(q)} label="Download PDF"><Download className="w-4 h-4 text-emerald-600" /></IconBtn>
                     {/* Copy */}
                     <Link to={`/quotations/new?copyFrom=${qId}`} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center transition-colors focus:outline-none"><Copy className="w-4 h-4" /></Link>
                     {/* Edit */}
@@ -298,7 +345,7 @@ function DashboardInner() {
                         className={`w-9 h-9 rounded-lg border transition-all flex items-center justify-center focus:outline-none ${getStatusOutlineClass(q.status)}`}
                         title={`Status: ${q.status}`}
                       >
-                        <Activity className="w-4 h-4" />
+                        <CheckCircle className="w-4 h-4" />
                       </button>
                       {activeStatusMenuId === qId && (
                         <div className="absolute right-0 bottom-full mb-1 w-32 rounded-xl border border-border bg-popover shadow-elegant py-1 z-30">
