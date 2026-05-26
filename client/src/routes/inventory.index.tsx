@@ -1,7 +1,7 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { isAuthenticated } from "@/lib/auth";
 import { useEffect, useMemo, useState } from "react";
-import { Boxes, Plus, Search, Pencil, Trash2, Loader2, ShoppingCart, TrendingUp, Wallet } from "lucide-react";
+import { Boxes, Plus, Search, Pencil, Trash2, Loader2, ShoppingCart, TrendingUp, Wallet, FileText } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { formatINR } from "@/lib/store";
 import { toast } from "sonner";
@@ -98,9 +98,14 @@ function Inventory() {
           <h1 className="font-display text-3xl sm:text-4xl font-semibold">Inventory</h1>
           <p className="text-muted-foreground text-sm mt-1">A live source of truth for everything you sell.</p>
         </div>
-        <Link to="/inventory/new" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95">
-          <Plus className="w-4 h-4" /> Add Item
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link to="/dashboard" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-background border border-border text-foreground font-medium shadow-sm hover:bg-muted transition-colors">
+            <FileText className="w-4 h-4" /> Manage Quotations
+          </Link>
+          <Link to="/inventory/new" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95">
+            <Plus className="w-4 h-4" /> Add Item
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
