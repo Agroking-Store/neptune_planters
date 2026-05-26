@@ -20,10 +20,26 @@ function Inventory() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
 
-  const fetchProducts = async () => {
+  const [analytics, setAnalytics] = useState({
+    soldQuantities: 0,
+    soldProductsValue: 0,
+    thisMonthSale: 0,
+    topSelling: [] as { name: string; value: number; pct: number }[]
+  });
+
+  const fetchData = async () => {
     try {
-      const res = await api.get<any[]>("/inventory/products");
-      setProducts(res ?? []);
+      const [prodRes, analyticsRes] = await Promise.all([
+        api.get<any[]>("/inventory/products"),
+        api.get<any>("/analytics/sales").catch((err) => {
+          console.error("Analytics fetch failed", err);
+          return null;
+        })
+      ]);
+      setProducts(prodRes ?? []);
+      if (analyticsRes) {
+        setAnalytics(analyticsRes);
+      }
     } catch (err) {
       toast.error("Failed to load products from server");
     } finally {
@@ -32,7 +48,7 @@ function Inventory() {
   };
 
   useEffect(() => {
-    void fetchProducts();
+    void fetchData();
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -40,7 +56,7 @@ function Inventory() {
     try {
       await api.delete(`/inventory/products/${id}`);
       toast.success("Product deleted successfully");
-      void fetchProducts();
+      void fetchData();
     } catch (err) {
       toast.error("Failed to delete product");
     }
@@ -63,22 +79,7 @@ function Inventory() {
     });
   }, [products, q]);
 
-  // Placeholder stats (To be connected to sales/quotations data later)
-  const soldQuantities = 0;
-  const thisMonthSale = 0;
-  const soldProductsValue = 0;
-
-  // Placeholder top selling distribution (To be connected to sales/quotations data later)
-  const topSelling = useMemo(() => {
-    if (!products.length) return [];
-    // Mocking top selling based on first few products for visual feedback
-    const mockSales = products.slice(0, 5).map((p, i) => ({
-      name: p.productName,
-      value: Math.max(10, 100 - i * 20),
-    }));
-    const total = mockSales.reduce((acc, curr) => acc + curr.value, 0) || 1;
-    return mockSales.map(m => ({ ...m, pct: Math.round((m.value / total) * 100) })).sort((a, b) => b.value - a.value);
-  }, [products]);
+  const { soldQuantities, thisMonthSale, soldProductsValue, topSelling } = analytics;
 
   const palette = ["bg-primary", "bg-violet", "bg-success", "bg-warning", "bg-destructive"];
 

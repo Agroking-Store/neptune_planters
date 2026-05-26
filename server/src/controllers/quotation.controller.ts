@@ -89,6 +89,7 @@ export const deleteQuotationHandler = asyncHandler(async (req: Request, res: Res
 // PATCH /api/quotations/:id/status
 // ─────────────────────────────────────────────
 import { Quotation } from '../models/Quotation.model';
+import { Sale } from '../models/Sale.model';
 
 export const patchQuotationStatusHandler = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw ApiError.unauthorized();
@@ -102,8 +103,35 @@ export const patchQuotationStatusHandler = asyncHandler(async (req: Request, res
   const quotation = await Quotation.findById(id).exec();
   if (!quotation) throw ApiError.notFound('Quotation not found');
 
-  quotation.status = status;
+  const oldStatus = quotation.status;
+  quotation.status = status as any;
   await quotation.save();
+
+  // Manage Sales Tracking
+  if (oldStatus !== 'Accepted' && status === 'Accepted') {
+    const date = new Date();
+    const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const year = date.getFullYear();
+
+    const sales = quotation.items.map((it: any) => ({
+      productId: it.productId,
+      quotationId: quotation._id,
+      quantity: it.quantity,
+      unitPrice: it.unitPrice,
+      totalAmount: it.quantity * it.unitPrice,
+      selectedSize: it.selectedSize,
+      selectedTexture: it.selectedTexture,
+      saleDate: date,
+      month,
+      year
+    }));
+    
+    if (sales.length > 0) {
+      await Sale.insertMany(sales);
+    }
+  } else if (oldStatus === 'Accepted' && status !== 'Accepted') {
+    await Sale.deleteMany({ quotationId: quotation._id });
+  }
 
   res.status(200).json(
     ApiResponse.success('Quotation status updated successfully', quotation.toJSON()).toJSON()
