@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { isAuthenticated } from "@/lib/auth";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Trash2, FileText, Calculator, User, StickyNote, ListChecks, Search, X, Loader2, Check, ChevronDown } from "lucide-react";
+import { Plus, Trash2, FileText, Calculator, User, StickyNote, ListChecks, Search, X, Loader2, Check, ChevronDown, ArrowLeft } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { formatINR } from "@/lib/store";
 import { toast } from "sonner";
@@ -325,9 +325,14 @@ function EditQuotation() {
   return (
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="font-display text-3xl sm:text-4xl font-semibold">Edit Quotation</h1>
-          <p className="text-muted-foreground text-sm mt-1">Modify details and save your changes.</p>
+        <div className="flex items-center gap-4">
+          <button onClick={() => window.history.back()} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors -ml-2 shrink-0" title="Go back">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="font-display text-3xl sm:text-4xl font-semibold">Edit Quotation</h1>
+            <p className="text-muted-foreground text-sm mt-1">Modify details and save your changes.</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <button onClick={() => save(false)} disabled={saving} className="px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted font-medium text-sm disabled:opacity-60 disabled:cursor-not-allowed">
