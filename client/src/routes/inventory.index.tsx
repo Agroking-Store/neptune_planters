@@ -1,11 +1,12 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { isAuthenticated } from "@/lib/auth";
 import { useEffect, useMemo, useState } from "react";
-import { Boxes, Plus, Search, Pencil, Trash2, Loader2, ShoppingCart, TrendingUp, Wallet, FileText } from "lucide-react";
+import { Boxes, Plus, Search, Pencil, Trash2, Loader2, ShoppingCart, TrendingUp, Wallet, FileText, Download, X, Calendar } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { formatINR } from "@/lib/store";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import ExcelJS from "exceljs";
 
 export const Route = createFileRoute("/inventory/")({
   head: () => ({ meta: [{ title: "Inventory — Indux" }, { name: "description", content: "Manage your product inventory." }] }),
@@ -26,6 +27,12 @@ function Inventory() {
     thisMonthSale: 0,
     topSelling: [] as { name: string; value: number; pct: number }[]
   });
+
+  // Report modal state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportFrom, setReportFrom] = useState("");
+  const [reportTo, setReportTo] = useState("");
+  const [reportLoading, setReportLoading] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -73,15 +80,185 @@ function Inventory() {
 
   const filtered = useMemo(() => {
     return products.filter((i) => {
-      return !q ||
-        (i.productName || "").toLowerCase().includes(q.toLowerCase()) ||
-        (i.hsnNumber || "").includes(q);
+      if (!q) return true;
+      const lower = q.toLowerCase();
+      return (
+        (i.productName || "").toLowerCase().includes(lower) ||
+        (i.hsnNumber || "").includes(q) ||
+        (i.description || "").toLowerCase().includes(lower) ||
+        String(i.unitPrice || "").includes(q)
+      );
     });
   }, [products, q]);
 
   const { soldQuantities, thisMonthSale, soldProductsValue, topSelling } = analytics;
 
   const palette = ["bg-primary", "bg-violet", "bg-success", "bg-warning", "bg-destructive"];
+
+  // Helper: convert a base64 data URI or fetch a URL into a Uint8Array + extension
+  const resolveImage = async (src: string): Promise<{ buf: Uint8Array; ext: "png" | "jpeg" } | null> => {
+    try {
+      if (src.startsWith("data:")) {
+        const match = src.match(/^data:image\/(png|jpe?g|webp);base64,(.+)$/i);
+        if (!match) return null;
+        const ext = match[1].toLowerCase().startsWith("png") ? "png" as const : "jpeg" as const;
+        const raw = atob(match[2]);
+        const arr = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+        return { buf: arr, ext };
+      } else {
+        const res = await fetch(src);
+        if (!res.ok) return null;
+        const ct = res.headers.get("content-type") || "";
+        const ext = ct.includes("png") ? "png" as const : "jpeg" as const;
+        const arrayBuf = await res.arrayBuffer();
+        return { buf: new Uint8Array(arrayBuf), ext };
+      }
+    } catch {
+      return null;
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    if (!reportFrom || !reportTo) {
+      toast.error("Please select both From and To dates");
+      return;
+    }
+    if (new Date(reportFrom) > new Date(reportTo)) {
+      toast.error("From date cannot be after To date");
+      return;
+    }
+    setReportLoading(true);
+    try {
+      const data = await api.get<any>(`/analytics/report?from=${reportFrom}&to=${reportTo}`);
+      const rows: any[] = data.rows ?? [];
+      const grandTotal: number = data.grandTotal ?? 0;
+
+      if (rows.length === 0) {
+        toast.info("No sales found in the selected date range");
+        setReportLoading(false);
+        return;
+      }
+
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Sales Report");
+
+      ws.columns = [
+        { header: "#",               key: "num",      width: 5  },
+        { header: "Product Image",   key: "img",      width: 14 },
+        { header: "Product Name",    key: "name",     width: 30 },
+        { header: "Texture",         key: "texture",  width: 14 },
+        { header: "Size Variant",    key: "size",     width: 16 },
+        { header: "Qty Sold",        key: "qty",      width: 12 },
+        { header: "Revenue (INR)",   key: "revenue",  width: 18 },
+        { header: "HSN Number",      key: "hsn",      width: 14 },
+      ];
+
+      // Style header row
+      const headerRow = ws.getRow(1);
+      headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E293B" } };
+      headerRow.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+      headerRow.height = 24;
+      headerRow.eachCell((cell) => { cell.alignment = { vertical: "middle", horizontal: "center" }; });
+
+      const ROW_HEIGHT = 55;
+      let totalQtySold = 0;
+
+      for (let idx = 0; idx < rows.length; idx++) {
+        const r = rows[idx];
+        const rowNum = idx + 2;
+        const exRow = ws.getRow(rowNum);
+        exRow.height = ROW_HEIGHT;
+
+        totalQtySold += r.quantitySold || 0;
+
+        exRow.getCell("num").value     = idx + 1;
+        exRow.getCell("name").value    = r.productName || "";
+        exRow.getCell("size").value    = r.selectedSize || "-";
+        exRow.getCell("qty").value     = r.quantitySold;
+        exRow.getCell("revenue").value = r.totalRevenue;
+        exRow.getCell("hsn").value     = r.hsnNumber || "-";
+
+        // For texture: if it looks like an image, embed it; otherwise show text
+        const texVal = r.selectedTexture;
+        const isTexImage = texVal && (texVal.startsWith("data:image") || texVal.startsWith("http"));
+        if (!isTexImage) {
+          exRow.getCell("texture").value = texVal || "-";
+        }
+
+        // Vertical align all cells
+        ["num", "img", "name", "texture", "size", "qty", "revenue", "hsn"].forEach((k) => {
+          exRow.getCell(k).alignment = { vertical: "middle", wrapText: true };
+        });
+        // Zebra stripe
+        if (idx % 2 === 1) {
+          ["num", "img", "name", "texture", "size", "qty", "revenue", "hsn"].forEach((k) => {
+            exRow.getCell(k).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+          });
+        }
+
+        // Embed product image (col B, index 1)
+        if (r.productImage) {
+          const imgData = await resolveImage(r.productImage);
+          if (imgData) {
+            const imgId = wb.addImage({ buffer: imgData.buf, extension: imgData.ext });
+            ws.addImage(imgId, {
+              tl: { col: 1.1, row: rowNum - 0.9 },
+              ext: { width: 65, height: 65 },
+            });
+          }
+        }
+
+        // Embed texture image (col D, index 3)
+        if (isTexImage) {
+          const texData = await resolveImage(texVal);
+          if (texData) {
+            const texImgId = wb.addImage({ buffer: texData.buf, extension: texData.ext });
+            ws.addImage(texImgId, {
+              tl: { col: 3.1, row: rowNum - 0.9 },
+              ext: { width: 65, height: 65 },
+            });
+          }
+        }
+
+        exRow.commit();
+      }
+
+      // Grand Total row
+      const totalRowNum = rows.length + 3;
+      const totalRow = ws.getRow(totalRowNum);
+      totalRow.getCell("size").value = "GRAND TOTAL";
+      totalRow.getCell("size").font = { bold: true, size: 12 };
+      totalRow.getCell("qty").value = totalQtySold;
+      totalRow.getCell("qty").font = { bold: true, size: 12 };
+      totalRow.getCell("revenue").value = grandTotal;
+      totalRow.getCell("revenue").font = { bold: true, size: 12 };
+      totalRow.height = 24;
+      ["size", "qty", "revenue"].forEach((k) => {
+        totalRow.getCell(k).alignment = { vertical: "middle" };
+        totalRow.getCell(k).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
+      });
+      totalRow.commit();
+
+      // Write to buffer and trigger download
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Sales_Report_${reportFrom}_to_${reportTo}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success("Report downloaded!");
+      setShowReportModal(false);
+    } catch (err: any) {
+      console.error("[Report] Error:", err);
+      toast.error(err?.message || "Failed to generate report");
+    } finally {
+      setReportLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -118,7 +295,16 @@ function Inventory() {
 
       {/* Top Selling Distribution */}
       <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-soft">
-        <div className="font-display font-semibold mb-4">Top Selling Products</div>
+        <div className="flex items-center justify-between mb-4">
+          <div className="font-display font-semibold">Top Selling Products</div>
+          <button
+            onClick={() => setShowReportModal(true)}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-background hover:bg-muted text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Sales Report</span>
+          </button>
+        </div>
         <div className="space-y-3">
           {topSelling.map((d, i) => (
             <div key={d.name}>
@@ -138,11 +324,14 @@ function Inventory() {
       {/* Combined Search and List Card */}
       <div className="rounded-2xl border border-border bg-card shadow-soft overflow-hidden flex flex-col">
         {/* Toolbar Header */}
-        <div className="p-3 sm:p-4 border-b border-border bg-muted/20">
-          <div className="relative w-full max-w-md">
+        <div className="p-3 sm:p-4 border-b border-border bg-muted/20 flex items-center gap-3">
+          <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or HSN..." className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring text-sm shadow-sm" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, HSN, description or price..." className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring text-sm shadow-sm" />
           </div>
+          <Link to="/inventory/new" className="ml-auto shrink-0 w-11 h-11 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 flex items-center justify-center" title="Add New Item">
+            <Plus className="w-5 h-5" />
+          </Link>
         </div>
         
         {/* Table */}
@@ -223,6 +412,69 @@ function Inventory() {
           {!filtered.length && <div className="p-10 text-center text-muted-foreground text-sm">No items found.</div>}
         </div>
       </div>
+
+      {/* Sales Report Modal */}
+      {showReportModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowReportModal(false); }}
+        >
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-elegant animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-accent grid place-items-center text-accent-foreground">
+                  <Download className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="font-display font-semibold text-base">Download Sales Report</h2>
+                  <p className="text-xs text-muted-foreground">Select a date range to export</p>
+                </div>
+              </div>
+              <button onClick={() => setShowReportModal(false)} className="w-8 h-8 rounded-lg border border-border hover:bg-muted grid place-items-center">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground"><Calendar className="w-3.5 h-3.5" /> From</label>
+                <input
+                  type="date"
+                  value={reportFrom}
+                  onChange={(e) => setReportFrom(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground"><Calendar className="w-3.5 h-3.5" /> To</label>
+                <input
+                  type="date"
+                  value={reportTo}
+                  onChange={(e) => setReportTo(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 px-6 pb-6">
+              <button
+                type="button"
+                onClick={() => setShowReportModal(false)}
+                className="px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDownloadReport}
+                disabled={reportLoading}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {reportLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating...</> : <><Download className="w-4 h-4" /> Download Excel</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
