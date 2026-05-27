@@ -8,13 +8,8 @@ import mongoose from 'mongoose';
 // ─────────────────────────────────────────────
 export async function getCustomers(filters?: {
   search?: string;
-  isActive?: string;
 }) {
   const query: Record<string, unknown> = {};
-
-  if (filters?.isActive !== undefined) {
-    query['isActive'] = filters.isActive === 'true';
-  }
   if (filters?.search) {
     const regex = new RegExp(filters.search, 'i');
     query['$or'] = [
@@ -22,7 +17,6 @@ export async function getCustomers(filters?: {
       { customerCode: regex },
       { email: regex },
       { phoneNumber: regex },
-      { companyName: regex },
     ];
   }
 
@@ -83,11 +77,7 @@ export async function updateCustomer(
   customer.customerName = data.customerName;
   customer.email = data.email;
   customer.phoneNumber = data.phoneNumber;
-  customer.companyName = data.companyName;
-  customer.gstNumber = data.gstNumber;
   customer.address = data.address;
-  customer.notes = data.notes;
-  customer.isActive = data.isActive;
 
   await customer.save();
   return customer;

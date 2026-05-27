@@ -9,6 +9,7 @@ import {
   updateQuotation,
   deleteQuotation,
 } from '../services/quotation.service';
+import { generateQuotationPdf, generateQuotationHtml } from '../services/pdf.service';
 import { createQuotationSchema } from '../validators/quotation.validator';
 
 // ─────────────────────────────────────────────
@@ -137,3 +138,27 @@ export const patchQuotationStatusHandler = asyncHandler(async (req: Request, res
     ApiResponse.success('Quotation status updated successfully', quotation.toJSON()).toJSON()
   );
 });
+
+// ─────────────────────────────────────────────
+// GET /api/quotations/:id/pdf
+// ─────────────────────────────────────────────
+export const getQuotationPdfHandler = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw ApiError.unauthorized();
+  const { id } = req.params;
+
+  // Optional query param ?html=true for debugging
+  if (req.query.html === 'true') {
+    const html = await generateQuotationHtml(id);
+    res.setHeader('Content-Type', 'text/html');
+    return res.status(200).send(html);
+  }
+
+  const pdfBuffer = await generateQuotationPdf(id);
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="Quotation-${id}.pdf"`);
+  res.setHeader('Content-Length', pdfBuffer.length);
+  
+  res.status(200).end(pdfBuffer);
+});
+

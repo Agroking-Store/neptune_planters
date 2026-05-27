@@ -23,10 +23,7 @@ interface CustomerRecord {
   customerName: string;
   email?: string;
   phoneNumber?: string;
-  companyName?: string;
-  gstNumber?: string;
   address?: string;
-  notes?: string;
 }
 
 // ── API type for product (from inventory) ─────────────────────────────
@@ -34,13 +31,9 @@ interface ProductRecord {
   _id: string;
   productId: string;
   productName: string;
-  sku: string;
   hsnNumber?: string;
   unitPrice: number;
-  taxPercentage: number;
-  defaultDiscount: number;
   size?: string;
-  uom?: string;
   description?: string;
   sizes?: string[];
   productImages?: { type: string; url: string }[];
@@ -48,9 +41,9 @@ interface ProductRecord {
 
 // ── Local quotation item shape ────────────────────────────────────────
 interface QuotationItemLocal {
+  id: string; // Unique frontend identifier
   productId: string;  // MongoDB _id
   name: string;
-  sku: string;
   hsnNumber: string;
   description: string;
   quantity: number;
@@ -140,9 +133,9 @@ function EditQuotation() {
             setFollowUp(new Date(data.followUpDate).toISOString().split("T")[0]);
           }
           setItems((data.items || []).map((it: any) => ({
+            id: crypto.randomUUID(),
             productId: it.productId,
             name: it.productSnapshot?.productName || "",
-            sku: it.productSnapshot?.sku || "",
             hsnNumber: it.productSnapshot?.hsnNumber || "",
             description: it.productSnapshot?.description || "",
             quantity: it.quantity || 1,
@@ -178,22 +171,21 @@ function EditQuotation() {
 
   const totals = useMemo(() => {
     const grand = items.reduce((s, it) => s + it.quantity * it.price, 0);
-    const tax = grand - (grand / 1.18);
-    const sub = grand - tax;
-    return { sub, tax, grand: Math.max(0, grand) };
+    const taxAmount = grand * 0.18;
+    const subtotal = grand - taxAmount;
+    return { grand: Math.max(0, grand), taxAmount, subtotal };
   }, [items]);
 
   const addItem = (productId: string) => {
     const found = products.find((i) => i._id === productId);
     if (!found) return;
-    if (items.some((it) => it.productId === productId)) { toast.message("Already added"); return; }
     const img = found.productImages?.find((i) => i.type === "product")?.url || found.productImages?.[0]?.url;
     const textures = found.productImages?.filter((i) => i.type === "texture").map((i) => i.url) || [];
     const sizes = found.sizes || [];
     setItems((p) => [...p, {
+      id: crypto.randomUUID(),
       productId: productId,
       name: found.productName,
-      sku: found.sku || "",
       hsnNumber: found.hsnNumber || "",
       description: found.description || "",
       quantity: 1,
@@ -207,8 +199,8 @@ function EditQuotation() {
     setPickerOpen(false); setPickQ("");
   };
 
-  const updateItem = (productId: string, patch: Partial<QuotationItemLocal>) => setItems((p) => p.map((it) => it.productId === productId ? { ...it, ...patch } : it));
-  const removeItem = (productId: string) => setItems((p) => p.filter((it) => it.productId !== productId));
+  const updateItem = (id: string, patch: Partial<QuotationItemLocal>) => setItems((p) => p.map((it) => it.id === id ? { ...it, ...patch } : it));
+  const removeItem = (id: string) => setItems((p) => p.filter((it) => it.id !== id));
 
   const addTerm = () => { if (!newTerm.trim()) return; setTerms((p) => [...p, newTerm.trim()]); setNewTerm(""); };
 
@@ -250,10 +242,7 @@ function EditQuotation() {
             number: updated.quotationId || "QUO-0000",
             customerName: updated.customerSnapshot?.customerName || "",
             customerEmail: updated.customerSnapshot?.email || "",
-            customerPhone: updated.customerSnapshot?.phoneNumber || "",
-            companyName: updated.customerSnapshot?.companyName || "",
-            gstNumber: updated.customerSnapshot?.gstNumber || "",
-            notes: "",
+            address: updated.address || "",
             terms: updated.termsAndConditions || [],
             items: (updated.items || []).map((it: any) => ({
               itemId: it.productId,
@@ -311,7 +300,7 @@ function EditQuotation() {
     setDialogPrefillName("");
   };
 
-  const pickerResults = products.filter((i) => !pickQ || i.productName.toLowerCase().includes(pickQ.toLowerCase()) || i.sku.toLowerCase().includes(pickQ.toLowerCase()));
+  const pickerResults = products.filter((i) => !pickQ || i.productName.toLowerCase().includes(pickQ.toLowerCase()));
 
   if (initialLoading) {
     return (
@@ -390,8 +379,8 @@ function EditQuotation() {
                           {img ? <img src={img} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{it.productName.slice(0, 2)}</span>}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">{it.productName}</div>
-                          <div className="text-xs text-muted-foreground truncate">{it.sku} • {formatINR(it.unitPrice)}</div>
+                          <div className="font-medium truncate text-sm text-foreground">{it.productName}</div>
+                          <div className="text-xs text-muted-foreground truncate">{formatINR(it.unitPrice)}</div>
                         </div>
                       </button>
                     );
@@ -416,7 +405,7 @@ function EditQuotation() {
                   const availableTextures = it.availableTextures?.length ? it.availableTextures : (p?.productImages?.filter((i) => i.type === "texture").map((i) => i.url) || []);
                   const currentTexture = it.selectedTexture || availableTextures[0] || productImage || "";
                   return (
-                  <div key={it.productId} className="rounded-xl border border-border p-3 sm:p-4 flex items-center justify-between gap-4 flex-wrap">
+                  <div key={it.id} className="rounded-xl border border-border p-3 sm:p-4 flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-3 w-full sm:w-1/3 min-w-[200px]">
                       <div className="w-10 h-10 rounded-lg bg-accent overflow-hidden grid place-items-center shrink-0 border border-border/50">
                         {productImage ? <img src={productImage} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{it.name.slice(0, 2)}</span>}
@@ -434,14 +423,14 @@ function EditQuotation() {
                     </div>
                     <div className="flex flex-1 items-center gap-4 justify-end">
                       <Field label="Qty" className="w-20">
-                        <input type="number" min={1} value={it.quantity} onChange={(e) => updateItem(it.productId, { quantity: Math.max(1, +e.target.value || 1) })} className={input} />
+                        <input type="number" min={1} value={it.quantity} onChange={(e) => updateItem(it.id, { quantity: Math.max(1, +e.target.value || 1) })} className={input} />
                       </Field>
                       <Field label="Price" className="w-24">
-                        <input type="number" min={0} value={it.price} onChange={(e) => updateItem(it.productId, { price: Math.max(0, +e.target.value || 0) })} className={input} />
+                        <input type="number" min={0} value={it.price} onChange={(e) => updateItem(it.id, { price: Math.max(0, +e.target.value || 0) })} className={input} />
                       </Field>
                       <Field label="Size Variant" className="w-32">
                         {availableSizes.length > 0 ? (
-                          <select value={it.selectedSize} onChange={(e) => updateItem(it.productId, { selectedSize: e.target.value })} className={input}>
+                          <select value={it.selectedSize} onChange={(e) => updateItem(it.id, { selectedSize: e.target.value })} className={input}>
                             {availableSizes.map((sz) => <option key={sz} value={sz}>{sz}</option>)}
                           </select>
                         ) : (
@@ -453,13 +442,13 @@ function EditQuotation() {
                           <TextureDropdown
                             textures={availableTextures}
                             value={currentTexture}
-                            onChange={(val) => updateItem(it.productId, { selectedTexture: val })}
+                            onChange={(val) => updateItem(it.id, { selectedTexture: val })}
                           />
                         ) : (
                           <span className="text-sm text-muted-foreground py-2 block">N/A</span>
                         )}
                       </Field>
-                      <button onClick={() => removeItem(it.productId)} className="w-9 h-9 rounded-lg border border-border hover:bg-muted grid place-items-center self-end mb-0.5 shrink-0" aria-label="Remove"><Trash2 className="w-4 h-4 text-destructive" /></button>
+                      <button onClick={() => removeItem(it.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0" aria-label="Remove"><Trash2 className="w-4 h-4 text-destructive" /></button>
                     </div>
                   </div>
                   );
@@ -490,10 +479,11 @@ function EditQuotation() {
 
           <Section title="Summary">
             <dl className="text-sm space-y-2">
-              <Row label="Subtotal" value={formatINR(totals.sub)} />
-              <Row label="Tax (18%)" value={formatINR(totals.tax)} />
-              <div className="border-t border-border my-2" />
-              <Row label={<span className="font-semibold">Grand Total</span>} value={<span className="font-display text-xl font-semibold">{formatINR(totals.grand)}</span>} />
+              <Row label={<span className="text-muted-foreground">Subtotal</span>} value={<span className="font-medium">{formatINR(totals.subtotal)}</span>} />
+              <Row label={<span className="text-muted-foreground">Tax (18%)</span>} value={<span className="font-medium">{formatINR(totals.taxAmount)}</span>} />
+              <div className="pt-2 mt-2 border-t border-border">
+                <Row label={<span className="font-semibold">Grand Total</span>} value={<span className="font-display text-xl font-semibold">{formatINR(totals.grand)}</span>} />
+              </div>
             </dl>
           </Section>
         </div>
@@ -523,10 +513,7 @@ function AddCustomerDialog({
     customerName: prefillName,
     email: "",
     phoneNumber: "",
-    companyName: "",
-    gstNumber: "",
     address: "",
-    notes: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -595,20 +582,10 @@ function AddCustomerDialog({
             <Field label="Phone Number">
               <input value={form.phoneNumber} onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })} className={input} placeholder="+91 98XXXXXXXX" />
             </Field>
-            <Field label="Company Name">
-              <input value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} className={input} placeholder="Acme Industries Pvt Ltd" />
-            </Field>
-            <Field label="GST Number">
-              <input value={form.gstNumber} onChange={(e) => setForm({ ...form, gstNumber: e.target.value })} className={input} placeholder="27AAAPL1234C1Z5" />
-            </Field>
             <Field label="Address">
               <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className={input} placeholder="123 Main Street, Mumbai" />
             </Field>
           </div>
-          <Field label="Notes">
-            <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className={`${input} resize-none`} placeholder="Any additional notes about this customer..." />
-          </Field>
-
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-sm font-medium">
               Cancel

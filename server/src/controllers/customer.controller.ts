@@ -15,11 +15,10 @@ import { createCustomerSchema } from '../validators/customer.validator';
 // GET /api/customers
 // ─────────────────────────────────────────────
 export const listCustomers = asyncHandler(async (req: Request, res: Response) => {
-  const { search, isActive } = req.query as {
+  const { search } = req.query as {
     search?: string;
-    isActive?: string;
   };
-  const customers = await getCustomers({ search, isActive });
+  const customers = await getCustomers({ search });
   res.status(200).json(
     ApiResponse.success('Customers retrieved', customers, { count: customers.length }).toJSON()
   );

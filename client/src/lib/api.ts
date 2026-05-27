@@ -34,6 +34,9 @@ export class ApiClientError extends Error {
 // ─────────────────────────────────────────────
 const BASE_URL = "/api";
 
+// Shared promise to prevent concurrent refresh requests
+let refreshPromise: Promise<string | null> | null = null;
+
 async function request<T>(
   method: string,
   path: string,
@@ -64,29 +67,40 @@ async function request<T>(
   // ── 401: attempt silent token refresh once ──
   if (res.status === 401 && !isRetry) {
     console.log("[api] 401 received — attempting token refresh");
-    try {
-      const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
+    
+    if (!refreshPromise) {
+      refreshPromise = fetch(`${BASE_URL}/auth/refresh`, {
         method: "POST",
         credentials: "include",
-      });
-      if (refreshRes.ok) {
-        const refreshData = (await refreshRes.json()) as {
-          data?: { accessToken?: string };
-        };
-        const newToken = refreshData?.data?.accessToken;
-        if (newToken) {
-          tokenStore.set(newToken);
-          console.log("[api] Token refreshed — retrying original request");
-          return request<T>(method, path, body, true); // Retry once
+      })
+      .then(async (refreshRes) => {
+        if (refreshRes.ok) {
+          const refreshData = await refreshRes.json();
+          const newToken = refreshData?.data?.accessToken;
+          if (newToken) {
+            tokenStore.set(newToken);
+            return newToken;
+          }
         }
-      }
-    } catch (refreshErr) {
-      console.error("[api] Token refresh failed:", refreshErr);
+        return null;
+      })
+      .catch((err) => {
+        console.error("[api] Token refresh failed:", err);
+        return null;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
     }
 
-    // Refresh failed — clear state
-    tokenStore.clear();
-    throw new ApiClientError(401, "Session expired. Please log in again.");
+    const newToken = await refreshPromise;
+    if (newToken) {
+      console.log("[api] Token refreshed — retrying original request");
+      return request<T>(method, path, body, true); // Retry once
+    } else {
+      tokenStore.clear();
+      throw new ApiClientError(401, "Session expired. Please log in again.");
+    }
   }
 
   // ── Parse JSON response ──────────────────────

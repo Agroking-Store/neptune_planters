@@ -12,11 +12,9 @@ const quotationItemSchema = z.object({
   productSnapshot: z
     .object({
       productName: z.string().default(''),
-      sku: z.string().default(''),
       hsnNumber: z.string().default(''),
       description: z.string().default(''),
       size: z.string().default(''),
-      uom: z.string().default(''),
     })
     .optional(),
 

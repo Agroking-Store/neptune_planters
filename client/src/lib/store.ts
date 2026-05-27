@@ -33,9 +33,6 @@ export type Quotation = {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
-  companyName: string;
-  gstNumber: string;
-  notes: string;
   terms: string[];
   items: QuotationItem[];
   status: "Draft" | "Sent" | "Accepted" | "Rejected";
@@ -59,8 +56,8 @@ const seedInventory: InventoryItem[] = [
 ];
 
 const seedQuotations: Quotation[] = [
-  { id: "q_1", number: "QUO-0766", customerName: "Manish Kumar", customerEmail: "manish@example.com", customerPhone: "9876543210", companyName: "Kumar Industries", gstNumber: "27AAAPL1234C1Z5", notes: "Urgent delivery requested.", terms: ["100% secure payment", "Delivery in 7 days"], items: [{ itemId: "inv_2", name: "Office Chair Executive", quantity: 1, price: 8499, tax: 18 }, { itemId: "inv_3", name: "Wooden Office Desk", quantity: 1, price: 15750, tax: 18 }], status: "Draft", followUpDate: undefined, createdAt: new Date().toISOString() },
-  { id: "q_2", number: "QUO-0765", customerName: "Manish Kumar", customerEmail: "manish@example.com", customerPhone: "9876543210", companyName: "Kumar Industries", gstNumber: "27AAAPL1234C1Z5", notes: "", terms: ["No warranty"], items: [{ itemId: "inv_1", name: "Aluminum Ringlock Scaffold", quantity: 4, price: 14990, tax: 18 }], status: "Sent", followUpDate: "2026-05-28", createdAt: new Date().toISOString() },
+  { id: "q_1", number: "QUO-0766", customerName: "Manish Kumar", customerEmail: "manish@example.com", customerPhone: "9876543210", terms: ["100% secure payment", "Delivery in 7 days"], items: [{ itemId: "inv_2", name: "Office Chair Executive", quantity: 1, price: 8499 }, { itemId: "inv_3", name: "Wooden Office Desk", quantity: 1, price: 15750 }], status: "Draft", followUpDate: undefined, createdAt: new Date().toISOString() },
+  { id: "q_2", number: "QUO-0765", customerName: "Manish Kumar", customerEmail: "manish@example.com", customerPhone: "9876543210", terms: ["No warranty"], items: [{ itemId: "inv_1", name: "Aluminum Ringlock Scaffold", quantity: 4, price: 14990 }], status: "Sent", followUpDate: "2026-05-28", createdAt: new Date().toISOString() },
 ];
 
 const defaultDB: DB = { user: null, inventory: seedInventory, quotations: seedQuotations };

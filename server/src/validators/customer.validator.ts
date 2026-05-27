@@ -14,15 +14,7 @@ export const createCustomerSchema = z.object({
 
   phoneNumber: z.string().trim().optional().default(''),
 
-  companyName: z.string().trim().optional().default(''),
-
-  gstNumber: z.string().trim().optional().default(''),
-
   address: z.string().trim().optional().default(''),
-
-  notes: z.string().trim().optional().default(''),
-
-  isActive: z.boolean().default(true),
 });
 
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;

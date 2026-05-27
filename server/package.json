@@ -23,6 +23,7 @@
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.2",
+    "puppeteer": "^25.1.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {

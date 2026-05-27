@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Quotation - Neptune Innovations</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            "background": "#faf5ee",
+            "primary": "#c2652a",
+            "on-primary": "#ffffff",
+            "primary-container": "#e08850",
+            "surface": "#faf5ee",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#f6f0e8",
+            "surface-container": "#f2ece4",
+            "surface-container-high": "#ece6dc",
+            "surface-container-highest": "#e6e0d6",
+            "surface-variant": "#ece6dc",
+            "surface-dim": "#dcd6cc",
+            "on-background": "#3a302a",
+            "on-surface": "#3a302a",
+            "on-surface-variant": "#605850",
+            "outline": "#9a9088",
+            "outline-variant": "#d8d0c8",
+            "secondary": "#78706a",
+            "tertiary": "#8c3c3c",
+            "inverse-surface": "#3a302a",
+            "inverse-on-surface": "#faf5ee",
+          },
+          fontFamily: {
+            "headline": ['"EB Garamond"', "serif"],
+            "display": ['"EB Garamond"', "serif"],
+            "body": ['"Manrope"', "sans-serif"],
+            "label": ['"Manrope"', "sans-serif"],
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    /* ── Base ────────────────────────────── */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Manrope', sans-serif;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+    h1, h2, h3, h4, h5, h6, .font-headline, .font-display {
+      font-family: 'EB Garamond', serif;
+    }
+
+    /* ── Print / PDF ────────────────────── */
+    @media print {
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      body { width: 430px; margin: 0 auto; }
+      @page { size: 430px auto; margin: 0; }
+      .page-break { page-break-before: always; }
+      .no-break { page-break-inside: avoid; }
+    }
+
+    /* ── Luxury Divider ─────────────────── */
+    .divider-thin {
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, #d8d0c899 20%, #d8d0c8 50%, #d8d0c899 80%, transparent 100%);
+    }
+
+    /* ── Price Tag ───────────────────────── */
+    .price-highlight {
+      color: #c2652a;
+      font-family: 'EB Garamond', serif;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background" style="max-width: 430px; margin: 0 auto;">
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- HEADER                                  -->
+  <!-- ═══════════════════════════════════════ -->
+  <header class="bg-surface-container-low">
+    <!-- Brand -->
+    <div class="pt-10 pb-6 flex flex-col items-center text-center">
+      <h1 class="font-display text-5xl font-bold text-primary tracking-tight italic">Neptune</h1>
+      <p class="mt-2 text-[10px] tracking-[0.25em] text-on-surface-variant uppercase font-semibold">where green meets serene</p>
+    </div>
+
+    <!-- Thin divider -->
+    <div class="divider-thin mx-6"></div>
+
+    <!-- Company & Client Details -->
+    <div class="px-6 py-6 space-y-5">
+      <!-- Company -->
+      <div class="space-y-0.5">
+        <p class="text-[13px] font-bold text-on-background tracking-wide">NEPTUNE INNOVATIONS</p>
+        <p class="text-[12px] text-on-surface-variant leading-relaxed">Sr No 34/1, Holkarwadi, Tukaram Marg,</p>
+        <p class="text-[12px] text-on-surface-variant leading-relaxed">Handewadi, Tal.Haveli, Dist. Pune 412308</p>
+      </div>
+
+      <!-- Client -->
+      <div class="space-y-0.5 pt-4 border-t border-outline-variant/40">
+        <p class="text-[13px] font-bold text-on-background">Client Details:</p>
+        <p class="text-[12px] text-on-surface-variant leading-relaxed">Kodre Family</p>
+        <p class="text-[12px] text-on-surface-variant leading-relaxed">Address: The Ark, NIBM</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- QUOTATION SUMMARY                       -->
+  <!-- ═══════════════════════════════════════ -->
+  <section class="bg-surface-container-low border-t border-outline-variant/60">
+    <div class="px-6 py-7 space-y-4">
+      <!-- Section heading -->
+      <div class="border-b border-outline-variant/40 pb-2">
+        <h3 class="font-headline text-xl font-bold text-on-background">Quotation Summary</h3>
+      </div>
+
+      <!-- Line items -->
+      <div class="space-y-2.5 pt-1">
+        <div class="flex justify-between items-center text-[13px]">
+          <span class="text-on-surface-variant">Subtotal</span>
+          <span class="text-on-surface-variant font-medium">₹23,240</span>
+        </div>
+        <div class="flex justify-between items-center text-[13px]">
+          <span class="text-on-surface-variant">Tax (18%)</span>
+          <span class="text-tertiary font-medium">-₹6,972</span>
+        </div>
+      </div>
+
+      <!-- Grand Total -->
+      <div class="flex justify-between items-center pt-4 border-t border-outline-variant/40">
+        <span class="font-bold text-on-background text-[16px]">Total Amount</span>
+        <span class="price-highlight text-3xl font-bold">₹16,268</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- PRODUCT CARDS                            -->
+  <!-- ═══════════════════════════════════════ -->
+  <main class="px-4 py-8 space-y-7">
+
+    <!-- ── Product Card 1: AKSA ────────────── -->
+    <article class="no-break bg-surface-container-lowest rounded-xl shadow-[0_2px_16px_rgba(58,48,42,0.04)] border border-outline-variant/40 overflow-hidden">
+      <div class="p-5 flex flex-col gap-5">
+
+        <!-- Title row -->
+        <div class="space-y-1">
+          <span class="text-[10px] font-bold text-outline uppercase tracking-[0.12em] block">Item 1</span>
+          <div class="flex items-baseline justify-between">
+            <h2 class="font-headline text-[26px] font-bold text-on-background leading-tight">AKSA</h2>
+            <p class="price-highlight font-bold text-xl">₹18,200</p>
+          </div>
+          <p class="text-[12.5px] text-on-surface-variant">26x14x16H</p>
+        </div>
+
+        <!-- Image grid -->
+        <div class="grid grid-cols-2 gap-3.5">
+          <!-- Product image -->
+          <div class="aspect-square bg-surface-container rounded-lg overflow-hidden flex items-center justify-center p-2">
+            <img
+              alt="AKSA Planter"
+              class="w-full h-full object-contain mix-blend-multiply"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBG9Lu93mn13vFtTc_Nqb1FcZ34iodEm9OW0f7tgGMz4sXi6C_NoYXTHHzNnPdX58QEVs2XGQIu0b_bG6AF25iT3EtL684CuoxQzKDVWD9Thfc4tz9wTCw8zq6J-UV5IPATCIGMMfW7GYfBQ9L67VWSDrVazgUE7bvpwo8MfDTqOMdcccUxbGIy8oDIyC0UUxYE_GAMYzO2PbNzqw8zK5MJ67c7K0uAXf8Vt-98C7U0FKgazAliEd7q7CKtfuTVbKPLkwBcCMsqjbY"
+            >
+          </div>
+          <!-- Reference image -->
+          <div class="aspect-square bg-surface-container rounded-lg overflow-hidden">
+            <img
+              alt="AKSA Reference"
+              class="w-full h-full object-cover"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCR33lduGys0qqEAZnPHns1cdfv0vZnhtEuwqEhqVdRKnz8UeLhPsY8foPj6701h2w1a51o3QYSh93P8n5q45GqKnGk5wtjUglULll_DrKUzpHVOGA1Dw_qRQPg0hY4BvzPvU-oMeemyiDO6bGZRUbnw7tm313lWHQ76dGgxubhMCBPOwjNmbCdmDr9XE5ahgqNXDJUcF6txVgnKkZ2uywjY5C_-0AdD5v0lA1njbHDeFYHyKxQ3_DKVsnccZlUPSmwqBTqFZUu_Mo"
+            >
+          </div>
+        </div>
+
+        <!-- Texture & Qty row -->
+        <div class="flex items-center justify-between pt-4 border-t border-outline-variant/40">
+          <div class="flex items-center gap-2.5">
+            <span class="text-[12.5px] text-on-surface-variant">Texture:</span>
+            <img
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7sv3SMch-RiuNDWI7rvRizPk2Gp_4hn2crrvrZcAvEt-nMXUz-xLIgNWi6yVD1Sd7cH3Xprf269Z6sFz8wk9aSiY5tVoUFut5LqtARQjtgiU3x4854ovbtzy_7etOTtvBkgg1hwTGm4lT-gD5-yfG-KUjJRzfXjsvbbyoVGdKonf6FHGl3TZBuMSdEfXMCWHP7wq5Tu77t_DGUdN4_QbZHhkgPRcjrV6fcOnR8s0n228IoWg7ilETUyKKVNnXl2U1XWGz1MZ1gw"
+              alt="Sandstone texture"
+              class="w-8 h-8 rounded-full shadow-sm object-cover border border-outline-variant/30"
+            >
+          </div>
+          <span class="text-[13px] font-semibold text-on-background">Qty: 4</span>
+        </div>
+
+      </div>
+    </article>
+
+    <!-- ── Product Card 2: RUHARA ──────────── -->
+    <article class="no-break bg-surface-container-lowest rounded-xl shadow-[0_2px_16px_rgba(58,48,42,0.04)] border border-outline-variant/40 overflow-hidden">
+      <div class="p-5 flex flex-col gap-5">
+
+        <!-- Title row -->
+        <div class="space-y-1">
+          <span class="text-[10px] font-bold text-outline uppercase tracking-[0.12em] block">Item 2</span>
+          <div class="flex items-baseline justify-between">
+            <h2 class="font-headline text-[26px] font-bold text-on-background leading-tight">RUHARA</h2>
+            <p class="price-highlight font-bold text-xl">₹1,680</p>
+          </div>
+          <p class="text-[12.5px] text-on-surface-variant">L-12.25 inch, H-12.25 inch</p>
+        </div>
+
+        <!-- Image grid -->
+        <div class="grid grid-cols-2 gap-3.5">
+          <!-- Product image -->
+          <div class="aspect-square bg-surface-container rounded-lg overflow-hidden flex items-center justify-center p-2">
+            <img
+              alt="RUHARA Planter"
+              class="w-full h-full object-contain mix-blend-multiply"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdOQGtwFhPFNcySPOc2TOt837vFEAzfzQ-pnsH6U34hNaNMAg9g-rekzY8kf6kYEh6r2wexvXelCs4zQaB2CsOGhNC5yQHehv4FtDkJtobsnPq9wUcOu3D-BL025XAOqzrkZaofzzd6Mbzk2Tf20dqY-GFjARvPfcT_mmHqzTWiZM1rzAIwZ7GHEIV4SSdfMGNW0B-jdzlXvBLP1-3-Cc0K9xVH6uZsTeONbyOzQGCc8OGEHtjs9Kb6C4diwIdcyPhs2WhFiT5DLc"
+            >
+          </div>
+          <!-- Reference image -->
+          <div class="aspect-square bg-surface-container rounded-lg overflow-hidden">
+            <img
+              alt="RUHARA Reference"
+              class="w-full h-full object-cover"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5-6AnrqxuSXApuAExk5kbfgxVPQ8auoNP8umG0pGCh1KxymKCkHKcgZFzVCbd9tgMDc643y4FFjEnsS1E4AGDPAmwwQkCMklTc4F3NqOHWZhYuRe2bGDqpzJkga_LB0jdrGQwEEcvuBQEO3Auo_YTBKjfS4rN6p5bF_7VAffvYYU7MBwANqBNFktNLd8fM37rgtjonKc9a8rqzjTiBcx_aXPHqOVF5q5cmjpOKYj0yhTrtX5JGTQJpNyIoRnZt0CxzWZd-jABDs8"
+            >
+          </div>
+        </div>
+
+        <!-- Texture & Qty row -->
+        <div class="flex items-center justify-between pt-4 border-t border-outline-variant/40">
+          <div class="flex items-center gap-2.5">
+            <span class="text-[12.5px] text-on-surface-variant">Texture:</span>
+            <img
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrR4__PjiLgzkT60EZkYRE0gJQ_Jzv9lQjr-YWKTMQcsqRyIIvQcAhuBz8msCBQiL-tNt_JvKSQnCyo0xt7BdpsR1KtIw39oeXGV3v-2yLJshNRcy2vbyMlcTtC97YjhBhPYTFS2FYOUFL_MqIpzbDE3ZP6IIpbBXTmmvuivGcq5rPpyGQE4fjIvyIgDHJ-y2ow-DHGbc4o_A7qkB1tMC6uLMj1lL7t8kq42X9mhGR3NOG5ml4VRkb0KtqttZRMXvNBigEViPsQA0"
+              alt="Sandstone texture"
+              class="w-8 h-8 rounded-full shadow-sm object-cover border border-outline-variant/30"
+            >
+          </div>
+          <span class="text-[13px] font-semibold text-on-background">Qty: 2</span>
+        </div>
+
+      </div>
+    </article>
+
+    <!-- ── Product Card 3: NAVIRA SMALL ────── -->
+    <article class="no-break bg-surface-container-lowest rounded-xl shadow-[0_2px_16px_rgba(58,48,42,0.04)] border border-outline-variant/40 overflow-hidden">
+      <div class="p-5 flex flex-col gap-5">
+
+        <!-- Title row -->
+        <div class="space-y-1">
+          <span class="text-[10px] font-bold text-outline uppercase tracking-[0.12em] block">Item 3</span>
+          <div class="flex items-baseline justify-between">
+            <h2 class="font-headline text-[26px] font-bold text-on-background leading-tight">NAVIRA</h2>
+            <p class="price-highlight font-bold text-xl">₹3,360</p>
+          </div>
+          <p class="text-[12.5px] text-on-surface-variant">L-18 inch, H-14 inch</p>
+        </div>
+
+        <!-- Image grid -->
+        <div class="grid grid-cols-2 gap-3.5">
+          <!-- Product image -->
+          <div class="aspect-square bg-surface-container rounded-lg overflow-hidden flex items-center justify-center p-2">
+            <img
+              alt="NAVIRA Planter"
+              class="w-full h-full object-contain mix-blend-multiply"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBG9Lu93mn13vFtTc_Nqb1FcZ34iodEm9OW0f7tgGMz4sXi6C_NoYXTHHzNnPdX58QEVs2XGQIu0b_bG6AF25iT3EtL684CuoxQzKDVWD9Thfc4tz9wTCw8zq6J-UV5IPATCIGMMfW7GYfBQ9L67VWSDrVazgUE7bvpwo8MfDTqOMdcccUxbGIy8oDIyC0UUxYE_GAMYzO2PbNzqw8zK5MJ67c7K0uAXf8Vt-98C7U0FKgazAliEd7q7CKtfuTVbKPLkwBcCMsqjbY"
+            >
+          </div>
+          <!-- Reference image -->
+          <div class="aspect-square bg-surface-container rounded-lg overflow-hidden">
+            <img
+              alt="NAVIRA Reference"
+              class="w-full h-full object-cover"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCR33lduGys0qqEAZnPHns1cdfv0vZnhtEuwqEhqVdRKnz8UeLhPsY8foPj6701h2w1a51o3QYSh93P8n5q45GqKnGk5wtjUglULll_DrKUzpHVOGA1Dw_qRQPg0hY4BvzPvU-oMeemyiDO6bGZRUbnw7tm313lWHQ76dGgxubhMCBPOwjNmbCdmDr9XE5ahgqNXDJUcF6txVgnKkZ2uywjY5C_-0AdD5v0lA1njbHDeFYHyKxQ3_DKVsnccZlUPSmwqBTqFZUu_Mo"
+            >
+          </div>
+        </div>
+
+        <!-- Texture & Qty row -->
+        <div class="flex items-center justify-between pt-4 border-t border-outline-variant/40">
+          <div class="flex items-center gap-2.5">
+            <span class="text-[12.5px] text-on-surface-variant">Texture:</span>
+            <img
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7sv3SMch-RiuNDWI7rvRizPk2Gp_4hn2crrvrZcAvEt-nMXUz-xLIgNWi6yVD1Sd7cH3Xprf269Z6sFz8wk9aSiY5tVoUFut5LqtARQjtgiU3x4854ovbtzy_7etOTtvBkgg1hwTGm4lT-gD5-yfG-KUjJRzfXjsvbbyoVGdKonf6FHGl3TZBuMSdEfXMCWHP7wq5Tu77t_DGUdN4_QbZHhkgPRcjrV6fcOnR8s0n228IoWg7ilETUyKKVNnXl2U1XWGz1MZ1gw"
+              alt="Sandstone texture"
+              class="w-8 h-8 rounded-full shadow-sm object-cover border border-outline-variant/30"
+            >
+          </div>
+          <span class="text-[13px] font-semibold text-on-background">Qty: 3</span>
+        </div>
+
+      </div>
+    </article>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- FOOTER                                   -->
+  <!-- ═══════════════════════════════════════ -->
+  <footer class="bg-surface-container-low border-t border-outline-variant/60 pb-10 px-6">
+    <div class="pt-8 text-center space-y-1">
+      <p class="text-[11px] text-outline leading-relaxed">Quotation generated for Kodre Family.</p>
+      <p class="text-[11px] text-outline leading-relaxed">Prices are subject to change. Terms and conditions apply.</p>
+    </div>
+  </footer>
+
+</body>
+</html>

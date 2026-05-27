@@ -22,7 +22,7 @@ export async function getQuotations(filters?: {
     query['$or'] = [
       { quotationId: regex },
       { 'customerSnapshot.customerName': regex },
-      { 'customerSnapshot.companyName': regex },
+      { 'customerSnapshot.email': regex },
     ];
   }
 
@@ -60,10 +60,8 @@ export async function createQuotation(
 
   const customerSnapshot = {
     customerName: customer.customerName,
-    companyName: customer.companyName || '',
     email: customer.email || '',
     phoneNumber: customer.phoneNumber || '',
-    gstNumber: customer.gstNumber || '',
   };
 
   // 2. Build items with product snapshots
@@ -79,25 +77,18 @@ export async function createQuotation(
 
     const productSnapshot = {
       productName: product.productName,
-      sku: product.sku || '',
       hsnNumber: product.hsnNumber || '',
       size: product.size || '',
-      uom: product.uom || '',
     };
 
-    // Calculate item total: (quantity * unitPrice) - discount + tax amount
-    const lineSubtotal = item.quantity * item.unitPrice;
-    const lineDiscount = item.discount || 0;
-    const lineTaxAmount = ((lineSubtotal - lineDiscount) * (item.tax || 0)) / 100;
-    const lineTotal = lineSubtotal - lineDiscount + lineTaxAmount;
+    // Calculate item total: quantity * unitPrice
+    const lineTotal = item.quantity * item.unitPrice;
 
     itemDocs.push({
       productId: new mongoose.Types.ObjectId(item.productId),
       productSnapshot,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
-      discount: lineDiscount,
-      tax: item.tax || 0,
       selectedSize: item.selectedSize || '',
       selectedTexture: item.selectedTexture || '',
       total: Math.round(lineTotal * 100) / 100,
@@ -112,13 +103,6 @@ export async function createQuotation(
       followUpDate = undefined;
     }
   }
-
-  // 4. Build display preference mapping
-  let displayPreference = data.displayPreference || 'Both';
-  // Map legacy "Print Person Name" / "Print Company Name" values
-  if (displayPreference === ('Print Person Name' as string)) displayPreference = 'Customer Name';
-  if (displayPreference === ('Print Company Name' as string)) displayPreference = 'Company Name';
-
   // 5. Create the document
   const quotation = new Quotation({
     customerId: new mongoose.Types.ObjectId(data.customerId),
@@ -126,12 +110,7 @@ export async function createQuotation(
     createdDate: new Date(),
     followUpDate: followUpDate || null,
     status: data.status || 'Draft',
-    displayPreference,
     termsAndConditions: data.termsAndConditions || [],
-    notes: data.notes || '',
-    subtotal: data.subtotal,
-    tax: data.tax,
-    discount: data.discount,
     totalAmount: data.totalAmount,
     items: itemDocs,
     createdBy: new mongoose.Types.ObjectId(userId),
@@ -167,10 +146,8 @@ export async function updateQuotation(
   quotation.customerId = new mongoose.Types.ObjectId(data.customerId);
   quotation.customerSnapshot = {
     customerName: customer.customerName,
-    companyName: customer.companyName || '',
     email: customer.email || '',
     phoneNumber: customer.phoneNumber || '',
-    gstNumber: customer.gstNumber || '',
   };
 
   // Re-build items with fresh product snapshots
@@ -184,24 +161,17 @@ export async function updateQuotation(
       throw ApiError.notFound(`Product not found: ${item.productId}`);
     }
 
-    const lineSubtotal = item.quantity * item.unitPrice;
-    const lineDiscount = item.discount || 0;
-    const lineTaxAmount = ((lineSubtotal - lineDiscount) * (item.tax || 0)) / 100;
-    const lineTotal = lineSubtotal - lineDiscount + lineTaxAmount;
+    const lineTotal = item.quantity * item.unitPrice;
 
     itemDocs.push({
       productId: new mongoose.Types.ObjectId(item.productId),
       productSnapshot: {
         productName: product.productName,
-        sku: product.sku || '',
         hsnNumber: product.hsnNumber || '',
         size: product.size || '',
-        uom: product.uom || '',
       },
       quantity: item.quantity,
       unitPrice: item.unitPrice,
-      discount: lineDiscount,
-      tax: item.tax || 0,
       selectedSize: item.selectedSize || '',
       selectedTexture: item.selectedTexture || '',
       total: Math.round(lineTotal * 100) / 100,
@@ -215,18 +185,9 @@ export async function updateQuotation(
     if (!isNaN(d.getTime())) followUpDate = d;
   }
 
-  let displayPreference = data.displayPreference || 'Both';
-  if (displayPreference === ('Print Person Name' as string)) displayPreference = 'Customer Name';
-  if (displayPreference === ('Print Company Name' as string)) displayPreference = 'Company Name';
-
   quotation.followUpDate = followUpDate as Date | undefined;
   quotation.status = data.status || 'Draft';
-  quotation.displayPreference = displayPreference;
   quotation.termsAndConditions = data.termsAndConditions || [];
-  quotation.notes = data.notes || '';
-  quotation.subtotal = data.subtotal;
-  quotation.tax = data.tax;
-  quotation.discount = data.discount;
   quotation.totalAmount = data.totalAmount;
   quotation.items = itemDocs as typeof quotation.items;
 

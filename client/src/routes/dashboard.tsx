@@ -93,7 +93,7 @@ function DashboardInner() {
   const handleCopy = (item: any) => {
     const number = item.quotationId || item.number;
     const name = item.customerSnapshot?.customerName || item.customerName;
-    const total = item.totalAmount !== undefined ? item.totalAmount : item.items.reduce((s: number, it: any) => s + it.quantity * (it.price || it.unitPrice) * (1 + it.tax / 100), 0);
+    const total = item.totalAmount !== undefined ? item.totalAmount : item.items.reduce((s: number, it: any) => s + it.quantity * (it.price || it.unitPrice), 0);
     const textToCopy = `Quotation: ${number}\nCustomer: ${name}\nAmount: ${formatINR(total)}`;
 
     navigator.clipboard.writeText(textToCopy);
@@ -115,11 +115,8 @@ function DashboardInner() {
     id: q._id || q.id,
     number: q.quotationId || q.number || "QUO-0000",
     customerName: q.customerSnapshot?.customerName || q.customerName,
-    customerEmail: q.customerSnapshot?.email || "",
-    customerPhone: q.customerSnapshot?.phoneNumber || q.customerPhone || "",
-    companyName: q.customerSnapshot?.companyName || "",
-    gstNumber: q.customerSnapshot?.gstNumber || "",
-    notes: q.notes || "",
+    email: q.customerSnapshot?.email || "",
+    phoneNumber: q.customerSnapshot?.phoneNumber || "",
     terms: q.termsAndConditions || [],
     items: (q.items || []).map((it: any) => ({
       itemId: it.productId,
@@ -128,7 +125,6 @@ function DashboardInner() {
       price: it.unitPrice || it.price,
       selectedSize: it.selectedSize,
       selectedTexture: it.selectedTexture,
-      tax: it.tax || 0,
     })),
   });
 
@@ -136,8 +132,8 @@ function DashboardInner() {
     const mapped = mapToPdf(q);
     await downloadQuotationPDF(mapped as any);
 
-    if (mapped.customerPhone) {
-      const cleanPhone = mapped.customerPhone.replace(/\D/g, "");
+    if (mapped.phoneNumber) {
+      const cleanPhone = mapped.phoneNumber.replace(/\D/g, "");
       const msg = encodeURIComponent(`Hello! Here is your quotation: ${mapped.number}. The PDF has been downloaded to your device.`);
       window.open(`https://wa.me/${cleanPhone}?text=${msg}`, "_blank");
     } else {
@@ -156,7 +152,7 @@ function DashboardInner() {
 
   const stats = useMemo(() => {
     const total = quotations.length;
-    const revenue = quotations.reduce((s, x) => s + (x.totalAmount !== undefined ? x.totalAmount : x.items.reduce((a: number, it: any) => a + it.quantity * (it.price || it.unitPrice) * (1 + it.tax / 100), 0)), 0);
+    const revenue = quotations.reduce((s, x) => s + (x.totalAmount !== undefined ? x.totalAmount : x.items.reduce((a: number, it: any) => a + it.quantity * (it.price || it.unitPrice), 0)), 0);
     const accepted = quotations.filter((x) => x.status === "Accepted").length;
     const counts = { Draft: 0, Sent: 0, Accepted: 0, Rejected: 0 } as Record<string, number>;
     quotations.forEach((x) => { counts[x.status] = (counts[x.status] || 0) + 1; });
@@ -251,7 +247,7 @@ function DashboardInner() {
             </thead>
             <tbody>
               {filtered.map((q, i) => {
-                const total = q.totalAmount !== undefined ? q.totalAmount : q.items.reduce((s: number, it: any) => s + it.quantity * (it.price || it.unitPrice) * (1 + it.tax / 100), 0);
+                const total = q.totalAmount !== undefined ? q.totalAmount : q.items.reduce((s: number, it: any) => s + it.quantity * (it.price || it.unitPrice), 0);
                 const qId = q._id || q.id;
                 const qNumber = q.quotationId || q.number;
                 const qCustomerName = q.customerSnapshot?.customerName || q.customerName;
@@ -308,7 +304,7 @@ function DashboardInner() {
         {/* Mobile cards */}
         <div className="md:hidden divide-y divide-border">
           {filtered.map((q) => {
-            const total = q.totalAmount !== undefined ? q.totalAmount : q.items.reduce((s: number, it: any) => s + it.quantity * (it.price || it.unitPrice) * (1 + it.tax / 100), 0);
+            const total = q.totalAmount !== undefined ? q.totalAmount : q.items.reduce((s: number, it: any) => s + it.quantity * (it.price || it.unitPrice), 0);
             const qId = q._id || q.id;
             const qNumber = q.quotationId || q.number;
             const qCustomerName = q.customerSnapshot?.customerName || q.customerName;
@@ -317,8 +313,7 @@ function DashboardInner() {
               <div key={qId} className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-medium">{qNumber}</div>
-                    <div className="text-sm text-muted-foreground truncate">{qCustomerName}</div>
+                    <div className="font-medium text-foreground">{qCustomerName}</div>
                   </div>
                   <StatusBadge status={q.status} />
                 </div>

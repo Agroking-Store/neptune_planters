@@ -8,11 +8,8 @@ export interface ICustomer {
   customerName: string;
   email?: string;
   phoneNumber?: string;
-  companyName?: string;
-  gstNumber?: string;
+  phoneNumber?: string;
   address?: string;
-  notes?: string;
-  isActive: boolean;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -51,12 +48,7 @@ const customerSchema = new Schema<ICustomerDocument, ICustomerModel>(
       trim: true,
       default: '',
     },
-    companyName: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    gstNumber: {
+    phoneNumber: {
       type: String,
       trim: true,
       default: '',
@@ -65,15 +57,6 @@ const customerSchema = new Schema<ICustomerDocument, ICustomerModel>(
       type: String,
       trim: true,
       default: '',
-    },
-    notes: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
     },
     createdBy: {
       type: Schema.Types.ObjectId,

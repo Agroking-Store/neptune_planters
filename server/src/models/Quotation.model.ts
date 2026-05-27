@@ -5,10 +5,8 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 // ─────────────────────────────────────────────
 export interface ICustomerSnapshot {
   customerName: string;
-  companyName?: string;
   email?: string;
   phoneNumber?: string;
-  gstNumber?: string;
 }
 
 // ─────────────────────────────────────────────
@@ -16,11 +14,9 @@ export interface ICustomerSnapshot {
 // ─────────────────────────────────────────────
 export interface IProductSnapshot {
   productName: string;
-  sku: string;
   hsnNumber?: string;
   description?: string;
   size?: string;
-  uom?: string;
 }
 
 // ─────────────────────────────────────────────
@@ -68,10 +64,8 @@ export interface IQuotationModel extends Model<IQuotationDocument> {
 const customerSnapshotSchema = new Schema<ICustomerSnapshot>(
   {
     customerName: { type: String, required: true },
-    companyName: { type: String, default: '' },
     email: { type: String, default: '' },
     phoneNumber: { type: String, default: '' },
-    gstNumber: { type: String, default: '' },
   },
   { _id: false }
 );
@@ -79,11 +73,9 @@ const customerSnapshotSchema = new Schema<ICustomerSnapshot>(
 const productSnapshotSchema = new Schema<IProductSnapshot>(
   {
     productName: { type: String, required: true },
-    sku: { type: String, default: '' },
     hsnNumber: { type: String, default: '' },
     description: { type: String, default: '' },
     size: { type: String, default: '' },
-    uom: { type: String, default: '' },
   },
   { _id: false }
 );
