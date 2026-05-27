@@ -5,9 +5,10 @@ import { useDB } from "@/lib/store";
 import { useLogout, useMe } from "@/lib/auth";
 
 const nav = [
-    { to: "/dashboard", label: "Quotations", icon: FileText },
-    { to: "/inventory", label: "Inventory", icon: Package },
-    { to: "/inventory/new", label: "Add Inventory", icon: PackagePlus },
+    { to: "/dashboard", label: "Quotations", icon: FileText, exactPaths: ["/dashboard"], prefixPaths: ["/quotations/edit"] },
+    { to: "/quotations/new", label: "Add Quotation", icon: Plus, exactPaths: ["/quotations/new"], prefixPaths: [] },
+    { to: "/inventory", label: "Inventory", icon: Package, exactPaths: ["/inventory"], prefixPaths: ["/inventory/edit"] },
+    { to: "/inventory/new", label: "Add Inventory", icon: PackagePlus, exactPaths: ["/inventory/new"], prefixPaths: [] },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -91,8 +92,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-                    {nav.map(({ to, label, icon: Icon }) => {
-                        const active = location.pathname === to || (to !== "/inventory/new" && location.pathname.startsWith(to));
+                    {nav.map(({ to, label, icon: Icon, exactPaths, prefixPaths }) => {
+                        const active = exactPaths.some(p => location.pathname === p) || 
+                                       prefixPaths.some(p => location.pathname === p || location.pathname.startsWith(`${p}/`));
                         return (
                             <Link
                                 key={to}
