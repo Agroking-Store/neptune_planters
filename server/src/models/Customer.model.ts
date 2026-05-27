@@ -8,14 +8,13 @@ export interface ICustomer {
   customerName: string;
   email?: string;
   phoneNumber?: string;
-  phoneNumber?: string;
   address?: string;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface ICustomerDocument extends ICustomer, Document {}
+export interface ICustomerDocument extends ICustomer, Document { }
 export interface ICustomerModel extends Model<ICustomerDocument> {
   generateCustomerCode(): Promise<string>;
 }
@@ -41,11 +40,6 @@ const customerSchema = new Schema<ICustomerDocument, ICustomerModel>(
       type: String,
       trim: true,
       lowercase: true,
-      default: '',
-    },
-    phoneNumber: {
-      type: String,
-      trim: true,
       default: '',
     },
     phoneNumber: {
