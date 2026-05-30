@@ -78,7 +78,7 @@ export async function createQuotation(
     const productSnapshot = {
       productName: product.productName,
       hsnNumber: product.hsnNumber || '',
-      size: product.size || '',
+      size: product.sizes?.join(', ') || '',
     };
 
     // Calculate item total: quantity * unitPrice
@@ -127,7 +127,7 @@ export async function createQuotation(
 export async function updateQuotation(
   id: string,
   data: CreateQuotationInput,
-  userId: string
+  _userId: string
 ): Promise<InstanceType<typeof Quotation>> {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw ApiError.badRequest('Invalid quotation ID');
@@ -168,7 +168,7 @@ export async function updateQuotation(
       productSnapshot: {
         productName: product.productName,
         hsnNumber: product.hsnNumber || '',
-        size: product.size || '',
+        size: product.sizes?.join(', ') || '',
       },
       quantity: item.quantity,
       unitPrice: item.unitPrice,
