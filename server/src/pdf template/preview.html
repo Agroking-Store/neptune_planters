@@ -1,93 +1,4 @@
-import { PdfTemplateData, formatCurrency } from './pdf.service';
-
-// Number to words helper (Indian Number System)
-function numberToWords(num: number): string {
-  if (num === 0) return 'Zero';
-  
-  const singleDigits = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
-  const twoDigits = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-  
-  function convertLessThanOneThousand(n: number): string {
-    if (n === 0) return '';
-    let result = '';
-    if (n >= 100) {
-      result += singleDigits[Math.floor(n / 100)] + ' Hundred ';
-      n %= 100;
-    }
-    if (n >= 10 && n <= 19) {
-      result += twoDigits[n - 10] + ' ';
-    } else if (n >= 20 || n > 0) {
-      result += tens[Math.floor(n / 10)] + ' ';
-      if (n % 10 > 0) {
-        result += singleDigits[n % 10] + ' ';
-      }
-    }
-    return result;
-  }
-
-  let words = '';
-  if (num >= 10000000) {
-    words += convertLessThanOneThousand(Math.floor(num / 10000000)) + 'Crore ';
-    num %= 10000000;
-  }
-  if (num >= 100000) {
-    words += convertLessThanOneThousand(Math.floor(num / 100000)) + 'Lakh ';
-    num %= 100000;
-  }
-  if (num >= 1000) {
-    words += convertLessThanOneThousand(Math.floor(num / 1000)) + 'Thousand ';
-    num %= 1000;
-  }
-  words += convertLessThanOneThousand(num);
-  return words.trim();
-}
-
-export function buildQuotationHtml(data: PdfTemplateData): string {
-  // Generate Items HTML
-  const itemsHtml = data.items.map(item => `
-        <tr>
-          <td>${item.index}</td>
-          <td>
-            <div class="product-cell">
-              <div class="product-cell__name">${item.productName}</div>
-              <div class="product-cell__dims">${item.size}</div>
-            </div>
-          </td>
-          <td>${item.quantity}</td>
-          <td class="text-right">${formatCurrency(item.unitPrice).replace('₹', '').trim()}</td>
-          <td class="text-right">${formatCurrency(item.total).replace('₹', '').trim()}</td>
-          <td>
-            <div class="img-cell">
-              ${item.productImageUrl ? `<img src="${item.productImageUrl}" alt="${item.productName}" />` : ''}
-            </div>
-          </td>
-          <td>
-            <div class="img-cell">
-              ${item.referenceImageUrl ? `<img src="${item.referenceImageUrl}" alt="Reference" />` : ''}
-            </div>
-          </td>
-          <td>
-            <div class="img-cell">
-              ${item.textureImageUrl 
-                ? `<img src="${item.textureImageUrl}" alt="Texture" />` 
-                : (item.selectedTexture ? `<span>${item.selectedTexture}</span>` : '')}
-            </div>
-          </td>
-        </tr>
-  `).join('');
-
-  // Generate Terms & Conditions
-  const termsHtml = data.termsAndConditions && data.termsAndConditions.length > 0
-    ? data.termsAndConditions.map(term => `<li>${term}</li>`).join('')
-    : `
-        <li>Transportation & installation extra as applicable.</li>
-        <li>Goods once sold will not be taken back or exchanged.</li>
-        <li>Delivery within 7–10 working days from the date of order.</li>
-        <li>This quotation is valid for 15 days.</li>
-      `;
-
-  return `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -166,6 +77,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       overflow: hidden;
     }
 
+    /* Gold diagonal accent (slightly wider than dark) */
     .header__trapezoid-gold {
       position: absolute;
       top: 0;
@@ -177,6 +89,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       z-index: 1;
     }
 
+    /* Dark panel */
     .header__trapezoid-dark {
       position: absolute;
       top: 0;
@@ -188,6 +101,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       z-index: 2;
     }
 
+    /* Logo & tagline column */
     .header__brand {
       position: relative;
       z-index: 10;
@@ -234,6 +148,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       text-align: center;
     }
 
+    /* Right quotation info column */
     .header__info {
       position: relative;
       z-index: 10;
@@ -299,6 +214,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       line-height: 1.5;
     }
 
+    /* Details table (right side) */
     .header__info-right {
       flex: 1;
       display: flex;
@@ -383,6 +299,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       line-height: 1.65;
     }
 
+    /* Quote block */
     .quote-block {
       flex: 1;
       display: flex;
@@ -475,6 +392,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       border-bottom: 1px solid var(--border);
     }
 
+    /* Product cell — name + dimensions */
     .product-cell {
       text-align: center;
     }
@@ -492,6 +410,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       font-weight: 400;
     }
 
+    /* Image cells */
     .img-cell img {
       width: 68px;
       height: 68px;
@@ -560,6 +479,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       padding-bottom: 0;
     }
 
+    /* Grand total card */
     .grand-total {
       background: var(--dark);
       color: var(--white);
@@ -606,6 +526,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       border-top: 1px solid var(--border);
     }
 
+    /* Prepared by */
     .prepared-by__label {
       font-size: 12px;
       color: var(--gold);
@@ -637,6 +558,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       color: #bbb;
     }
 
+    /* Thank you */
     .thank-you {
       text-align: center;
       padding: 0 24px;
@@ -650,6 +572,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       line-height: 1.6;
     }
 
+    /* QR */
     .qr-box {
       display: flex;
       align-items: center;
@@ -710,22 +633,18 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       text-align: right;
     }
 
+    /* ═══════════════════════════════════════════
+       PRINT
+       ═══════════════════════════════════════════ */
     @media print {
       body {
         background: white;
       }
+
       .page {
         box-shadow: none;
         margin: 0;
         max-width: none;
-      }
-      tr, .product-table tbody tr {
-        page-break-inside: avoid;
-        break-inside: avoid;
-      }
-      .notes-totals, .footer-top, .addresses, .quote-block, .contact-bar, .header {
-        page-break-inside: avoid;
-        break-inside: avoid;
       }
     }
   </style>
@@ -735,10 +654,15 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
 
   <main class="page">
 
+    <!-- ════════════════════════════════════════════
+       HEADER
+       ════════════════════════════════════════════ -->
     <header class="header">
+      <!-- Trapezoid layers -->
       <div class="header__trapezoid-gold"></div>
       <div class="header__trapezoid-dark"></div>
 
+      <!-- Brand column -->
       <div class="header__brand">
         <h1 class="header__logo">Neptune</h1>
         <p class="header__subtitle">Premium Planters</p>
@@ -746,6 +670,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
         <p class="header__tagline">Crafted Spaces.<br>Timeless Design.</p>
       </div>
 
+      <!-- Quotation info column -->
       <div class="header__info">
         <div class="header__info-left">
           <h2 class="header__title">Quotation</h2>
@@ -758,31 +683,36 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
 
         <div class="header__info-right">
           <div class="detail-row">
-            <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">description</span></span>
+            <span class="detail-row__icon"><span class="material-symbols-outlined"
+                style="font-size:16px">description</span></span>
             <span class="detail-row__label">Quotation No.</span>
             <span class="detail-row__sep">:</span>
-            <span class="detail-row__value">${data.quotationId}</span>
+            <span class="detail-row__value">NEP/24-25/0587</span>
           </div>
           <div class="detail-row">
-            <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">calendar_today</span></span>
+            <span class="detail-row__icon"><span class="material-symbols-outlined"
+                style="font-size:16px">calendar_today</span></span>
             <span class="detail-row__label">Date</span>
             <span class="detail-row__sep">:</span>
-            <span class="detail-row__value">${data.createdDate}</span>
+            <span class="detail-row__value">30 May 2026</span>
           </div>
           <div class="detail-row">
-            <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">event_available</span></span>
+            <span class="detail-row__icon"><span class="material-symbols-outlined"
+                style="font-size:16px">event_available</span></span>
             <span class="detail-row__label">Valid Till</span>
             <span class="detail-row__sep">:</span>
-            <span class="detail-row__value">${data.validTillDate}</span>
+            <span class="detail-row__value">13 June 2026</span>
           </div>
           <div class="detail-row">
-            <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">payments</span></span>
+            <span class="detail-row__icon"><span class="material-symbols-outlined"
+                style="font-size:16px">payments</span></span>
             <span class="detail-row__label">Payment Terms</span>
             <span class="detail-row__sep">:</span>
             <span class="detail-row__value">50% Advance, 50% Before Dispatch</span>
           </div>
           <div class="detail-row">
-            <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">local_shipping</span></span>
+            <span class="detail-row__icon"><span class="material-symbols-outlined"
+                style="font-size:16px">local_shipping</span></span>
             <span class="detail-row__label">Delivery</span>
             <span class="detail-row__sep">:</span>
             <span class="detail-row__value">7 – 10 Working Days</span>
@@ -791,23 +721,28 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       </div>
     </header>
 
+    <!-- ════════════════════════════════════════════
+       ADDRESSES + QUOTE BLOCK
+       ════════════════════════════════════════════ -->
     <section class="addresses">
       <div class="address-col">
         <p class="address-col__label">Bill To</p>
-        <p class="address-col__name">${data.customerDisplayName}</p>
+        <p class="address-col__name">ABC Developers</p>
         <p class="address-col__text">
-          ${data.customerEmail ? data.customerEmail + '<br>' : ''}
-          ${data.customerPhone ? data.customerPhone + '<br>' : ''}
-          ${data.customerAddress}
+          Green Acres Villas,<br>
+          Bandra West,<br>
+          Mumbai – 400050<br>
+          Maharashtra, India
         </p>
       </div>
       <div class="address-col">
         <p class="address-col__label">Ship To</p>
-        <p class="address-col__name">${data.customerDisplayName}</p>
+        <p class="address-col__name">ABC Developers</p>
         <p class="address-col__text">
-          ${data.customerEmail ? data.customerEmail + '<br>' : ''}
-          ${data.customerPhone ? data.customerPhone + '<br>' : ''}
-          ${data.customerAddress}
+          Green Acres Villas,<br>
+          Bandra West,<br>
+          Mumbai – 400050<br>
+          Maharashtra, India
         </p>
       </div>
       <div class="quote-block">
@@ -820,6 +755,9 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       </div>
     </section>
 
+    <!-- ════════════════════════════════════════════
+       PRODUCT TABLE
+       ════════════════════════════════════════════ -->
     <section class="table-section">
       <table class="product-table">
         <thead>
@@ -835,39 +773,161 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
           </tr>
         </thead>
         <tbody>
-          ${itemsHtml}
+          <!-- Row 1 -->
+          <tr>
+            <td>1</td>
+            <td>
+              <div class="product-cell">
+                <div class="product-cell__name">Prithvi</div>
+                <div class="product-cell__dims">24" x 36" x 24"</div>
+              </div>
+            </td>
+            <td>10</td>
+            <td class="text-right">4,850.00</td>
+            <td class="text-right">48,500.00</td>
+            <td>
+              <div class="img-cell"><img
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCyicDHL4jacy8W5x97D8BSp115E3nC8A2CnuuEiLEP_vrvNH8IlX0rjTGXRtgLHtpF9plwZZQhOsWqWyqo4aAJWypgnCqqszrnS1aPtiTY5oyXz1rBmS2Q6iR21D-MaJsbWfkMNUugQ-jc6pRt-H1YYDHK2j5YW92GiESzTybOWbm_sw8zybKyOZD7XoGgkij9o_OlJ82F1S7tCSO6dxqz2fHToGTdwK0GQ5Gpm1cws4e0VA3ZprOEajx67JD2tB2XicsoUGI5ojQV"
+                  alt="Prithvi" /></div>
+            </td>
+            <td>
+              <div class="img-cell"><img
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCq-GmrahNwHrpF6-5y-rxCinLo_lBck0g72f76NWdxxrN8nwQXxRDevQU_Z-O3K4lETFqJCM8bUUAhno8ahb9LBzqEcBJR0V7BsNsY-SSekuz-qiWRvivTry4Te_zwt-Fi2o3rSCFZOeD3N6l3c3e7JjXDTg9Gf8_BEDPGJ0V0V-9HxWmbM2W4Crbi9UfF5yqkjJhSSiQPY_uy4sIi7vBzFSzhImbs-hFDLqKh3lNMCxiPYt6YMx9sal7-xkwNNybmIoisFscxlGGK"
+                  alt="Reference" /></div>
+            </td>
+            <td>
+              <div class="img-cell"><img
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwV7I4_ToAhgJor8BQ0OKdfSGeBWl0wtCzbbq2ID5Df3zYQfEF6_nlBwtfVhMPX0yz5JdjqRan1S4pSjL5i4lpRn0ycLolCZssOqcex_eSh45-oN3UqspTTeKn2mFmtx9VhRWC71pskdCPA3N1K2xUZxfLkHzQLj-WykhqNvh9l2W2cI0iMHOy-A3YmlL-La6-AyT0mdUQjYYsvfVTY_Adsp5gvKycNo-wmdcO0uAWdkPu2zvinr8uXj1pVfrJBTyNm1Q00PHuvq0Y"
+                  alt="Texture" /></div>
+            </td>
+          </tr>
+          <!-- Row 2 -->
+          <tr>
+            <td>2</td>
+            <td>
+              <div class="product-cell">
+                <div class="product-cell__name">Sama</div>
+                <div class="product-cell__dims">18" x 20" x 18"</div>
+              </div>
+            </td>
+            <td>5</td>
+            <td class="text-right">3,000.00</td>
+            <td class="text-right">15,000.00</td>
+            <td>
+              <div class="img-cell"><img
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBuK1nQABzJgVlfmMTxiubGJm6BnYu4J1UEkpi3r-l1ChpdhIz30l-pnXP_TOxJlJoTKgTD0PWi0AwmbiPJVumN3I_kkdFIHw2I6FqDM6J11Ju3gyFOXFUfOTmxPp6za1V_K2gIOW0n92BT8e3I2Olc0VJp_T0vWx1yp1hyNUgEd2SDqJ6p4POTxfpBbBB4RFu795V-0OC7R0-ByKRMoShPC0pTezjFQDMNfnSiimNyoxUs86Vloy5fAXklTYFosONrD41o-clIBZMW"
+                  alt="Sama" /></div>
+            </td>
+            <td>
+              <div class="img-cell"><img
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSxWalu2pgnYhAorWp_NOi6p5UYK9D_qhPaYwI4HAG___bx5TtOealHBGTSkFL6NvSZxfeIl4GL3Za54vIaaG4831JCktvDAzd0xEzlRajspQ90dF_ruLADwExDOgBuE4U3cWgFS4MLFmO7TRD571CCkQumc6GskBWuoT6RG7w1SPIE5J04nlqYQl_IUQYWP7JW636UuzGZTNCC92k8RBSxztGdJCZpYxIovtZwW6K5Xe9ZhKiJ1lveZL0DJMu0dqXCGg8_aRe-iug"
+                  alt="Reference" /></div>
+            </td>
+            <td>
+              <div class="img-cell"><img
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSgO4LM1jcea_0MEPSv6-70RDJd-cfP6wS46MUiiHk7_maVulR3TKASOYEw8DmltSFhSuhV9xjjP4V77H-4J15MV_98DqQB9-ZwlIsD__Y811TPxsPykpbonQ-KQnbcVjPA4zyp3b-O_i89pdCTTxzlK7k52hML8L9sW0OhZNQdvC5L2P1YsROPzwuTMFsJMjpGxtA5xEYBIRmyqq6JZlsaIzBI7kuG0XVECJ0y2-28g6DxC_88TDHTnbpzckLEQdIxCC8Y1fcDCv3"
+                  alt="Texture" /></div>
+            </td>
+          </tr>
+          <!-- Row 3 -->
+          <tr>
+            <td>3</td>
+            <td>
+              <div class="product-cell">
+                <div class="product-cell__name">Gulaksh</div>
+                <div class="product-cell__dims">24" x 18" x 24"</div>
+              </div>
+            </td>
+            <td>4</td>
+            <td class="text-right">6,500.00</td>
+            <td class="text-right">26,000.00</td>
+            <td>
+              <div class="img-cell"><img
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBekZ1lFDobjGPaCRu7heYo6LYToba-YBsFgDJEbzUcc__UairYUV6vD1opmlbr8FlNvHmZwBj0ElIsjFY0qhC13mQC-LyL4UUarQVSvRR7TR1XsD5Ek31ihzWAM3CgnffuAPH_VcQ5m6A1TAQz9xj4zIdYn1AeQh7e0-6eILb8wjnDblnvi6vPvjgm37OFiatxC0kvuhvQB3m-z4FrThzZdDyX0AQlA1fHVgpHXe1jukKeVG1obrLyvNxI85pw2DlaKm8K8NrrLf2a"
+                  alt="Gulaksh" /></div>
+            </td>
+            <td>
+              <div class="img-cell"><img
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqV5BNaE3ToF2-D0uZPq8VKCvfBHpRAqJTUTdoWQ4bzcJP8JZuxrcvFPYQTlulDIsg9EduGdTbTkfL_pOEVIiGP58YecQQRiUO5Lh7qbQPYHsaxauCml9GAdIe2Z2KfVxTfDDO9woB4_Q1ACjmeioxIaDsCRM_oMIUzRAP3n4kByqSD4ZkPf9eY_jY3OrjSKA7LiPGaHFf2l9n1oOKNp6ne16LOL_b38K_4M4-zKbhSxbqjEmK994XlNkYTFQv__xBgAOGVPhwyr3z"
+                  alt="Reference" /></div>
+            </td>
+            <td>
+              <div class="img-cell"><img
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBqlxd_IiJywwHHkSqYj91jGVoTl2j7vn7y_xFLldvROd-N3NV0YXajExF1NkxFIFvZOa8HbTWdEMHrGfXcsTb0tLouturthPGM34N-AxcEL_UkkZMfqTMEsGTQGvJ9vvUpS1sZXrbF_JLPQIGvboOCRM69FZmwOnR01RsY57fjg-YRSpmfoeXCL4d4YIVwTSyayeX7sNyKd4B-llXsMkCYL5f3i26ITBKaESMQozmt4pPZPFU9ViCj5aBZobMtUaX5BiphJa_AxI6v"
+                  alt="Texture" /></div>
+            </td>
+          </tr>
+          <!-- Row 4 -->
+          <tr>
+            <td>4</td>
+            <td>
+              <div class="product-cell">
+                <div class="product-cell__name">Gularka</div>
+                <div class="product-cell__dims">16" x 30" x 16"</div>
+              </div>
+            </td>
+            <td>6</td>
+            <td class="text-right">3,200.00</td>
+            <td class="text-right">19,200.00</td>
+            <td>
+              <div class="img-cell"><img
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEFNtXGQNmBhUHFcfb2oh7KcW-UCPPY1UeRpTfLVFLXMtWpLC2KqaqfFdv-wAOOMvU-NuswCBxRbvFvnrGp9x4GJ0huer5s27UiqNwZqOUI2nQqa9311Yjve-G0gs-pg4_8PigdKejDseQzAAXSWY1BghVE8maH1G1IbR5bMTWTDrBTKGlB3JEgWa_4O2v9RgGbD-1AdO_8Js2ePAu8Dg2Enx_FE2CTtMeiNsPrIXJQwViOz4PeUTeLeZRKQ7UOI4Gr2lXSXUt_I5V"
+                  alt="Gularka" /></div>
+            </td>
+            <td>
+              <div class="img-cell"><img
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgIby2kcnRJjjOHSMpWFj4irFnnFrnHcwLLBTNb7xUDhscPNQDHhQjBl7mgbXD7FdMkJ_cZIMWKUdB42Ca3IzGI5e7cp2ScYmpT8qxsVvCvKribVRCPu3VKRFGAH25yyAGPWsCu_X1C9Z9CNXONnc0Ozjt7zPaiY09dsghrL9b3q75HRL9Xx34wzbtWMZV3BtgDOkuvSvgzCBljNs-EQYi67AExqrWTxE_EH2SnSdw6BRFaKjtzkLg-9UbI2aNnAYXx7XbNciRyrX0"
+                  alt="Reference" /></div>
+            </td>
+            <td>
+              <div class="img-cell"><img
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDf2-yC0v-2SbGSmAqH4mQk-6CBiTYhN5FUODJSYaICVx5oHE3aGeWeJkzvYx3c4jXjg0iG1Rk2d3kV-v2qIbmqTAvSu5uHsMHEgaI1U8nKDIsheC3ohh7Rb_j9OpMTlFcfYCUek7fmwnIHNVcukIk_8CxmQkuqk-wDPTqp4iPiyZQn5OjBf1MB0j1YD-IQtnjEigqQZ0CfON7Q4zSi6owErIhvt46E5mHgmLLs002rwd11lWN84dhGYZuieQdCEF-Tc0rS52b-5dHw"
+                  alt="Texture" /></div>
+            </td>
+          </tr>
         </tbody>
       </table>
     </section>
 
+    <!-- ════════════════════════════════════════════
+       NOTES + TOTALS
+       ════════════════════════════════════════════ -->
     <section class="notes-totals">
       <div class="notes-col">
         <h3>Terms & Conditions</h3>
         <ul>
-          ${termsHtml}
+          <li>Transportation & installation extra as applicable.</li>
+          <li>Goods once sold will not be taken back or exchanged.</li>
+          <li>Delivery within 7–10 working days from the date of order.</li>
+          <li>This quotation is valid for 15 days.</li>
         </ul>
       </div>
       <div class="totals-col">
         <div class="totals-box">
           <div class="totals-row">
             <span>SUBTOTAL</span>
-            <span>${formatCurrency(data.summary.subtotal)}</span>
+            <span>₹ 1,08,700.00</span>
           </div>
           <div class="totals-row">
             <span>TAX @ 18%</span>
-            <span>${formatCurrency(data.summary.taxAmount)}</span>
+            <span>₹ 19,566.00</span>
           </div>
+          <!-- Grand Total -->
           <div class="grand-total">
             <p class="grand-total__label">Grand Total</p>
-            <p class="grand-total__amount">${formatCurrency(data.summary.totalAmount)}</p>
-            <p class="grand-total__words">(Rupees ${numberToWords(Math.round(data.summary.totalAmount))} Only)</p>
+            <p class="grand-total__amount">₹ 1,28,266.00</p>
+            <p class="grand-total__words">(Rupees One Lakh Twenty Eight Thousand<br>Two Hundred Sixty Six Only)</p>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- ════════════════════════════════════════════
+       FOOTER — Signature, Thank You, QR
+       ════════════════════════════════════════════ -->
     <div class="footer-top">
       <div class="footer-content">
+        <!-- Prepared by -->
         <div>
           <p class="prepared-by__label">Prepared By</p>
           <p class="prepared-by__name">Neptune Innovations</p>
@@ -876,6 +936,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
           </div>
         </div>
 
+        <!-- Thank you -->
         <div class="thank-you">
           <p>
             Thank you for your business.<br>
@@ -884,15 +945,19 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
           </p>
         </div>
 
+        <!-- QR code -->
         <div class="qr-box">
           <img class="qr-box__img"
-            src="https://api.qrserver.com/v1/create-qr-code/?size=112x112&data=https://www.shopneptune.in"
+            src="https://api.qrserver.com/v1/create-qr-code/?size=112x112&data=https://shopneptune.in/product-category/planters/"
             alt="QR Code" />
           <div class="qr-box__text">Scan to Visit<br>Our Collection</div>
         </div>
       </div>
     </div>
 
+    <!-- ════════════════════════════════════════════
+       CONTACT BAR
+       ════════════════════════════════════════════ -->
     <div class="contact-bar">
       <div class="contact-bar__left">
         <span class="contact-bar__item">
@@ -915,6 +980,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     </div>
 
   </main>
+
 </body>
-</html>`;
-}
+
+</html>

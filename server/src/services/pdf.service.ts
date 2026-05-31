@@ -26,7 +26,10 @@ export interface PdfItemData {
 export interface PdfTemplateData {
   quotationId: string;
   createdDate: string;
+  validTillDate: string;
   customerDisplayName: string;
+  customerPhone: string;
+  customerEmail: string;
   customerAddress: string;
   companyDetails: {
     name: string;
@@ -111,17 +114,28 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
 
   // Calculate summary values
   const totalAmount = quotation.totalAmount;
-  const taxAmount = totalAmount * 0.18;
-  const subtotal = totalAmount - taxAmount;
+  const subtotal = totalAmount / 1.18;
+  const taxAmount = totalAmount - subtotal;
+
+  const createdDateObj = new Date(quotation.createdDate);
+  const validTillDateObj = new Date(createdDateObj);
+  validTillDateObj.setMonth(validTillDateObj.getMonth() + 1);
 
   return {
     quotationId: quotation.quotationId,
-    createdDate: new Date(quotation.createdDate).toLocaleDateString('en-IN', {
+    createdDate: createdDateObj.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }),
+    validTillDate: validTillDateObj.toLocaleDateString('en-IN', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
     }),
     customerDisplayName,
+    customerPhone: customer?.phoneNumber || '',
+    customerEmail: customer?.email || '',
     customerAddress: customer?.address || '',
     companyDetails: {
       name: 'NEPTUNE INNOVATIONS',
@@ -159,8 +173,8 @@ export async function generateQuotationPdf(quotationId: string): Promise<Buffer>
 
     const page = await browser.newPage();
 
-    // Set viewport to match our mobile-first 430px design
-    await page.setViewport({ width: 430, height: 900 });
+    // Set viewport to match our new 1200px desktop design
+    await page.setViewport({ width: 1200, height: 900 });
 
     // Load HTML content
     await page.setContent(html, {
@@ -168,17 +182,11 @@ export async function generateQuotationPdf(quotationId: string): Promise<Buffer>
       timeout: 30000,
     });
 
-    // Measure the actual height of the content to prevent pagination
-    const contentHeight = await page.evaluate(() => {
-      return (globalThis as any).document.documentElement.offsetHeight;
-    });
-
-    // Generate PDF as a single continuous page
+    // Generate PDF formatted to A4 proportions (1200px width maintains layout, 1697px height gives A4 ratio)
     const pdfBuffer = await page.pdf({
-      width: '430px',
-      height: `${contentHeight}px`,
+      width: '1200px',
+      height: '1697px', // 1200 * 1.4142 (A4 aspect ratio)
       printBackground: true, // Preserve backgrounds/colors
-      pageRanges: '1', // Ensure only one page is generated
       margin: { top: '0', right: '0', bottom: '0', left: '0' },
     });
 
