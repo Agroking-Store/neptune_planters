@@ -37,6 +37,34 @@ const BASE_URL = "/api";
 // Shared promise to prevent concurrent refresh requests
 let refreshPromise: Promise<string | null> | null = null;
 
+export function silentRefresh(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${BASE_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    })
+      .then(async (refreshRes) => {
+        if (refreshRes.ok) {
+          const refreshData = await refreshRes.json();
+          const newToken = refreshData?.data?.accessToken;
+          if (newToken) {
+            tokenStore.set(newToken);
+            return newToken;
+          }
+        }
+        return null;
+      })
+      .catch((err) => {
+        console.error("[api] Token refresh failed:", err);
+        return null;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -68,32 +96,7 @@ async function request<T>(
   if (res.status === 401 && !isRetry) {
     console.log("[api] 401 received — attempting token refresh");
     
-    if (!refreshPromise) {
-      refreshPromise = fetch(`${BASE_URL}/auth/refresh`, {
-        method: "POST",
-        credentials: "include",
-      })
-      .then(async (refreshRes) => {
-        if (refreshRes.ok) {
-          const refreshData = await refreshRes.json();
-          const newToken = refreshData?.data?.accessToken;
-          if (newToken) {
-            tokenStore.set(newToken);
-            return newToken;
-          }
-        }
-        return null;
-      })
-      .catch((err) => {
-        console.error("[api] Token refresh failed:", err);
-        return null;
-      })
-      .finally(() => {
-        refreshPromise = null;
-      });
-    }
-
-    const newToken = await refreshPromise;
+    const newToken = await silentRefresh();
     if (newToken) {
       console.log("[api] Token refreshed — retrying original request");
       return request<T>(method, path, body, true); // Retry once

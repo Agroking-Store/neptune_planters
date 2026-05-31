@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { RouterProvider } from "@tanstack/react-router";
 import { getRouter } from "./router";
-import { tokenStore } from "./lib/api";
+import { tokenStore, silentRefresh } from "./lib/api";
 import { Loader2 } from "lucide-react";
 
 const router = getRouter();
@@ -17,18 +17,9 @@ function App() {
     const restoreSession = async () => {
       console.log("[App] Attempting silent session restore...");
       try {
-        const res = await fetch("/api/auth/refresh", {
-          method: "POST",
-          credentials: "include", // sends the HttpOnly refresh cookie
-        });
-
-        if (res.ok) {
-          const data = (await res.json()) as { data?: { accessToken?: string } };
-          const token = data?.data?.accessToken;
-          if (token) {
-            tokenStore.set(token);
-            console.log("[App] Session restored — user is logged in");
-          }
+        const token = await silentRefresh();
+        if (token) {
+          console.log("[App] Session restored — user is logged in");
         } else {
           console.log("[App] No active session — user must log in");
         }
