@@ -442,6 +442,15 @@ function NewQuotation() {
                       <Field label="Price" className="w-24">
                         <input type="number" min={0} value={it.price} onChange={(e) => updateItem(it.id, { price: Math.max(0, +e.target.value || 0) })} className={input} />
                       </Field>
+                      <Field label="Size Variant" className="w-32">
+                        {availableSizes.length > 0 ? (
+                          <select value={it.selectedSize} onChange={(e) => updateItem(it.id, { selectedSize: e.target.value })} className={input}>
+                            {availableSizes.map((sz) => <option key={sz} value={sz}>{sz}</option>)}
+                          </select>
+                        ) : (
+                          <span className="text-sm text-muted-foreground py-2 block">N/A</span>
+                        )}
+                      </Field>
                       <Field label="Texture Variant" className="w-24">
                         {availableTextures.length > 0 ? (
                           <TextureDropdown
