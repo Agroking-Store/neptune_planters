@@ -3,11 +3,11 @@ import { PdfTemplateData, formatCurrency } from './pdf.service';
 // Number to words helper (Indian Number System)
 function numberToWords(num: number): string {
   if (num === 0) return 'Zero';
-  
+
   const singleDigits = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
   const twoDigits = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
   const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-  
+
   function convertLessThanOneThousand(n: number): string {
     if (n === 0) return '';
     let result = '';
@@ -57,21 +57,21 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
           <td>${item.quantity}</td>
           <td class="text-right">${formatCurrency(item.unitPrice).replace('₹', '').trim()}</td>
           <td class="text-right">${formatCurrency(item.total).replace('₹', '').trim()}</td>
-          <td>
+          <td class="td-img">
             <div class="img-cell">
               ${item.productImageUrl ? `<img src="${item.productImageUrl}" alt="${item.productName}" />` : ''}
             </div>
           </td>
-          <td>
+          <td class="td-img">
             <div class="img-cell">
               ${item.referenceImageUrl ? `<img src="${item.referenceImageUrl}" alt="Reference" />` : ''}
             </div>
           </td>
-          <td>
-            <div class="img-cell">
-              ${item.textureImageUrl 
-                ? `<img src="${item.textureImageUrl}" alt="Texture" />` 
-                : (item.selectedTexture ? `<span>${item.selectedTexture}</span>` : '')}
+          <td class="td-img">
+            <div class="img-cell img-cell--texture">
+              ${item.textureImageUrl
+      ? `<img src="${item.textureImageUrl}" alt="Texture" />`
+      : (item.selectedTexture ? `<span>${item.selectedTexture}</span>` : '')}
             </div>
           </td>
         </tr>
@@ -459,6 +459,10 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       color: var(--text);
     }
 
+    .product-table tbody td.td-img {
+      padding: 2px;
+    }
+
     .product-table tbody td:last-child {
       border-right: none;
     }
@@ -493,8 +497,17 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     }
 
     .img-cell img {
-      width: 68px;
-      height: 68px;
+      width: 100%;
+      height: 90px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .img-cell--texture img {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
       object-fit: cover;
     }
 

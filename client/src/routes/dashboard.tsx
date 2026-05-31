@@ -136,6 +136,7 @@ function DashboardInner() {
       const cleanPhone = mapped.phoneNumber.replace(/\D/g, "");
       const msg = encodeURIComponent(`Hello! Here is your quotation: ${mapped.number}. The PDF has been downloaded to your device.`);
       window.open(`https://wa.me/${cleanPhone}?text=${msg}`, "_blank");
+      toast.success("Quotation sent");
     } else {
       toast.info("No phone number found. PDF downloaded.");
     }
@@ -146,6 +147,7 @@ function DashboardInner() {
   };
 
   const handleDownload = async (q: any) => {
+    toast.success("Download triggered");
     const mapped = mapToPdf(q);
     await downloadQuotationPDF(mapped as any);
   };
