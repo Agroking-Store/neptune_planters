@@ -238,7 +238,7 @@ function DashboardInner() {
       {/* Table / cards */}
       <div className="rounded-2xl border border-border bg-card shadow-soft overflow-hidden">
         {/* Desktop table */}
-        <div className="hidden md:block overflow-x-auto max-h-[500px] overflow-y-auto">
+        <div className="hidden md:block overflow-x-auto max-h-125 overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-muted-foreground sticky top-0 z-10 shadow-sm">
               <tr>
