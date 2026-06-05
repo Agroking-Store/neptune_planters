@@ -31,7 +31,7 @@ export const listQuotations = asyncHandler(async (req: Request, res: Response) =
 // ─────────────────────────────────────────────
 export const getQuotationByIdHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const quotation = await getQuotationById(id);
+  const quotation = await getQuotationById(id as any);
   res.status(200).json(
     ApiResponse.success('Quotation retrieved', quotation.toJSON()).toJSON()
   );
@@ -68,7 +68,7 @@ export const updateQuotationHandler = asyncHandler(async (req: Request, res: Res
     throw ApiError.badRequest('Validation failed', errors);
   }
 
-  const quotation = await updateQuotation(id, result.data, req.user.userId);
+  const quotation = await updateQuotation(id as any, result.data, req.user.userId);
   res.status(200).json(
     ApiResponse.success('Quotation updated successfully', quotation.toJSON()).toJSON()
   );
@@ -80,7 +80,7 @@ export const updateQuotationHandler = asyncHandler(async (req: Request, res: Res
 export const deleteQuotationHandler = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw ApiError.unauthorized();
   const { id } = req.params;
-  await deleteQuotation(id);
+  await deleteQuotation(id as any);
   res.status(200).json(
     ApiResponse.success('Quotation deleted successfully').toJSON()
   );
@@ -148,17 +148,17 @@ export const getQuotationPdfHandler = asyncHandler(async (req: Request, res: Res
 
   // Optional query param ?html=true for debugging
   if (req.query.html === 'true') {
-    const html = await generateQuotationHtml(id);
+    const html = await generateQuotationHtml(id as any);
     res.setHeader('Content-Type', 'text/html');
     return res.status(200).send(html);
   }
 
-  const pdfBuffer = await generateQuotationPdf(id);
+  const pdfBuffer = await generateQuotationPdf(id as any);
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `inline; filename="Quotation-${id}.pdf"`);
   res.setHeader('Content-Length', pdfBuffer.length);
   
-  res.status(200).end(pdfBuffer);
+  return res.status(200).end(pdfBuffer);
 });
 
