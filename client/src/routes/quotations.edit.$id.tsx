@@ -15,6 +15,8 @@ import {
   Check,
   ChevronDown,
   ArrowLeft,
+  Edit,
+  Save,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { formatINR } from "@/lib/store";
@@ -42,6 +44,8 @@ interface CustomerRecord {
   email?: string;
   phoneNumber?: string;
   address?: string;
+  gstNumber?: string;
+  companyName?: string;
 }
 
 // ── API type for product (from inventory) ─────────────────────────────
@@ -80,6 +84,9 @@ function EditQuotation() {
   // ── Customer list from API ──────────────────────────────────────────
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [customersLoading, setCustomersLoading] = useState(true);
+
+  const [editingCustomer, setEditingCustomer] = useState<CustomerRecord | null>(null);
+  const [showEditCustomerDialog, setShowEditCustomerDialog] = useState(false);
 
   const fetchCustomers = async () => {
     try {
@@ -384,6 +391,59 @@ function EditQuotation() {
     (i) => !pickQ || i.productName.toLowerCase().includes(pickQ.toLowerCase()),
   );
 
+  // Add these handler functions
+const handleEditCustomer = (customer: CustomerRecord) => {
+  setEditingCustomer(customer);
+  setShowEditCustomerDialog(true);
+};
+
+const handleDeleteCustomer = async (id: string, name: string) => {
+  try {
+    await api.delete(`/customers/${id}`);
+    toast.success(`Customer "${name}" deleted successfully`);
+    // Refresh customer list
+    await fetchCustomers();
+    // If the deleted customer was selected, clear selection
+    if (selectedCustomerId === id) {
+      setSelectedCustomerId("");
+      setSelectedCustomerName("");
+      setCustomer({ name: "", email: "", phone: "" });
+    }
+  } catch (err) {
+    if (err instanceof ApiClientError) {
+      toast.error(err.message);
+    } else {
+      toast.error("Failed to delete customer");
+    }
+  }
+};
+
+const handleUpdateCustomer = async (updatedCustomer: CustomerRecord) => {
+  try {
+    await api.put(`/customers/${updatedCustomer._id}`, updatedCustomer);
+    toast.success("Customer updated successfully");
+    // Refresh customer list
+    await fetchCustomers();
+    // Update selected customer if it's the same
+    if (selectedCustomerId === updatedCustomer._id) {
+      setSelectedCustomerName(updatedCustomer.customerName);
+      setCustomer({
+        name: updatedCustomer.customerName,
+        email: updatedCustomer.email || "",
+        phone: updatedCustomer.phoneNumber || "",
+      });
+    }
+    setShowEditCustomerDialog(false);
+    setEditingCustomer(null);
+  } catch (err) {
+    if (err instanceof ApiClientError) {
+      toast.error(err.message);
+    } else {
+      toast.error("Failed to update customer");
+    }
+  }
+};
+
   if (initialLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -450,68 +510,68 @@ function EditQuotation() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Section
-            icon={<User className="w-5 h-5" />}
-            title="Customer Details"
-            right={
-              <button
-                onClick={() => {
-                  setDialogPrefillName("");
-                  setShowCustomerDialog(true);
-                }}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-medium shadow-elegant hover:opacity-95"
-              >
-                <Plus className="w-4 h-4" /> Add Customer
-              </button>
-            }
-          >
-            <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Select Customer *">
-                <SearchableSelect
-                  value={selectedCustomerName}
-                  options={customers.map((c) => ({
-                    id: c._id,
-                    label: c.customerName,
-                  }))}
-                  onChange={onCustomerSelected}
-                  onAdd={onAddNewCustomer}
-                  placeholder={
-                    customersLoading ? "Loading customers…" : "Search customer…"
-                  }
-                  addLabel="Add customer"
-                  disabled={customersLoading}
-                />
-              </Field>
-              <Field label="Email">
-                <input
-                  value={customer.email}
-                  onChange={(e) =>
-                    setCustomer({ ...customer, email: e.target.value })
-                  }
-                  className={input}
-                  placeholder="john@company.com"
-                />
-              </Field>
-              <Field label="Phone">
-                <input
-                  value={customer.phone}
-                  onChange={(e) =>
-                    setCustomer({ ...customer, phone: e.target.value })
-                  }
-                  className={input}
-                  placeholder="+91 98XXXXXXXX"
-                />
-              </Field>
-              <Field label="Follow-up Date">
-                <input
-                  type="date"
-                  value={followUp}
-                  onChange={(e) => setFollowUp(e.target.value)}
-                  className={input}
-                />
-              </Field>
-            </div>
-          </Section>
+          {/* Customer Section */}
+<Section
+  icon={<User className="w-5 h-5" />}
+  title="Customer Details"
+  right={
+    <button
+      onClick={() => {
+        setDialogPrefillName("");
+        setShowCustomerDialog(true);
+      }}
+      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-medium shadow-elegant hover:opacity-95"
+    >
+      <Plus className="w-4 h-4" /> Add Customer
+    </button>
+  }
+>
+  <div className="grid sm:grid-cols-2 gap-4">
+    <Field label="Select Customer *">
+      <SearchableSelect
+        value={selectedCustomerName}
+        options={customers.map((c) => ({
+          id: c._id,
+          label: c.customerName,
+          data: c,
+        }))}
+        onChange={onCustomerSelected}
+        onAdd={onAddNewCustomer}
+        onEdit={handleEditCustomer}
+        onDelete={handleDeleteCustomer}
+        placeholder={customersLoading ? "Loading customers…" : "Search customer…"}
+        addLabel="Add customer"
+        disabled={customersLoading}
+      />
+    </Field>
+    <Field label="Email">
+      <input
+        value={customer.email}
+        readOnly
+        disabled
+        className={`${input} bg-muted/50 cursor-not-allowed`}
+        placeholder="Select a customer first"
+      />
+    </Field>
+    <Field label="Phone">
+      <input
+        value={customer.phone}
+        readOnly
+        disabled
+        className={`${input} bg-muted/50 cursor-not-allowed`}
+        placeholder="Select a customer first"
+      />
+    </Field>
+    <Field label="Follow-up Date">
+      <input
+        type="date"
+        value={followUp}
+        onChange={(e) => setFollowUp(e.target.value)}
+        className={input}
+      />
+    </Field>
+  </div>
+</Section>
 
           <Section
             icon={<ListChecks className="w-5 h-5" />}
@@ -547,33 +607,80 @@ function EditQuotation() {
                           const img =
                             it.productImages?.find((i) => i.type === "product")
                               ?.url || it.productImages?.[0]?.url;
+                          const allSizes =
+                            it.sizes && it.sizes.length > 0
+                              ? it.sizes.slice(0, 2).join(", ")
+                              : "";
+                          const moreSizes =
+                            it.sizes && it.sizes.length > 2
+                              ? `+${it.sizes.length - 2}`
+                              : "";
+                          const textureCount =
+                            it.productImages?.filter(
+                              (i) => i.type === "texture",
+                            ).length || 0;
+
                           return (
                             <button
                               key={it._id}
                               onClick={() => addItem(it._id)}
-                              className="w-full flex items-center gap-3 p-2.5 hover:bg-muted rounded-lg text-left"
+                              className="w-full p-3 hover:bg-muted rounded-lg text-left transition-all border-b border-border last:border-0 group relative"
                             >
-                              <div className="w-10 h-10 rounded-lg bg-accent overflow-hidden grid place-items-center">
-                                {img ? (
-                                  <img
-                                    src={img}
-                                    alt=""
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <span className="text-xs text-accent-foreground">
-                                    {it.productName.slice(0, 2)}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium truncate text-sm text-foreground">
-                                  {it.productName}
+                              <div className="flex items-center gap-3">
+                                {/* Left: Image */}
+                                <div className="w-12 h-12 rounded-lg bg-accent overflow-hidden grid place-items-center shrink-0">
+                                  {img ? (
+                                    <img
+                                      src={img}
+                                      alt=""
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-accent-foreground">
+                                      {it.productName.slice(0, 2)}
+                                    </span>
+                                  )}
                                 </div>
-                                <div className="text-xs text-muted-foreground truncate">
-                                  {formatINR(it.unitPrice)}
+
+                                {/* Center: Product Info */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-sm text-foreground">
+                                    {it.productName}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    {allSizes && (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        📏 {allSizes} {moreSizes}
+                                      </span>
+                                    )}
+                                    {textureCount > 0 && (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        🎨 {textureCount} texture
+                                        {textureCount !== 1 ? "s" : ""}
+                                      </span>
+                                    )}
+                                    {it.hsnNumber && (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        HSN: {it.hsnNumber}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Right: Price */}
+                                <div className="text-right shrink-0">
+                                  <div className="font-bold text-sm text-primary">
+                                    {formatINR(it.unitPrice)}
+                                  </div>
                                 </div>
                               </div>
+
+                              {/* Description on hover */}
+                              {it.description && (
+                                <div className="absolute left-0 right-0 top-full mt-1 hidden group-hover:block bg-popover border border-border rounded-lg p-2 text-xs text-muted-foreground z-50 shadow-lg">
+                                  📝 {it.description}
+                                </div>
+                              )}
                             </button>
                           );
                         })}
@@ -617,113 +724,139 @@ function EditQuotation() {
                     availableTextures[0] ||
                     productImage ||
                     "";
+
                   return (
                     <div
                       key={it.id}
-                      className="rounded-xl border border-border p-3 sm:p-4 flex items-center justify-between gap-4 flex-wrap"
+                      className="rounded-xl border border-border p-4"
                     >
-                      <div className="flex items-center gap-3 w-full sm:w-1/3 min-w-50">
-                        <div className="w-10 h-10 rounded-lg bg-accent overflow-hidden grid place-items-center shrink-0 border border-border/50">
-                          {productImage ? (
-                            <img
-                              src={productImage}
-                              alt=""
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-xs text-accent-foreground">
-                              {it.name.slice(0, 2)}
-                            </span>
-                          )}
+                      {/* Row 1: Name and Remove button */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="w-10 h-10 rounded-lg bg-accent overflow-hidden grid place-items-center shrink-0">
+                            {productImage ? (
+                              <img
+                                src={productImage}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-xs">
+                                {it.name.slice(0, 2)}
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-foreground">
+                              {it.name}
+                            </div>
+                            {it.hsnNumber && (
+                              <div className="text-[10px] text-muted-foreground">
+                                HSN: {it.hsnNumber}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="min-w-0 relative group">
-                          <div className="font-medium truncate cursor-help group-hover:text-primary transition-colors">
-                            {it.name}
+                        <button
+                          onClick={() => removeItem(it.id)}
+                          className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Row 2: Quantity, Price, Size, Texture - Left/Right layout */}
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <div className="flex items-center gap-3">
+                          <div className="w-20">
+                            <label className="text-[10px] text-muted-foreground">
+                              Qty
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={it.quantity}
+                              onChange={(e) =>
+                                updateItem(it.id, {
+                                  quantity: Math.max(1, +e.target.value || 1),
+                                })
+                              }
+                              className="w-full px-2 py-1 rounded border border-border text-sm"
+                            />
                           </div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {it.hsnNumber ? `HSN: ${it.hsnNumber}` : ""}
+                          <div className="w-24">
+                            <label className="text-[10px] text-muted-foreground">
+                              Price
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              value={it.price}
+                              onChange={(e) =>
+                                updateItem(it.id, {
+                                  price: Math.max(0, +e.target.value || 0),
+                                })
+                              }
+                              className="w-full px-2 py-1 rounded border border-border text-sm"
+                            />
                           </div>
-                          {productDescription && (
-                            <div className="absolute left-0 bottom-full mb-2.5 hidden group-hover:block w-64 p-3 bg-popover border border-border rounded-xl shadow-xl text-xs leading-relaxed z-50 pointer-events-none break-words whitespace-normal text-popover-foreground animate-in fade-in zoom-in-95 duration-200">
-                              {productDescription}
-                              <div className="absolute -bottom-1.5 left-4 w-3 h-3 bg-popover border-b border-r border-border transform rotate-45 rounded-sm"></div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          {availableSizes.length > 0 && (
+                            <div className="w-28">
+                              <label className="text-[10px] text-muted-foreground">
+                                Size
+                              </label>
+                              <select
+                                value={it.selectedSize}
+                                onChange={(e) =>
+                                  updateItem(it.id, {
+                                    selectedSize: e.target.value,
+                                  })
+                                }
+                                className="w-full px-2 py-1 rounded border border-border text-sm"
+                              >
+                                {availableSizes.map((sz) => (
+                                  <option key={sz} value={sz}>
+                                    {sz}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                          {availableTextures.length > 0 && (
+                            <div className="w-16">
+                              <label className="text-[10px] text-muted-foreground">
+                                Texture
+                              </label>
+                              <TextureDropdown
+                                textures={availableTextures}
+                                value={currentTexture}
+                                onChange={(val) =>
+                                  updateItem(it.id, { selectedTexture: val })
+                                }
+                              />
                             </div>
                           )}
                         </div>
+
+                        <div className="text-right">
+                          <div className="text-[10px] text-muted-foreground">
+                            Total
+                          </div>
+                          <div className="font-bold text-sm text-primary">
+                            {formatINR(it.quantity * it.price)}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex flex-1 items-center gap-4 justify-end">
-                        <Field label="Qty" className="w-20">
-                          <input
-                            type="number"
-                            min={1}
-                            value={it.quantity}
-                            onChange={(e) =>
-                              updateItem(it.id, {
-                                quantity: Math.max(1, +e.target.value || 1),
-                              })
-                            }
-                            className={input}
-                          />
-                        </Field>
-                        <Field label="Price" className="w-24">
-                          <input
-                            type="number"
-                            min={0}
-                            value={it.price}
-                            onChange={(e) =>
-                              updateItem(it.id, {
-                                price: Math.max(0, +e.target.value || 0),
-                              })
-                            }
-                            className={input}
-                          />
-                        </Field>
-                        <Field label="Size Variant" className="w-32">
-                          {availableSizes.length > 0 ? (
-                            <select
-                              value={it.selectedSize}
-                              onChange={(e) =>
-                                updateItem(it.id, {
-                                  selectedSize: e.target.value,
-                                })
-                              }
-                              className={input}
-                            >
-                              {availableSizes.map((sz) => (
-                                <option key={sz} value={sz}>
-                                  {sz}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <span className="text-sm text-muted-foreground py-2 block">
-                              N/A
-                            </span>
-                          )}
-                        </Field>
-                        <Field label="Texture Variant" className="w-24">
-                          {availableTextures.length > 0 ? (
-                            <TextureDropdown
-                              textures={availableTextures}
-                              value={currentTexture}
-                              onChange={(val) =>
-                                updateItem(it.id, { selectedTexture: val })
-                              }
-                            />
-                          ) : (
-                            <span className="text-sm text-muted-foreground py-2 block">
-                              N/A
-                            </span>
-                          )}
-                        </Field>
-                        <button
-                          onClick={() => removeItem(it.id)}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0"
-                          aria-label="Remove"
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </button>
-                      </div>
+
+                      {/* Row 3: Description if exists */}
+                      {productDescription && (
+                        <div className="mt-2 pt-2 border-t border-border text-[10px] text-muted-foreground">
+                          📝 {productDescription}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -813,6 +946,17 @@ function EditQuotation() {
           prefillName={dialogPrefillName}
         />
       )}
+
+      {showEditCustomerDialog && editingCustomer && (
+  <EditCustomerDialog
+    customer={editingCustomer}
+    onClose={() => {
+      setShowEditCustomerDialog(false);
+      setEditingCustomer(null);
+    }}
+    onUpdate={handleUpdateCustomer}
+  />
+)}
     </div>
   );
 }
@@ -964,6 +1108,152 @@ function AddCustomerDialog({
   );
 }
 
+// ── Edit Customer Dialog ────────────────────────────────────────────────
+function EditCustomerDialog({
+  customer,
+  onClose,
+  onUpdate,
+}: {
+  customer: CustomerRecord;
+  onClose: () => void;
+  onUpdate: (c: CustomerRecord) => void;
+}) {
+  const [form, setForm] = useState({
+    customerName: customer.customerName,
+    email: customer.email || "",
+    phoneNumber: customer.phoneNumber || "",
+    address: customer.address || "",
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  const handleBackdrop = (e: React.MouseEvent) => {
+    if (e.target === backdropRef.current) onClose();
+  };
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.customerName.trim()) {
+      toast.error("Customer name is required");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const updated = await api.put<CustomerRecord>(`/customers/${customer._id}`, form);
+      toast.success("Customer updated successfully");
+      onUpdate(updated);
+    } catch (err) {
+      if (err instanceof ApiClientError) {
+        toast.error(err.message);
+      } else {
+        toast.error("Internal server error. Contact admin.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      ref={backdropRef}
+      onClick={handleBackdrop}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+    >
+      <div className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-elegant animate-in fade-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-accent grid place-items-center text-accent-foreground">
+              <User className="w-5 h-5" />
+            </div>
+            <h2 className="font-display font-semibold text-lg">Edit Customer</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg border border-border hover:bg-muted grid place-items-center"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field label="Customer Name *">
+              <input
+                value={form.customerName}
+                onChange={(e) => setForm({ ...form, customerName: e.target.value })}
+                className={input}
+                placeholder="John Doe"
+                autoFocus
+              />
+            </Field>
+            <Field label="Email">
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className={input}
+                placeholder="john@company.com"
+              />
+            </Field>
+            <Field label="Phone Number">
+              <input
+                value={form.phoneNumber}
+                onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
+                className={input}
+                placeholder="+91 98XXXXXXXX"
+              />
+            </Field>
+            <Field label="Address">
+              <input
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                className={input}
+                placeholder="123 Main Street, Mumbai"
+              />
+            </Field>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-sm font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" /> Update Customer
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 const input =
   "w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring text-sm";
 
@@ -1028,19 +1318,24 @@ function Row({
   );
 }
 
+// ── Enhanced SearchableSelect with Edit/Delete buttons ─────────────
 function SearchableSelect({
   value,
   options,
   onChange,
   onAdd,
+  onEdit,
+  onDelete,
   placeholder = "Search…",
   addLabel = "Add new",
   disabled = false,
 }: {
   value: string;
-  options: { id: string; label: string }[];
+  options: { id: string; label: string; data?: CustomerRecord }[];
   onChange: (id: string, label: string) => void;
   onAdd: (label: string) => void;
+  onEdit: (customer: CustomerRecord) => void;
+  onDelete: (id: string, label: string) => void;
   placeholder?: string;
   addLabel?: string;
   disabled?: boolean;
@@ -1071,11 +1366,26 @@ function SearchableSelect({
     setOpen(false);
     setQuery("");
   };
+  
   const add = () => {
     if (!canAdd) return;
     onAdd(q);
     setOpen(false);
     setQuery("");
+  };
+
+  const handleEdit = (e: React.MouseEvent, customer: CustomerRecord) => {
+    e.stopPropagation();
+    onEdit(customer);
+    setOpen(false);
+  };
+
+  const handleDelete = (e: React.MouseEvent, id: string, label: string) => {
+    e.stopPropagation();
+    if (confirm(`Delete customer "${label}"? This will affect existing quotations.`)) {
+      onDelete(id, label);
+      setOpen(false);
+    }
   };
 
   return (
@@ -1112,17 +1422,41 @@ function SearchableSelect({
           </div>
           <div className="max-h-56 overflow-auto py-1">
             {filtered.map((o) => (
-              <button
+              <div
                 key={o.id}
-                type="button"
-                onClick={() => pick(o)}
-                className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted text-left"
+                className="flex items-center justify-between px-3 py-2 text-sm hover:bg-muted"
               >
-                <span>{o.label}</span>
-                {o.label === value && (
-                  <Check className="w-4 h-4 text-primary" />
+                <button
+                  type="button"
+                  onClick={() => pick(o)}
+                  className="flex-1 text-left"
+                >
+                  <span>{o.label}</span>
+                  {o.label === value && (
+                    <Check className="w-4 h-4 text-primary inline ml-2" />
+                  )}
+                </button>
+                {o.data && (
+                  <div className="flex items-center gap-1 shrink-0 ml-2">
+                    <button
+                      type="button"
+                      onClick={(e) => handleEdit(e, o.data!)}
+                      className="p-1 rounded hover:bg-primary/10 text-primary"
+                      title="Edit customer"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDelete(e, o.id, o.label)}
+                      className="p-1 rounded hover:bg-destructive/10 text-destructive"
+                      title="Delete customer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 )}
-              </button>
+              </div>
             ))}
             {filtered.length === 0 && !canAdd && (
               <div className="px-3 py-4 text-xs text-muted-foreground text-center">

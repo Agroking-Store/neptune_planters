@@ -123,6 +123,16 @@ function EditItem() {
       return;
     }
 
+    if (form.unitPrice <= 0) {
+    toast.error("Product price must be greater than 0");
+    return;
+  }
+  
+  if (isNaN(form.unitPrice) || form.unitPrice === null) {
+    toast.error("Please enter a valid price");
+    return;
+  }
+
     setSubmitting(true);
 
     // Build images array
@@ -134,6 +144,7 @@ function EditItem() {
 
     const payload = {
       ...form,
+      unitPrice: Number(form.unitPrice),
       sizes: sizes.filter(s => s.trim() !== ""),
       productImages,
     };
