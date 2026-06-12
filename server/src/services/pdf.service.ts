@@ -173,8 +173,8 @@ export async function generateQuotationPdf(quotationId: string): Promise<Buffer>
 
     const page = await browser.newPage();
 
-    // Set viewport to match our new 1200px desktop design
-    await page.setViewport({ width: 1200, height: 900 });
+    // Set viewport to match our 1000px template design
+    await page.setViewport({ width: 1000, height: 900 });
 
     // Load HTML content
     await page.setContent(html, {
@@ -182,10 +182,10 @@ export async function generateQuotationPdf(quotationId: string): Promise<Buffer>
       timeout: 30000,
     });
 
-    // Generate PDF formatted to A4 proportions (1200px width maintains layout, 1697px height gives A4 ratio)
+    // Generate PDF formatted to A4 proportions (1000px width maintains layout, 1414px height gives A4 ratio)
     const pdfBuffer = await page.pdf({
-      width: '1200px',
-      height: '1697px', // 1200 * 1.4142 (A4 aspect ratio)
+      width: '1000px',
+      height: '1414px', // 1000 * 1.4142 (A4 aspect ratio)
       printBackground: true, // Preserve backgrounds/colors
       margin: { top: '0', right: '0', bottom: '0', left: '0' },
     });

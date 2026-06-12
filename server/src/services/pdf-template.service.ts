@@ -1,4 +1,6 @@
 import { PdfTemplateData, formatCurrency } from './pdf.service';
+import fs from 'fs';
+import path from 'path';
 
 // Number to words helper (Indian Number System)
 function numberToWords(num: number): string {
@@ -43,20 +45,34 @@ function numberToWords(num: number): string {
   return words.trim();
 }
 
+// Load template images as base64 data URIs
+function getImageDataUri(relativePath: string): string {
+  try {
+    const imgPath = path.resolve(__dirname, '..', 'pdf template', 'New Template', 'assets', relativePath);
+    const imgBuffer = fs.readFileSync(imgPath);
+    const ext = path.extname(relativePath).toLowerCase().replace('.', '');
+    const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
+    return `data:${mime};base64,${imgBuffer.toString('base64')}`;
+  } catch {
+    return '';
+  }
+}
+
+const logoDataUri = getImageDataUri('logo-1.png');
+const potDataUri = getImageDataUri('Picsart_26-06-12_00-14-40-385.png');
+
 export function buildQuotationHtml(data: PdfTemplateData): string {
   // Generate Items HTML
   const itemsHtml = data.items.map(item => `
         <tr>
-          <td>${item.index}</td>
-          <td>
-            <div class="product-cell">
-              <div class="product-cell__name">${item.productName}</div>
-              <div class="product-cell__dims">${item.size}</div>
-            </div>
+          <td class="td-sr">${item.index}</td>
+          <td class="td-product">
+            <div class="product-name">${item.productName}</div>
+            <div class="product-dims">${item.size}</div>
           </td>
-          <td>${item.quantity}</td>
-          <td class="text-right">${formatCurrency(item.unitPrice).replace('₹', '').trim()}</td>
-          <td class="text-right">${formatCurrency(item.total).replace('₹', '').trim()}</td>
+          <td class="td-qty">${item.quantity}</td>
+          <td class="td-price">${formatCurrency(item.unitPrice).replace('₹', '').trim()}</td>
+          <td class="td-total">${formatCurrency(item.total).replace('₹', '').trim()}</td>
           <td class="td-img">
             <div class="img-cell">
               ${item.productImageUrl ? `<img src="${item.productImageUrl}" alt="${item.productName}" />` : ''}
@@ -77,14 +93,16 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
         </tr>
   `).join('');
 
-  // Generate Terms & Conditions
+  // Generate Terms & Conditions (Notes)
   const termsHtml = data.termsAndConditions && data.termsAndConditions.length > 0
-    ? data.termsAndConditions.map(term => `<li>${term}</li>`).join('')
+    ? data.termsAndConditions.map(term => `
+            <li><span class="bullet"></span><span>${term}</span></li>
+    `).join('')
     : `
-        <li>Transportation & installation extra as applicable.</li>
-        <li>Goods once sold will not be taken back or exchanged.</li>
-        <li>Delivery within 7–10 working days from the date of order.</li>
-        <li>This quotation is valid for 15 days.</li>
+            <li><span class="bullet"></span><span>Transportation & installation extra as applicable.</span></li>
+            <li><span class="bullet"></span><span>Goods once sold will not be taken back or exchanged.</span></li>
+            <li><span class="bullet"></span><span>Delivery within 7-10 working days from the date of order.</span></li>
+            <li><span class="bullet"></span><span>This quotation is valid for 15 days.</span></li>
       `;
 
   return `<!DOCTYPE html>
@@ -99,7 +117,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=Great+Vibes&display=swap"
     rel="stylesheet" />
   <!-- Material Symbols for icons -->
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
@@ -118,591 +136,711 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     }
 
     :root {
-      --dark: #171717;
-      --gold: #C9A15D;
-      --light-gold: #D8C29A;
-      --cream: #F9F6F1;
-      --light-grey: #F7F4F0;
-      --white: #FFFFFF;
-      --text: #333333;
-      --text-light: #777777;
-      --border: #E5E7EB;
+      --gold: #cba461;
+      --dark: #1a1816;
+      --page: #FAF7F2;
+      --table-row: #FFFFFF;
+      --text-main: #333333;
+      --text-muted: #666666;
+      --border-light: #E5E0D8;
+      --cream-bg: #F9F4EB;
+      --light-grey-bg: #F5F2EB;
     }
 
     body {
       font-family: 'Inter', sans-serif;
       background: #E8E8E8;
-      color: var(--text);
+      color: var(--text-main);
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
 
-    .serif {
-      font-family: 'Playfair Display', serif;
-    }
-
-    .sans {
-      font-family: 'Inter', sans-serif;
-    }
-
     /* ═══════════════════════════════════════════
-       PAGE CONTAINER (1200px wide "paper")
+       PAGE CONTAINER (1000px wide)
        ═══════════════════════════════════════════ */
     .page {
-      max-width: 1200px;
-      margin: 40px auto;
-      background: var(--white);
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+      width: 1000px;
+      margin: 0 auto;
+      background: var(--page);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      color: var(--text-main);
+      position: relative;
     }
 
     /* ═══════════════════════════════════════════
-       HEADER — Trapezoid hero
+       HEADER SECTION
        ═══════════════════════════════════════════ */
     .header {
-      position: relative;
       display: flex;
-      min-height: 310px;
-      overflow: hidden;
+      position: relative;
+      height: 300px;
     }
 
-    .header__trapezoid-gold {
+    .header__dark-panel {
       position: absolute;
-      top: 0;
       left: 0;
-      width: 46%;
-      height: 100%;
-      clip-path: polygon(0 0, 100% 0, 72% 100%, 0% 100%);
-      background: var(--gold);
-      z-index: 1;
-    }
-
-    .header__trapezoid-dark {
-      position: absolute;
       top: 0;
-      left: 0;
-      width: 45%;
       height: 100%;
-      clip-path: polygon(0 0, 100% 0, 70% 100%, 0% 100%);
+      width: 42%;
       background: var(--dark);
-      z-index: 2;
+      clip-path: polygon(0 0, 100% 0, 70% 100%, 0 100%);
+      z-index: 0;
     }
 
     .header__brand {
-      position: relative;
-      z-index: 10;
-      width: 36%;
+      width: 28%;
+      color: var(--gold);
+      padding: 40px 32px 40px 40px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 48px 40px;
-      color: var(--white);
+      position: relative;
+      z-index: 10;
     }
 
-    .header__logo {
-      font-family: 'Playfair Display', serif;
-      font-size: 38px;
-      font-weight: 400;
-      letter-spacing: 0.45em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 6px;
-    }
-
-    .header__subtitle {
-      font-size: 10px;
-      letter-spacing: 0.22em;
-      font-weight: 500;
-      color: rgba(255, 255, 255, 0.85);
-      text-transform: uppercase;
-    }
-
-    .header__divider {
-      width: 80px;
-      height: 1px;
-      background: rgba(201, 161, 93, 0.45);
-      margin: 28px 0 32px;
+    .header__logo-img {
+      width: 193px;
+      height: 69px;
+      margin-bottom: 32px;
+      object-fit: contain;
     }
 
     .header__tagline {
-      font-family: 'Playfair Display', serif;
-      font-size: 21px;
-      font-weight: 300;
-      color: var(--light-gold);
-      line-height: 1.45;
       text-align: center;
+      font-family: 'Playfair Display', serif;
+      font-size: 13.5px;
+      font-style: italic;
+      color: #e3cba0;
+      line-height: 1.5;
     }
 
-    .header__info {
+    /* Planter hero image - overlapping */
+    .header__planter-img {
+      position: absolute;
+      left: 22%;
+      top: 16px;
+      z-index: 20;
+      pointer-events: none;
+      transform: scale(0.9);
+    }
+
+    .header__planter-img img {
+      width: 240px;
+      height: auto;
+      filter: drop-shadow(0 10px 20px rgba(0,0,0,0.25));
+    }
+
+    /* Right side of header */
+    .header__right {
+      width: 72%;
+      display: flex;
       position: relative;
       z-index: 10;
-      width: 64%;
-      display: flex;
-      padding: 40px 48px 40px 14%;
-      gap: 32px;
     }
 
-    .header__info-left {
-      flex: 1;
+    .header__title-area {
+      width: 55%;
+      padding-top: 56px;
+      padding-left: 120px;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: flex-start;
     }
 
     .header__title {
       font-family: 'Playfair Display', serif;
-      font-size: 38px;
-      font-weight: 400;
-      letter-spacing: 0.28em;
-      text-transform: uppercase;
-      color: var(--dark);
+      font-size: 42px;
+      color: #1f2937;
       line-height: 1;
-      margin-bottom: 8px;
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
+      font-weight: 400;
     }
 
     .header__title-accent {
       display: flex;
       align-items: center;
-      gap: 0;
-      margin-bottom: 20px;
+      width: 144px;
+      margin-bottom: 24px;
     }
 
-    .header__title-accent::before,
-    .header__title-accent::after {
-      content: '';
-      flex: 1;
+    .header__title-accent .line-left {
+      width: 32px;
       height: 1px;
-      background: rgba(201, 161, 93, 0.5);
-      max-width: 20px;
+      background: var(--gold);
     }
 
     .header__title-accent .dot {
-      width: 5px;
-      height: 5px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
+      background: var(--gold);
+      margin: 0 4px;
+    }
+
+    .header__title-accent .line-right {
+      flex: 1;
+      height: 1px;
       background: var(--gold);
     }
 
     .header__greeting {
       font-size: 13px;
-      font-weight: 600;
-      color: var(--dark);
-      letter-spacing: 0.03em;
-      margin-bottom: 4px;
+      line-height: 1.6;
+      color: #374151;
+      max-width: 200px;
     }
 
-    .header__greeting-sub {
-      font-size: 11px;
-      color: #999;
-      font-weight: 400;
-      line-height: 1.5;
+    /* Meta info area */
+    .header__meta {
+      width: 45%;
+      padding-top: 56px;
+      padding-right: 48px;
+      padding-left: 16px;
     }
 
-    .header__info-right {
-      flex: 1;
+    .header__meta-inner {
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      gap: 16px;
+      font-size: 11px;
+      color: #1f2937;
+      border-left: 1px solid var(--border-light);
+      padding-left: 32px;
+      padding-top: 8px;
+      padding-bottom: 8px;
+      margin-top: 8px;
     }
 
     .detail-row {
       display: flex;
-      align-items: center;
-      padding: 5px 0;
+      align-items: flex-start;
+      gap: 16px;
     }
 
     .detail-row__icon {
-      width: 28px;
-      flex-shrink: 0;
       color: var(--gold);
       font-size: 16px;
+      margin-top: -1px;
+      flex-shrink: 0;
       display: flex;
       align-items: center;
+    }
+
+    .detail-row__content {
+      display: flex;
+      flex: 1;
     }
 
     .detail-row__label {
-      width: 105px;
+      width: 112px;
+      font-weight: 500;
       flex-shrink: 0;
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #999;
-    }
-
-    .detail-row__sep {
-      width: 16px;
-      text-align: center;
-      color: #ccc;
-      font-size: 11px;
     }
 
     .detail-row__value {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--dark);
+      white-space: nowrap;
+      line-height: 1.3;
     }
 
     /* ═══════════════════════════════════════════
-       ADDRESS SECTION
+       BILL TO / SHIP TO SECTION
        ═══════════════════════════════════════════ */
     .addresses {
+      padding: 0 40px;
+      margin-top: 24px;
+      margin-bottom: 32px;
       display: flex;
-      border-bottom: 1px solid var(--border);
     }
 
     .address-col {
-      flex: 1;
-      padding: 36px 40px;
+      width: 30%;
+      padding-left: 8px;
     }
 
-    .address-col+.address-col {
-      border-left: 1px solid var(--border);
+    .address-col--ship {
+      width: 30%;
+      padding-left: 32px;
+      border-left: 1px solid #dfc599;
+    }
+
+    .address-col__header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
     }
 
     .address-col__label {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--gold);
-      letter-spacing: 0.12em;
       text-transform: uppercase;
-      margin-bottom: 14px;
+      color: var(--gold);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      margin-right: 16px;
+    }
+
+    .address-col__line {
+      width: 40px;
+      height: 1.5px;
+      background: #dfc599;
     }
 
     .address-col__name {
-      font-size: 17px;
-      font-weight: 700;
-      color: var(--dark);
-      margin-bottom: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      color: #111827;
+      margin-bottom: 4px;
     }
 
     .address-col__text {
-      font-size: 13px;
-      color: #666;
-      line-height: 1.65;
+      font-size: 12px;
+      color: #374151;
+      line-height: 1.7;
     }
 
+    .address-col__gstin {
+      font-size: 11px;
+      color: #1f2937;
+      margin-top: 16px;
+      letter-spacing: 0.05em;
+      font-weight: 500;
+    }
+
+    /* Quote block */
     .quote-block {
-      flex: 1;
+      width: 40%;
       display: flex;
-      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      background: var(--cream);
-      padding: 32px 36px;
-      border-left: 1px solid var(--border);
+      justify-content: flex-end;
+      padding-left: 16px;
+    }
+
+    .quote-block__inner {
+      text-align: center;
+      width: 95%;
+      background: var(--cream-bg);
+      padding: 24px 24px 20px;
+      border-radius: 2px;
     }
 
     .quote-block__mark {
+      color: #dfc599;
+      font-size: 40px;
       font-family: 'Playfair Display', serif;
-      font-size: 72px;
-      line-height: 0.5;
-      color: var(--gold);
-      opacity: 0.35;
-      margin-bottom: 8px;
+      line-height: 1;
+      display: block;
+      margin-bottom: 4px;
     }
 
     .quote-block__text {
       font-family: 'Playfair Display', serif;
-      font-size: 17px;
-      font-style: italic;
-      color: var(--dark);
-      line-height: 1.55;
-      text-align: center;
+      font-size: 15px;
+      line-height: 1.6;
+      color: #1f2937;
+    }
+
+    .quote-block__divider {
+      width: 24px;
+      height: 1.5px;
+      background: #dfc599;
+      margin: 16px auto 0;
     }
 
     /* ═══════════════════════════════════════════
        PRODUCT TABLE
        ═══════════════════════════════════════════ */
     .table-section {
-      padding: 40px 40px 0;
+      padding: 0 32px;
+      margin-bottom: 24px;
+      margin-top: 8px;
     }
 
     .product-table {
       width: 100%;
+      text-align: center;
       border-collapse: collapse;
-      font-size: 13px;
+      border-bottom: 1px solid var(--border-light);
     }
 
     .product-table thead th {
       background: var(--dark);
       color: var(--gold);
       font-size: 10px;
-      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      padding: 14px 12px;
-      text-align: center;
-      border: none;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      padding: 16px 8px;
     }
 
-    .product-table thead th:first-child {
-      text-align: center;
-    }
-
-    .product-table thead th.text-right {
-      text-align: right;
-    }
-
-    .product-table thead th.text-left {
-      text-align: left;
-    }
+    .product-table thead th.w-sr { width: 7%; }
+    .product-table thead th.w-product { width: 12%; }
+    .product-table thead th.w-qty { width: 6%; }
+    .product-table thead th.w-unit { width: 13%; }
+    .product-table thead th.w-total { width: 12%; }
+    .product-table thead th.w-pimg { width: 18%; }
+    .product-table thead th.w-rimg { width: 16%; }
+    .product-table thead th.w-texture { width: 16%; }
 
     .product-table tbody td {
-      padding: 14px 12px;
+      padding: 8px;
       vertical-align: middle;
-      border-bottom: 1px solid var(--border);
-      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border-light);
+      border-left: 1px solid var(--border-light);
+      border-right: 1px solid var(--border-light);
+      font-size: 14px;
+      color: #1f2937;
+      background: var(--table-row);
+    }
+
+    .product-table tbody td.td-product {
       text-align: center;
+    }
+
+    .product-name {
+      font-weight: 700;
       font-size: 13px;
-      color: var(--text);
+      color: #111827;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      line-height: 1.3;
+      margin-bottom: 4px;
+      margin-top: 4px;
+    }
+
+    .product-dims {
+      color: #a1a1aa;
+      font-weight: 500;
+      font-size: 11px;
+      text-transform: uppercase;
+      padding-bottom: 4px;
     }
 
     .product-table tbody td.td-img {
-      padding: 2px;
-    }
-
-    .product-table tbody td:last-child {
-      border-right: none;
-    }
-
-    .product-table tbody td.text-right {
-      text-align: right;
-    }
-
-    .product-table tbody td.text-left {
-      text-align: left;
-    }
-
-    .product-table tbody tr:last-child td {
-      border-bottom: 1px solid var(--border);
-    }
-
-    .product-cell {
-      text-align: center;
-    }
-
-    .product-cell__name {
-      font-weight: 600;
-      color: var(--dark);
-      font-size: 13px;
-    }
-
-    .product-cell__dims {
-      font-size: 11px;
-      color: #aaa;
-      margin-top: 3px;
-      font-weight: 400;
+      padding: 2px 8px;
     }
 
     .img-cell img {
       width: 100%;
-      height: 90px;
+      max-width: 120px;
+      height: 65px;
       object-fit: contain;
       display: block;
       margin: 0 auto;
     }
 
     .img-cell--texture img {
-      width: 64px;
-      height: 64px;
+      width: 52px;
+      height: 52px;
       border-radius: 50%;
       object-fit: cover;
+      max-width: none;
     }
 
     /* ═══════════════════════════════════════════
-       NOTES + TOTALS
+       SUMMARY SECTION (Notes + Bank + Totals)
        ═══════════════════════════════════════════ */
-    .notes-totals {
+    .summary-section {
+      padding: 0 32px;
       display: flex;
-      padding: 28px 40px 40px;
-      gap: 32px;
     }
 
+    /* Notes column */
     .notes-col {
-      flex: 2;
+      width: 33%;
+      padding-right: 16px;
+      padding-bottom: 8px;
     }
 
-    .notes-col h3 {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--gold);
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
+    .section-header {
+      display: flex;
+      align-items: center;
       margin-bottom: 16px;
     }
 
-    .notes-col ul {
-      padding-left: 18px;
-      list-style: disc;
+    .section-header__title {
+      text-transform: uppercase;
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      margin-right: 16px;
     }
 
-    .notes-col li {
-      font-size: 12px;
-      color: #666;
+    .section-header__line {
+      width: 40px;
+      height: 1.5px;
+      background: #dfc599;
+    }
+
+    .notes-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .notes-list li {
+      display: flex;
+      align-items: flex-start;
+      font-size: 11px;
+      color: #1f2937;
       line-height: 1.6;
-      margin-bottom: 6px;
+      margin-bottom: 10px;
     }
 
+    .notes-list .bullet {
+      display: inline-block;
+      margin-right: 8px;
+      margin-top: 6px;
+      width: 3px;
+      height: 3px;
+      background: #1f2937;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Bank Details column */
+    .bank-col {
+      width: 33%;
+      padding-left: 32px;
+      border-left: 1px solid #dfc599;
+      padding-bottom: 8px;
+    }
+
+    .bank-details {
+      font-size: 11px;
+      color: #1f2937;
+    }
+
+    .bank-row {
+      display: flex;
+      margin-bottom: 12px;
+    }
+
+    .bank-row__label {
+      width: 75px;
+      font-weight: 500;
+      color: #374151;
+      flex-shrink: 0;
+    }
+
+    .bank-row__sep {
+      margin-right: 32px;
+      color: #374151;
+    }
+
+    .bank-row__value {
+      font-weight: 500;
+      color: #1f2937;
+    }
+
+    /* Totals column */
     .totals-col {
-      flex: 1;
-    }
-
-    .totals-box {
-      background: var(--light-grey);
-      padding: 24px 28px;
+      width: 34%;
+      margin-left: auto;
       display: flex;
       flex-direction: column;
     }
 
     .totals-row {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 13px;
-      font-weight: 600;
-      padding-bottom: 12px;
-      margin-bottom: 12px;
-      border-bottom: 1px solid #D5D5D5;
-    }
-
-    .totals-row:last-of-type {
+      border: 1px solid var(--border-light);
       border-bottom: none;
-      margin-bottom: 0;
-      padding-bottom: 0;
+      background: var(--light-grey-bg);
     }
 
-    .grand-total {
+    .totals-row__label {
+      padding: 16px 20px;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: #374151;
+      width: 50%;
+      border-right: 1px solid var(--border-light);
+    }
+
+    .totals-row__value {
+      padding: 16px 20px;
+      text-align: right;
+      width: 50%;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .grand-total-box {
       background: var(--dark);
-      color: var(--white);
-      padding: 28px 28px 24px;
-      margin: 0 -28px -24px;
+      color: white;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
     }
 
     .grand-total__label {
-      font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 0.18em;
+      font-size: 10px;
+      letter-spacing: 0.1em;
       color: var(--gold);
-      margin-bottom: 8px;
-      font-weight: 600;
+      margin-bottom: 4px;
     }
 
     .grand-total__amount {
       font-family: 'Playfair Display', serif;
-      font-size: 36px;
-      font-weight: 600;
+      font-size: 32px;
       color: var(--gold);
-      margin-bottom: 6px;
+      letter-spacing: 0.05em;
+      line-height: 1;
+      margin-bottom: 8px;
     }
 
     .grand-total__words {
       font-size: 10px;
-      font-style: italic;
-      color: #999;
-      line-height: 1.5;
+      color: #9ca3af;
+      line-height: 1.4;
     }
 
     /* ═══════════════════════════════════════════
-       FOOTER — Signature + Thank you + QR
+       PRE-FOOTER (Signature + Thank You + QR)
        ═══════════════════════════════════════════ */
-    .footer-top {
-      padding: 0 40px 40px;
-    }
-
-    .footer-content {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
+    .pre-footer {
+      margin: 40px 40px 32px;
       padding-top: 32px;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid var(--border-light);
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
     }
 
-    .prepared-by__label {
-      font-size: 12px;
-      color: var(--gold);
-      margin-bottom: 4px;
-      font-weight: 500;
-    }
-
-    .prepared-by__name {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--dark);
-      margin-bottom: 16px;
-    }
-
-    .prepared-by__sig {
-      width: 180px;
-      height: 40px;
-      border-bottom: 1px solid #ccc;
+    /* Signature */
+    .signature-area {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      width: 25%;
+      padding-left: 8px;
       position: relative;
     }
 
-    .prepared-by__sig span {
-      position: absolute;
-      bottom: 2px;
-      left: 0;
-      font-family: 'Playfair Display', serif;
-      font-size: 22px;
-      font-style: italic;
-      color: #bbb;
+    .signature-area__prepared {
+      font-size: 10.5px;
+      color: #6b7280;
+      margin-bottom: 4px;
     }
 
+    .signature-area__name {
+      font-size: 11.5px;
+      color: #1f2937;
+      font-weight: 500;
+      position: relative;
+      z-index: 10;
+      background: var(--page);
+      padding-right: 8px;
+    }
+
+    .signature-area__sig {
+      font-family: 'Great Vibes', cursive;
+      font-size: 36px;
+      color: #1f2937;
+      margin-top: 8px;
+      margin-left: -8px;
+      margin-bottom: -8px;
+      position: relative;
+      z-index: 10;
+      transform: rotate(-2deg);
+    }
+
+    /* Thank you */
     .thank-you {
       text-align: center;
-      padding: 0 24px;
+      width: 40%;
+      padding-bottom: 14px;
     }
 
     .thank-you p {
       font-family: 'Playfair Display', serif;
-      font-size: 16px;
-      font-style: italic;
-      color: var(--dark);
+      font-size: 15px;
+      color: #1f2937;
       line-height: 1.6;
     }
 
-    .qr-box {
+    .thank-you__divider {
+      width: 32px;
+      height: 1.5px;
+      background: #dfc599;
+      margin: 16px auto 0;
+    }
+
+    /* QR section */
+    .qr-section {
+      width: 35%;
       display: flex;
+      justify-content: flex-end;
       align-items: center;
-      gap: 12px;
-      border: 1px solid var(--border);
-      padding: 8px 12px;
+      padding-right: 8px;
+      padding-bottom: 8px;
     }
 
-    .qr-box__img {
-      width: 56px;
-      height: 56px;
-      object-fit: contain;
+    .qr-section__line {
+      height: 60px;
+      width: 1.5px;
+      background: #dfc599;
+      margin-right: 20px;
+      opacity: 0.4;
+    }
+
+    .qr-section__code {
+      border: 1px solid #dfc599;
+      padding: 3px;
+      border-radius: 2px;
+      margin-right: 20px;
       flex-shrink: 0;
+      background: white;
     }
 
-    .qr-box__text {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--dark);
-      line-height: 1.4;
+    .qr-section__code img {
+      width: 52px;
+      height: 52px;
+      display: block;
+    }
+
+    .qr-section__text {
+      display: flex;
+      flex-direction: column;
+      width: 130px;
+      padding-top: 4px;
+    }
+
+    .qr-section__label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1.3;
+    }
+
+    .qr-section__arrow {
+      width: 140px;
+      height: 20px;
+      margin-top: 8px;
+      margin-left: -8px;
+      color: #dfc599;
     }
 
     /* ═══════════════════════════════════════════
-       CONTACT BAR
+       BOTTOM CONTACT BAR
        ═══════════════════════════════════════════ */
     .contact-bar {
       background: var(--dark);
-      color: var(--white);
+      color: var(--gold);
+      padding: 14px 48px;
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: center;
-      padding: 14px 40px;
       font-size: 11px;
-    }
-
-    .contact-bar__left {
-      display: flex;
-      align-items: center;
-      gap: 24px;
+      letter-spacing: 0.05em;
+      margin-top: auto;
     }
 
     .contact-bar__item {
@@ -711,16 +849,27 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       gap: 8px;
     }
 
-    .contact-bar__icon {
-      color: var(--gold);
-      font-size: 14px;
+    .contact-bar__item + .contact-bar__item {
+      margin-left: 16px;
     }
 
-    .contact-bar__right {
+    .contact-bar__icon {
+      font-size: 14px;
       display: flex;
       align-items: center;
-      gap: 8px;
-      text-align: right;
+    }
+
+    .contact-bar__address {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      max-width: 240px;
+      line-height: 1.3;
+      font-size: 10px;
+    }
+
+    .contact-bar__address .contact-bar__icon {
+      flex-shrink: 0;
     }
 
     @media print {
@@ -730,13 +879,12 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       .page {
         box-shadow: none;
         margin: 0;
-        max-width: none;
       }
       tr, .product-table tbody tr {
         page-break-inside: avoid;
         break-inside: avoid;
       }
-      .notes-totals, .footer-top, .addresses, .quote-block, .contact-bar, .header {
+      .summary-section, .pre-footer, .addresses, .contact-bar, .header {
         page-break-inside: avoid;
         break-inside: avoid;
       }
@@ -748,103 +896,137 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
 
   <main class="page">
 
+    <!-- ═══════════════ HEADER ═══════════════ -->
     <header class="header">
-      <div class="header__trapezoid-gold"></div>
-      <div class="header__trapezoid-dark"></div>
+      <!-- Dark diagonal panel -->
+      <div class="header__dark-panel"></div>
 
+      <!-- Brand area (left) -->
       <div class="header__brand">
-        <h1 class="header__logo">Neptune</h1>
-        <p class="header__subtitle">Premium Planters</p>
-        <div class="header__divider"></div>
-        <p class="header__tagline">Crafted Spaces.<br>Timeless Design.</p>
+        <img src="${logoDataUri}" alt="Neptune Logo" class="header__logo-img" />
+        <div class="header__tagline">
+          <p>Crafted Spaces.</p>
+          <p>Timeless Design.</p>
+        </div>
       </div>
 
-      <div class="header__info">
-        <div class="header__info-left">
-          <h2 class="header__title">Quotation</h2>
+      <!-- Planter hero image -->
+      <div class="header__planter-img">
+        <img src="${potDataUri}" alt="Planter" />
+      </div>
+
+      <!-- Right side -->
+      <div class="header__right">
+        <!-- Title area -->
+        <div class="header__title-area">
+          <h2 class="header__title">QUOTATION</h2>
           <div class="header__title-accent">
+            <div class="line-left"></div>
             <div class="dot"></div>
+            <div class="line-right"></div>
           </div>
-          <p class="header__greeting">Thank you for considering Neptune.</p>
-          <p class="header__greeting-sub">We are pleased to submit our quotation as per your requirements.</p>
+          <p class="header__greeting">
+            Thank you for considering Neptune.<br/>
+            We are pleased to submit our quotation<br/>
+            as per your requirements.
+          </p>
         </div>
 
-        <div class="header__info-right">
-          <div class="detail-row">
-            <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">description</span></span>
-            <span class="detail-row__label">Quotation No.</span>
-            <span class="detail-row__sep">:</span>
-            <span class="detail-row__value">${data.quotationId}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">calendar_today</span></span>
-            <span class="detail-row__label">Date</span>
-            <span class="detail-row__sep">:</span>
-            <span class="detail-row__value">${data.createdDate}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">event_available</span></span>
-            <span class="detail-row__label">Valid Till</span>
-            <span class="detail-row__sep">:</span>
-            <span class="detail-row__value">${data.validTillDate}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">payments</span></span>
-            <span class="detail-row__label">Payment Terms</span>
-            <span class="detail-row__sep">:</span>
-            <span class="detail-row__value">50% Advance, 50% Before Dispatch</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">local_shipping</span></span>
-            <span class="detail-row__label">Delivery</span>
-            <span class="detail-row__sep">:</span>
-            <span class="detail-row__value">7 – 10 Working Days</span>
+        <!-- Meta info -->
+        <div class="header__meta">
+          <div class="header__meta-inner">
+            <div class="detail-row">
+              <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">description</span></span>
+              <div class="detail-row__content">
+                <span class="detail-row__label">Quotation No.</span>
+                <span class="detail-row__value">: &nbsp;${data.quotationId}</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">calendar_today</span></span>
+              <div class="detail-row__content">
+                <span class="detail-row__label">Date</span>
+                <span class="detail-row__value">: &nbsp;${data.createdDate}</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">event_available</span></span>
+              <div class="detail-row__content">
+                <span class="detail-row__label">Valid Till</span>
+                <span class="detail-row__value">: &nbsp;${data.validTillDate}</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">verified_user</span></span>
+              <div class="detail-row__content">
+                <span class="detail-row__label">Payment Terms</span>
+                <span class="detail-row__value">: &nbsp;100% Advance</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">local_shipping</span></span>
+              <div class="detail-row__content">
+                <span class="detail-row__label">Delivery</span>
+                <span class="detail-row__value">: &nbsp;7 - 10 Days</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </header>
 
+    <!-- ═══════════════ BILL TO / SHIP TO ═══════════════ -->
     <section class="addresses">
       <div class="address-col">
-        <p class="address-col__label">Bill To</p>
-        <p class="address-col__name">${data.customerDisplayName}</p>
+        <div class="address-col__header">
+          <h3 class="address-col__label">BILL TO</h3>
+          <div class="address-col__line"></div>
+        </div>
+        <h4 class="address-col__name">${data.customerDisplayName}</h4>
         <p class="address-col__text">
-          ${data.customerEmail ? data.customerEmail + '<br>' : ''}
-          ${data.customerPhone ? data.customerPhone + '<br>' : ''}
-          ${data.customerAddress}
+          ${data.customerAddress.replace(/,\s*/g, ',<br/>')}
+        </p>
+        <!-- GSTIN - Mocked, not in current data model -->
+        <p class="address-col__gstin">GSTIN: 27ABCDE1234F1Z5</p>
+      </div>
+
+      <div class="address-col address-col--ship">
+        <div class="address-col__header">
+          <h3 class="address-col__label">SHIP TO</h3>
+          <div class="address-col__line"></div>
+        </div>
+        <h4 class="address-col__name">${data.customerDisplayName}</h4>
+        <p class="address-col__text">
+          ${data.customerAddress.replace(/,\s*/g, ',<br/>')}
         </p>
       </div>
-      <div class="address-col">
-        <p class="address-col__label">Ship To</p>
-        <p class="address-col__name">${data.customerDisplayName}</p>
-        <p class="address-col__text">
-          ${data.customerEmail ? data.customerEmail + '<br>' : ''}
-          ${data.customerPhone ? data.customerPhone + '<br>' : ''}
-          ${data.customerAddress}
-        </p>
-      </div>
+
       <div class="quote-block">
-        <span class="quote-block__mark">"</span>
-        <p class="quote-block__text">
-          We don't just make planters,<br>
-          we craft spaces that<br>
-          leave impressions.
-        </p>
+        <div class="quote-block__inner">
+          <span class="quote-block__mark">\u201C</span>
+          <p class="quote-block__text">
+            We don't just make planters,<br>
+            we craft spaces that<br>
+            leave impressions.
+          </p>
+          <div class="quote-block__divider"></div>
+        </div>
       </div>
     </section>
 
+    <!-- ═══════════════ PRODUCT TABLE ═══════════════ -->
     <section class="table-section">
       <table class="product-table">
         <thead>
           <tr>
-            <th>Sr. No.</th>
-            <th>Product</th>
-            <th>Qty</th>
-            <th class="text-right">Unit Price (₹)</th>
-            <th class="text-right">Total (₹)</th>
-            <th>Product Img</th>
-            <th>Reference Img</th>
-            <th>Stone Texture</th>
+            <th class="w-sr">SR. NO.</th>
+            <th class="w-product">PRODUCT</th>
+            <th class="w-qty">QTY</th>
+            <th class="w-unit">UNIT PRICE (₹)</th>
+            <th class="w-total">TOTAL (₹)</th>
+            <th class="w-pimg">PRODUCT IMG</th>
+            <th class="w-rimg">REFERENCE IMG</th>
+            <th class="w-texture">STONE TEXTURE</th>
           </tr>
         </thead>
         <tbody>
@@ -853,77 +1035,132 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       </table>
     </section>
 
-    <section class="notes-totals">
+    <!-- ═══════════════ SUMMARY (Notes + Bank + Totals) ═══════════════ -->
+    <section class="summary-section">
+
+      <!-- Notes -->
       <div class="notes-col">
-        <h3>Terms & Conditions</h3>
-        <ul>
+        <div class="section-header">
+          <h3 class="section-header__title">NOTES</h3>
+          <div class="section-header__line"></div>
+        </div>
+        <ul class="notes-list">
           ${termsHtml}
         </ul>
       </div>
+
+      <!-- Bank Details - Mocked, not in current data model -->
+      <div class="bank-col">
+        <div class="section-header">
+          <h3 class="section-header__title">BANK DETAILS</h3>
+          <div class="section-header__line"></div>
+        </div>
+        <div class="bank-details">
+          <div class="bank-row">
+            <span class="bank-row__label">Bank Name</span>
+            <span class="bank-row__sep">:</span>
+            <span class="bank-row__value">HDFC Bank</span>
+          </div>
+          <div class="bank-row">
+            <span class="bank-row__label">A/C Name</span>
+            <span class="bank-row__sep">:</span>
+            <span class="bank-row__value">Neptune Innovations</span>
+          </div>
+          <div class="bank-row">
+            <span class="bank-row__label">A/C No.</span>
+            <span class="bank-row__sep">:</span>
+            <span class="bank-row__value">50200067523491</span>
+          </div>
+          <div class="bank-row">
+            <span class="bank-row__label">IFSC Code</span>
+            <span class="bank-row__sep">:</span>
+            <span class="bank-row__value">HDFC0001234</span>
+          </div>
+          <div class="bank-row">
+            <span class="bank-row__label">Branch</span>
+            <span class="bank-row__sep">:</span>
+            <span class="bank-row__value">Hadapsar, Pune</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Totals -->
       <div class="totals-col">
-        <div class="totals-box">
-          <div class="totals-row">
-            <span>SUBTOTAL</span>
-            <span>${formatCurrency(data.summary.subtotal)}</span>
-          </div>
-          <div class="totals-row">
-            <span>TAX @ 18%</span>
-            <span>${formatCurrency(data.summary.taxAmount)}</span>
-          </div>
-          <div class="grand-total">
-            <p class="grand-total__label">Grand Total</p>
-            <p class="grand-total__amount">${formatCurrency(data.summary.totalAmount)}</p>
-            <p class="grand-total__words">(Rupees ${numberToWords(Math.round(data.summary.totalAmount))} Only)</p>
-          </div>
+        <div class="totals-row">
+          <span class="totals-row__label">SUBTOTAL</span>
+          <span class="totals-row__value">${formatCurrency(data.summary.subtotal)}</span>
+        </div>
+        <!-- Discount - Mocked, not in current data model -->
+        <div class="totals-row">
+          <span class="totals-row__label">DISCOUNT %</span>
+          <span class="totals-row__value">${formatCurrency(data.summary.taxAmount)}</span>
+        </div>
+        <div class="grand-total-box">
+          <span class="grand-total__label">GRAND TOTAL</span>
+          <span class="grand-total__amount">${formatCurrency(data.summary.totalAmount)}</span>
+          <p class="grand-total__words">
+            (Rupees ${numberToWords(Math.round(data.summary.totalAmount))} Only)
+          </p>
         </div>
       </div>
     </section>
 
-    <div class="footer-top">
-      <div class="footer-content">
-        <div>
-          <p class="prepared-by__label">Prepared By</p>
-          <p class="prepared-by__name">Neptune Innovations</p>
-          <div class="prepared-by__sig">
-            <span>Signature</span>
-          </div>
-        </div>
+    <!-- ═══════════════ PRE-FOOTER ═══════════════ -->
+    <div class="pre-footer">
 
-        <div class="thank-you">
-          <p>
-            Thank you for your business.<br>
-            We look forward to being a part of<br>
-            your beautiful journey.
-          </p>
-        </div>
+      <!-- Signature -->
+      <div class="signature-area">
+        <span class="signature-area__prepared">Prepared By</span>
+        <span class="signature-area__name">Neptune Innovations</span>
+        <!-- Mocked signature name -->
+        <div class="signature-area__sig">Mamta</div>
+      </div>
 
-        <div class="qr-box">
-          <img class="qr-box__img"
-            src="https://api.qrserver.com/v1/create-qr-code/?size=112x112&data=https://www.shopneptune.in"
-            alt="QR Code" />
-          <div class="qr-box__text">Scan to Visit<br>Our Collection</div>
+      <!-- Thank You -->
+      <div class="thank-you">
+        <p>
+          Thank you for your business.<br/>
+          We look forward to being a part of<br/>
+          your beautiful journey.
+        </p>
+        <div class="thank-you__divider"></div>
+      </div>
+
+      <!-- QR Section -->
+      <div class="qr-section">
+        <div class="qr-section__line"></div>
+        <div class="qr-section__code">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://shopneptune.in/products/&color=000&bgcolor=fff&margin=0" alt="QR Code" />
+        </div>
+        <div class="qr-section__text">
+          <span class="qr-section__label">SCAN TO VISIT</span>
+          <span class="qr-section__label">OUR COLLECTION</span>
+          <svg class="qr-section__arrow" viewBox="0 0 140 20" fill="none" stroke="currentColor">
+            <path d="M2 16 L125 16 Q135 16, 137 5 M132 8 L137 5 L140 10" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </div>
       </div>
     </div>
 
+    <!-- ═══════════════ BOTTOM CONTACT BAR ═══════════════ -->
     <div class="contact-bar">
-      <div class="contact-bar__left">
+      <div style="display:flex;align-items:center;">
         <span class="contact-bar__item">
-          <span class="contact-bar__icon">☎</span>
+          <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">phone</span></span>
           <span>+91 97652 76111</span>
         </span>
         <span class="contact-bar__item">
-          <span class="contact-bar__icon">✉</span>
+          <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">mail</span></span>
           <span>connect@shopneptune.in</span>
         </span>
         <span class="contact-bar__item">
-          <span class="contact-bar__icon">🌐</span>
+          <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">language</span></span>
           <span>www.shopneptune.in</span>
         </span>
       </div>
-      <div class="contact-bar__right">
-        <span class="contact-bar__icon">📍</span>
-        <span>Holkarwadi, Handewadi,<br>Pune – 411028</span>
+      <div class="contact-bar__address">
+        <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:16px">location_on</span></span>
+        <span>Sr No 34/1, Holkarwadi, Handewadi,<br/>Pune-412308</span>
       </div>
     </div>
 

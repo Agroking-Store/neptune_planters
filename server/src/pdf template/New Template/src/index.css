@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Great+Vibes&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-gold: #cba461;
+  --color-dark: #1a1816;
+  --color-page: #FAF7F2;
+  --color-table-row: #FFFFFF;
+  --color-text-main: #333333;
+  --color-text-muted: #666666;
+
+  --font-serif: "Playfair Display", serif;
+  --font-sans: "Inter", sans-serif;
+  --font-signature: "Great Vibes", cursive;
+}
+
+body {
+  background-color: var(--color-dark); /* Surrounding background to make the page pop */
+  padding: 2rem 0;
+  display: flex;
+  justify-content: center;
+  font-family: var(--font-sans);
+}
+
+/* Custom dashed border for the stamp */
+.stamp-circle {
+  stroke-dasharray: 4 4;
+}
