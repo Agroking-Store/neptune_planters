@@ -11,6 +11,8 @@ import {
 } from '../services/quotation.service';
 import { generateQuotationPdf, generateQuotationHtml } from '../services/pdf.service';
 import { createQuotationSchema } from '../validators/quotation.validator';
+import { Quotation } from '../models/Quotation.model';
+import { Sale } from '../models/Sale.model';
 
 // ─────────────────────────────────────────────
 // GET /api/quotations
@@ -69,6 +71,36 @@ export const updateQuotationHandler = asyncHandler(async (req: Request, res: Res
   }
 
   const quotation = await updateQuotation(id as any, result.data, req.user.userId);
+
+  // Sync Sales Tracking if the quotation is Accepted
+  if (quotation.status === 'Accepted') {
+    const existingSales = await Sale.find({ quotationId: quotation._id });
+    const saleDate = existingSales.length > 0 ? existingSales[0].saleDate : new Date();
+    const month = `${saleDate.getFullYear()}-${String(saleDate.getMonth() + 1).padStart(2, '0')}`;
+    const year = saleDate.getFullYear();
+
+    await Sale.deleteMany({ quotationId: quotation._id });
+
+    const sales = quotation.items.map((it: any) => ({
+      productId: it.productId,
+      quotationId: quotation._id,
+      quantity: it.quantity,
+      unitPrice: it.unitPrice,
+      totalAmount: it.total,
+      selectedSize: it.selectedSize,
+      selectedTexture: it.selectedTexture,
+      saleDate,
+      month,
+      year
+    }));
+    
+    if (sales.length > 0) {
+      await Sale.insertMany(sales);
+    }
+  } else {
+    await Sale.deleteMany({ quotationId: quotation._id });
+  }
+
   res.status(200).json(
     ApiResponse.success('Quotation updated successfully', quotation.toJSON()).toJSON()
   );
@@ -81,6 +113,7 @@ export const deleteQuotationHandler = asyncHandler(async (req: Request, res: Res
   if (!req.user) throw ApiError.unauthorized();
   const { id } = req.params;
   await deleteQuotation(id as any);
+  await Sale.deleteMany({ quotationId: id });
   res.status(200).json(
     ApiResponse.success('Quotation deleted successfully').toJSON()
   );
@@ -89,9 +122,6 @@ export const deleteQuotationHandler = asyncHandler(async (req: Request, res: Res
 // ─────────────────────────────────────────────
 // PATCH /api/quotations/:id/status
 // ─────────────────────────────────────────────
-import { Quotation } from '../models/Quotation.model';
-import { Sale } from '../models/Sale.model';
-
 export const patchQuotationStatusHandler = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw ApiError.unauthorized();
   const { id } = req.params;
@@ -119,7 +149,7 @@ export const patchQuotationStatusHandler = asyncHandler(async (req: Request, res
       quotationId: quotation._id,
       quantity: it.quantity,
       unitPrice: it.unitPrice,
-      totalAmount: it.quantity * it.unitPrice,
+      totalAmount: it.total,
       selectedSize: it.selectedSize,
       selectedTexture: it.selectedTexture,
       saleDate: date,
