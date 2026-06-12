@@ -72,6 +72,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
           </td>
           <td class="td-qty">${item.quantity}</td>
           <td class="td-price">${formatCurrency(item.unitPrice).replace('₹', '').trim()}</td>
+          <td class="td-discount">${item.discountPercent || 0}%</td>
           <td class="td-total">${formatCurrency(item.total).replace('₹', '').trim()}</td>
           <td class="td-img">
             <div class="img-cell">
@@ -476,12 +477,13 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       padding: 16px 8px;
     }
 
-    .product-table thead th.w-sr { width: 7%; }
+    .product-table thead th.w-sr { width: 6%; }
     .product-table thead th.w-product { width: 12%; }
-    .product-table thead th.w-qty { width: 6%; }
-    .product-table thead th.w-unit { width: 13%; }
-    .product-table thead th.w-total { width: 12%; }
-    .product-table thead th.w-pimg { width: 18%; }
+    .product-table thead th.w-qty { width: 5%; }
+    .product-table thead th.w-unit { width: 10%; }
+    .product-table thead th.w-discount { width: 8%; }
+    .product-table thead th.w-total { width: 10%; }
+    .product-table thead th.w-pimg { width: 17%; }
     .product-table thead th.w-rimg { width: 16%; }
     .product-table thead th.w-texture { width: 16%; }
 
@@ -1023,6 +1025,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
             <th class="w-product">PRODUCT</th>
             <th class="w-qty">QTY</th>
             <th class="w-unit">UNIT PRICE (₹)</th>
+            <th class="w-discount">DISC. %</th>
             <th class="w-total">TOTAL (₹)</th>
             <th class="w-pimg">PRODUCT IMG</th>
             <th class="w-rimg">REFERENCE IMG</th>
