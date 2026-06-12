@@ -17,13 +17,13 @@ export const Route = createFileRoute("/inventory/new")({
 function NewItem() {
   const navigate = useNavigate();
   const productImgRef = useRef<HTMLInputElement>(null);
-  const refImgRef     = useRef<HTMLInputElement>(null);
+  const refImgRef = useRef<HTMLInputElement>(null);
   const textureImgRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // ── Form state ────────────────────────────────────────────────────────
-  const [image, setImage]               = useState<string | undefined>();
-  const [referenceImage, setRefImage]   = useState<string | undefined>();
-  const [textureImages, setTextureImages] = useState<string[]>([]);
+  const [image, setImage] = useState<string | undefined>();
+  const [referenceImage, setRefImage] = useState<string | undefined>();
+  const [textureImages, setTextureImages] = useState<{ url: string, linkedUrl: string }[]>([]);
 
   const [form, setForm] = useState({
     productName: "", hsnNumber: "", description: "",
@@ -39,18 +39,22 @@ function NewItem() {
     reader.readAsDataURL(f);
   };
 
-  const handleTextureFile = (idx: number, f: File) => {
+  const handleTextureFile = (idx: number, f: File, isLinked: boolean = false) => {
     const reader = new FileReader();
     reader.onload = () => {
       const newTextures = [...textureImages];
-      newTextures[idx] = reader.result as string;
+      if (isLinked) {
+        newTextures[idx].linkedUrl = reader.result as string;
+      } else {
+        newTextures[idx].url = reader.result as string;
+      }
       setTextureImages(newTextures);
     };
     reader.readAsDataURL(f);
   };
 
   const addTextureSlot = () => {
-    setTextureImages([...textureImages, ""]);
+    setTextureImages([...textureImages, { url: "", linkedUrl: "" }]);
   };
 
   const removeTextureSlot = (idx: number) => {
@@ -87,9 +91,9 @@ function NewItem() {
 
     // Build images array
     const productImages = [
-      image         && { type: "product",   url: image,         publicId: "" },
+      image && { type: "product", url: image, publicId: "" },
       referenceImage && { type: "reference", url: referenceImage, publicId: "" },
-      ...textureImages.filter(t => t).map(t => ({ type: "texture", url: t, publicId: "" }))
+      ...textureImages.filter(t => t.url).map(t => ({ type: "texture", url: t.url, publicId: "", linkedUrl: t.linkedUrl }))
     ].filter(Boolean);
 
     const payload = {
@@ -132,10 +136,10 @@ function NewItem() {
         <Section icon={<ImageIcon className="w-5 h-5" />} title="Product Media" subtitle="Primary product and reference imagery.">
           <div className="flex flex-wrap gap-4">
             <div className="w-40">
-              <ImageDrop label="Product Image"   value={image}          onPick={() => productImgRef.current?.click()} onClear={() => setImage(undefined)}    inputRef={productImgRef} onFile={(f) => readFile(f, setImage)} />
+              <ImageDrop label="Product Image" value={image} onPick={() => productImgRef.current?.click()} onClear={() => setImage(undefined)} inputRef={productImgRef} onFile={(f) => readFile(f, setImage)} />
             </div>
             <div className="w-40">
-              <ImageDrop label="Reference Image" value={referenceImage} onPick={() => refImgRef.current?.click()}     onClear={() => setRefImage(undefined)}  inputRef={refImgRef}     onFile={(f) => readFile(f, setRefImage)} />
+              <ImageDrop label="Reference Image" value={referenceImage} onPick={() => refImgRef.current?.click()} onClear={() => setRefImage(undefined)} inputRef={refImgRef} onFile={(f) => readFile(f, setRefImage)} />
             </div>
           </div>
         </Section>
@@ -175,11 +179,11 @@ function NewItem() {
                 <div className="flex flex-wrap gap-2">
                   {sizes.map((s, i) => (
                     <div key={i} className="flex items-center gap-1.5 bg-muted/50 border border-border rounded-xl px-2 py-1.5">
-                      <input 
-                        value={s} 
-                        onChange={(e) => updateSize(i, e.target.value)} 
-                        className="bg-transparent text-sm w-32 focus:outline-none placeholder:text-muted-foreground/50" 
-                        placeholder="65x65x65" 
+                      <input
+                        value={s}
+                        onChange={(e) => updateSize(i, e.target.value)}
+                        className="bg-transparent text-sm w-32 focus:outline-none placeholder:text-muted-foreground/50"
+                        placeholder="65x65x65"
                       />
                       <button type="button" onClick={() => removeSizeSlot(i)} className="p-1 rounded-md text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors">
                         <X className="w-3.5 h-3.5" />
@@ -201,26 +205,47 @@ function NewItem() {
                 </button>
               </div>
               {textureImages.length === 0 ? (
-                 <div className="text-xs text-muted-foreground p-3 border border-dashed rounded-xl text-center">No texture photos added. Click 'Add Texture' to begin.</div>
+                <div className="text-xs text-muted-foreground p-3 border border-dashed rounded-xl text-center">No texture slots added. Click 'Add Texture' to begin.</div>
               ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                <div className="space-y-4">
                   {textureImages.map((img, i) => (
-                    <div key={i} className="relative group">
-                      <ImageDrop 
-                        label={`Texture ${i + 1}`} 
-                        value={img} 
-                        onPick={() => textureImgRefs.current[i]?.click()} 
-                        onClear={() => {}} // Not used here as we remove the whole slot
-                        inputRef={(el) => { textureImgRefs.current[i] = el; }} 
-                        onFile={(f) => handleTextureFile(i, f)} 
-                      />
-                      <button 
-                        type="button" 
+                    <div key={i} className="relative group p-4 border border-border rounded-xl bg-card">
+                      <div className="flex flex-wrap gap-4">
+                        <div className="w-40">
+                          <ImageDrop
+                            label={`Texture Image ${i + 1}`}
+                            value={img.url}
+                            onPick={() => textureImgRefs.current[i * 2]?.click()}
+                            onClear={() => {
+                              const newTextures = [...textureImages];
+                              newTextures[i].url = "";
+                              setTextureImages(newTextures);
+                            }}
+                            inputRef={(el) => { textureImgRefs.current[i * 2] = el; }}
+                            onFile={(f) => handleTextureFile(i, f, false)}
+                          />
+                        </div>
+                        <div className="w-40">
+                          <ImageDrop
+                            label={`Product Img for Texture ${i + 1}`}
+                            value={img.linkedUrl}
+                            onPick={() => textureImgRefs.current[i * 2 + 1]?.click()}
+                            onClear={() => {
+                              const newTextures = [...textureImages];
+                              newTextures[i].linkedUrl = "";
+                              setTextureImages(newTextures);
+                            }}
+                            inputRef={(el) => { textureImgRefs.current[i * 2 + 1] = el; }}
+                            onFile={(f) => handleTextureFile(i, f, true)}
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
                         onClick={() => removeTextureSlot(i)}
-                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        aria-label="Remove texture slot"
+                        className="absolute top-2 right-2 px-2 py-1 text-xs rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        Remove Slot
                       </button>
                     </div>
                   ))}

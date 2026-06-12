@@ -59,7 +59,7 @@ interface ProductRecord {
   size?: string;
   description?: string;
   sizes?: string[];
-  productImages?: { type: string; url: string }[];
+  productImages?: { type: string; url: string; linkedUrl?: string }[];
 }
 
 // ── Local quotation item shape ────────────────────────────────────────
@@ -657,25 +657,29 @@ function NewQuotation() {
               <div className="space-y-3">
                 {items.map((it) => {
                   const p = products.find((pr) => pr._id === it.productId);
-                  const productImage =
-                    it.image ||
-                    p?.productImages?.find((i) => i.type === "product")?.url ||
-                    p?.productImages?.[0]?.url;
-                  const productDescription =
-                    it.description || p?.description || "";
                   const availableSizes = it.availableSizes?.length
                     ? it.availableSizes
                     : p?.sizes || [];
                   const availableTextures = it.availableTextures?.length
                     ? it.availableTextures
                     : p?.productImages
-                        ?.filter((i) => i.type === "texture")
-                        .map((i) => i.url) || [];
+                        ?.filter((i: any) => i.type === "texture")
+                        .map((i: any) => i.url) || [];
                   const currentTexture =
                     it.selectedTexture ||
                     availableTextures[0] ||
-                    productImage ||
                     "";
+                  
+                  const textureImgObj = p?.productImages?.find((i: any) => i.type === "texture" && i.url === currentTexture);
+
+                  const productImage =
+                    it.image ||
+                    textureImgObj?.linkedUrl ||
+                    p?.productImages?.find((i: any) => i.type === "product")?.url ||
+                    p?.productImages?.[0]?.url;
+                  
+                  const productDescription =
+                    it.description || p?.description || "";
                   return (
                     <div
                       key={it.id}

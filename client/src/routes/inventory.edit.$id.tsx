@@ -24,7 +24,7 @@ function EditItem() {
   // ── Form state ────────────────────────────────────────────────────────
   const [image, setImage]               = useState<string | undefined>();
   const [referenceImage, setRefImage]   = useState<string | undefined>();
-  const [textureImages, setTextureImages] = useState<string[]>([]);
+  const [textureImages, setTextureImages] = useState<{ url: string, linkedUrl: string }[]>([]);
 
   const [form, setForm] = useState({
     productName: "", hsnNumber: "", description: "",
@@ -61,7 +61,7 @@ function EditItem() {
 
             if (prodImg) setImage(prodImg.url);
             if (refImg) setRefImage(refImg.url);
-            if (texImgs.length > 0) setTextureImages(texImgs.map((img: any) => img.url));
+            if (texImgs.length > 0) setTextureImages(texImgs.map((img: any) => ({ url: img.url, linkedUrl: img.linkedUrl || "" })));
           }
         }
       } catch (err) {
@@ -79,18 +79,22 @@ function EditItem() {
     reader.readAsDataURL(f);
   };
 
-  const handleTextureFile = (idx: number, f: File) => {
+  const handleTextureFile = (idx: number, f: File, isLinked: boolean = false) => {
     const reader = new FileReader();
     reader.onload = () => {
       const newTextures = [...textureImages];
-      newTextures[idx] = reader.result as string;
+      if (isLinked) {
+        newTextures[idx].linkedUrl = reader.result as string;
+      } else {
+        newTextures[idx].url = reader.result as string;
+      }
       setTextureImages(newTextures);
     };
     reader.readAsDataURL(f);
   };
 
   const addTextureSlot = () => {
-    setTextureImages([...textureImages, ""]);
+    setTextureImages([...textureImages, { url: "", linkedUrl: "" }]);
   };
 
   const removeTextureSlot = (idx: number) => {
@@ -139,7 +143,7 @@ function EditItem() {
     const productImages = [
       image         && { type: "product",   url: image,         publicId: "" },
       referenceImage && { type: "reference", url: referenceImage, publicId: "" },
-      ...textureImages.filter(t => t).map(t => ({ type: "texture", url: t, publicId: "" }))
+      ...textureImages.filter(t => t.url).map(t => ({ type: "texture", url: t.url, publicId: "", linkedUrl: t.linkedUrl }))
     ].filter(Boolean);
 
     const payload = {
@@ -261,26 +265,47 @@ function EditItem() {
                 </button>
               </div>
               {textureImages.length === 0 ? (
-                 <div className="text-xs text-muted-foreground p-3 border border-dashed rounded-xl text-center">No texture photos added. Click 'Add Texture' to begin.</div>
+                 <div className="text-xs text-muted-foreground p-3 border border-dashed rounded-xl text-center">No texture slots added. Click 'Add Texture' to begin.</div>
               ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                <div className="space-y-4">
                   {textureImages.map((img, i) => (
-                    <div key={i} className="relative group">
-                      <ImageDrop 
-                        label={`Texture ${i + 1}`} 
-                        value={img} 
-                        onPick={() => textureImgRefs.current[i]?.click()} 
-                        onClear={() => {}} // Not used here as we remove the whole slot
-                        inputRef={(el) => { textureImgRefs.current[i] = el; }} 
-                        onFile={(f) => handleTextureFile(i, f)} 
-                      />
+                    <div key={i} className="relative group p-4 border border-border rounded-xl bg-card">
+                      <div className="flex flex-wrap gap-4">
+                        <div className="w-40">
+                          <ImageDrop 
+                            label={`Texture Image ${i + 1}`} 
+                            value={img.url} 
+                            onPick={() => textureImgRefs.current[i * 2]?.click()} 
+                            onClear={() => {
+                              const newTextures = [...textureImages];
+                              newTextures[i].url = "";
+                              setTextureImages(newTextures);
+                            }} 
+                            inputRef={(el) => { textureImgRefs.current[i * 2] = el; }} 
+                            onFile={(f) => handleTextureFile(i, f, false)} 
+                          />
+                        </div>
+                        <div className="w-40">
+                          <ImageDrop 
+                            label={`Product Image for Texture ${i + 1}`} 
+                            value={img.linkedUrl} 
+                            onPick={() => textureImgRefs.current[i * 2 + 1]?.click()} 
+                            onClear={() => {
+                              const newTextures = [...textureImages];
+                              newTextures[i].linkedUrl = "";
+                              setTextureImages(newTextures);
+                            }} 
+                            inputRef={(el) => { textureImgRefs.current[i * 2 + 1] = el; }} 
+                            onFile={(f) => handleTextureFile(i, f, true)} 
+                          />
+                        </div>
+                      </div>
                       <button 
                         type="button" 
                         onClick={() => removeTextureSlot(i)}
-                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        aria-label="Remove texture slot"
+                        className="absolute top-2 right-2 px-2 py-1 text-xs rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        Remove Slot
                       </button>
                     </div>
                   ))}

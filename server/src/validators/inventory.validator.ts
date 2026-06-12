@@ -8,6 +8,7 @@ const productImageSchema = z.object({
   type: z.enum(['product', 'reference', 'texture']),
   url: z.string().min(1, 'Image URL is required'),
   publicId: z.string().default(''),
+  linkedUrl: z.string().optional().default(''),
 });
 
 // ─────────────────────────────────────────────

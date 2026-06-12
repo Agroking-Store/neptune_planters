@@ -94,6 +94,14 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
         if (productImg) productImageUrl = productImg.url;
         if (referenceImg) referenceImageUrl = referenceImg.url;
         if (textureImg) textureImageUrl = textureImg.url;
+        
+        // If a specific texture is selected, see if it has a linked product image
+        if (item.selectedTexture) {
+          const selectedTexImg = product.productImages.find((img: any) => img.type === 'texture' && img.url === item.selectedTexture);
+          if (selectedTexImg && selectedTexImg.linkedUrl) {
+            productImageUrl = selectedTexImg.linkedUrl;
+          }
+        }
       }
     } catch {
       // If product fetch fails, continue with empty images
