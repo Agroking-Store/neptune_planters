@@ -27,6 +27,7 @@ export interface IQuotationItem {
   productSnapshot: IProductSnapshot;
   quantity: number;
   unitPrice: number;
+  discountPercent: number;
   selectedSize?: string;
   selectedTexture?: string;
   total: number;
@@ -47,6 +48,7 @@ export interface IQuotation {
   status: QuotationStatus;
   termsAndConditions: string[];
   totalAmount: number;
+  totalDiscount: number;
   items: IQuotationItem[];
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -100,6 +102,12 @@ const quotationItemSchema = new Schema<IQuotationItem>(
       type: Number,
       required: [true, 'Unit price is required'],
       min: [0, 'Price cannot be negative'],
+    },
+    discountPercent: {
+      type: Number,
+      min: [0, 'Discount cannot be negative'],
+      max: [100, 'Discount cannot exceed 100%'],
+      default: 0,
     },
     selectedSize: {
       type: String,
@@ -161,6 +169,11 @@ const quotationSchema = new Schema<IQuotationDocument, IQuotationModel>(
     totalAmount: {
       type: Number,
       min: [0, 'Total amount cannot be negative'],
+      default: 0,
+    },
+    totalDiscount: {
+      type: Number,
+      min: [0, 'Total discount cannot be negative'],
       default: 0,
     },
     items: {

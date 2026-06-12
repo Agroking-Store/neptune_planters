@@ -30,6 +30,8 @@ const quotationItemSchema = z.object({
   selectedSize: z.string().optional().default(''),
   selectedTexture: z.string().optional().default(''),
 
+  discountPercent: z.number().min(0).max(100).default(0),
+
   total: z.number().min(0).default(0),
 });
 
@@ -51,6 +53,7 @@ export const createQuotationSchema = z.object({
 
   // Overall billing values
   totalAmount: z.number().min(0).default(0),
+  totalDiscount: z.number().min(0).default(0),
 
   items: z
     .array(quotationItemSchema)

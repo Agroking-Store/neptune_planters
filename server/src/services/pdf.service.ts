@@ -16,6 +16,7 @@ export interface PdfItemData {
   size: string;
   unitPrice: number;
   quantity: number;
+  discountPercent: number;
   total: number;
   selectedTexture: string;
   productImageUrl: string;
@@ -38,7 +39,8 @@ export interface PdfTemplateData {
   };
   summary: {
     subtotal: number;
-    taxAmount: number;
+    discountAmount: number;
+    discountPercent: number;
     totalAmount: number;
   };
   items: PdfItemData[];
@@ -104,6 +106,7 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
       size: item.selectedSize || item.productSnapshot.size || '',
       unitPrice: item.unitPrice,
       quantity: item.quantity,
+      discountPercent: item.discountPercent || 0,
       total: item.total,
       selectedTexture: item.selectedTexture || '',
       productImageUrl,
@@ -112,10 +115,12 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
     });
   }
 
-  // Calculate summary values
-  const totalAmount = quotation.totalAmount;
-  const subtotal = totalAmount / 1.18;
-  const taxAmount = totalAmount - subtotal;
+    // Calculate summary values
+    const totalAmount = quotation.totalAmount;
+    const totalDiscount = quotation.totalDiscount || 0;
+    // Subtotal is totalAmount + totalDiscount (before discount)
+    const subtotal = totalAmount + totalDiscount;
+    const discountPercent = subtotal > 0 ? (totalDiscount / subtotal) * 100 : 0;
 
   const createdDateObj = new Date(quotation.createdDate);
   const validTillDateObj = new Date(createdDateObj);
@@ -144,7 +149,8 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
     },
     summary: {
       subtotal,
-      taxAmount,
+      discountAmount: totalDiscount,
+      discountPercent: Math.round(discountPercent * 100) / 100,
       totalAmount,
     },
     items,

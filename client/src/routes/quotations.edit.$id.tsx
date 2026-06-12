@@ -70,6 +70,7 @@ interface QuotationItemLocal {
   description: string;
   quantity: number;
   price: number;
+  discountPercent: number;
   selectedSize: string;
   selectedTexture: string;
   availableSizes: string[];
@@ -172,6 +173,7 @@ function EditQuotation() {
               description: it.productSnapshot?.description || "",
               quantity: it.quantity || 1,
               price: it.unitPrice || 0,
+              discountPercent: it.discountPercent || 0,
               selectedSize: it.selectedSize || "",
               selectedTexture: it.selectedTexture || "",
               availableSizes: [],
@@ -203,10 +205,20 @@ function EditQuotation() {
   }, [pickerOpen]);
 
   const totals = useMemo(() => {
-    const grand = items.reduce((s, it) => s + it.quantity * it.price, 0);
-    const taxAmount = grand * 0.18;
-    const subtotal = grand - taxAmount;
-    return { grand: Math.max(0, grand), taxAmount, subtotal };
+    let subtotal = 0;
+    let totalDiscount = 0;
+    
+    items.forEach((it) => {
+      const lineSubtotal = it.quantity * it.price;
+      const discount = lineSubtotal * ((it.discountPercent || 0) / 100);
+      subtotal += lineSubtotal;
+      totalDiscount += discount;
+    });
+
+    const grand = subtotal - totalDiscount;
+    const discountPercent = subtotal > 0 ? (totalDiscount / subtotal) * 100 : 0;
+
+    return { grand: Math.max(0, grand), subtotal, totalDiscount, discountPercent };
   }, [items]);
 
   const addItem = (productId: string) => {
@@ -230,6 +242,7 @@ function EditQuotation() {
         description: found.description || "",
         quantity: 1,
         price: found.unitPrice,
+        discountPercent: 0,
         selectedSize: sizes[0] || "",
         selectedTexture: textures[0] || img || "",
         availableSizes: sizes,
@@ -267,6 +280,7 @@ function EditQuotation() {
       followUpDate: followUp || "",
       termsAndConditions: terms,
       totalAmount: totals.grand,
+      totalDiscount: totals.totalDiscount,
       items: items.map((it) => {
         const p = products.find((pr) => pr._id === it.productId);
         const productImage =
@@ -285,6 +299,7 @@ function EditQuotation() {
           productId: it.productId,
           quantity: it.quantity,
           unitPrice: it.price,
+          discountPercent: it.discountPercent || 0,
           selectedSize: it.selectedSize || availableSizes[0] || "",
           selectedTexture:
             it.selectedTexture || availableTextures[0] || productImage || "",
@@ -800,6 +815,23 @@ const handleUpdateCustomer = async (updatedCustomer: CustomerRecord) => {
                               className="w-full px-2 py-1 rounded border border-border text-sm"
                             />
                           </div>
+                          <div className="w-20">
+                            <label className="text-[10px] text-muted-foreground">
+                              Disc. %
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={it.discountPercent}
+                              onChange={(e) =>
+                                updateItem(it.id, {
+                                  discountPercent: Math.min(100, Math.max(0, +e.target.value || 0)),
+                                })
+                              }
+                              className="w-full px-2 py-1 rounded border border-border text-sm"
+                            />
+                          </div>
                         </div>
 
                         <div className="flex items-center gap-3">
@@ -846,7 +878,7 @@ const handleUpdateCustomer = async (updatedCustomer: CustomerRecord) => {
                             Total
                           </div>
                           <div className="font-bold text-sm text-primary">
-                            {formatINR(it.quantity * it.price)}
+                            {formatINR(it.quantity * it.price * (1 - (it.discountPercent || 0) / 100))}
                           </div>
                         </div>
                       </div>
@@ -914,10 +946,10 @@ const handleUpdateCustomer = async (updatedCustomer: CustomerRecord) => {
                 }
               />
               <Row
-                label={<span className="text-muted-foreground">Tax (18%)</span>}
+                label={<span className="text-muted-foreground">Discount ({totals.discountPercent.toFixed(2)}%)</span>}
                 value={
-                  <span className="font-medium">
-                    {formatINR(totals.taxAmount)}
+                  <span className="font-medium text-destructive">
+                    - {formatINR(totals.totalDiscount)}
                   </span>
                 }
               />

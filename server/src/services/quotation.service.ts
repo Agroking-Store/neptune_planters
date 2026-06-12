@@ -81,14 +81,16 @@ export async function createQuotation(
       size: product.sizes?.join(', ') || '',
     };
 
-    // Calculate item total: quantity * unitPrice
-    const lineTotal = item.quantity * item.unitPrice;
+    // Calculate item total: quantity * unitPrice * (1 - discountPercent/100)
+    const discountPercent = item.discountPercent || 0;
+    const lineTotal = item.quantity * item.unitPrice * (1 - discountPercent / 100);
 
     itemDocs.push({
       productId: new mongoose.Types.ObjectId(item.productId),
       productSnapshot,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
+      discountPercent,
       selectedSize: item.selectedSize || '',
       selectedTexture: item.selectedTexture || '',
       total: Math.round(lineTotal * 100) / 100,
@@ -112,6 +114,7 @@ export async function createQuotation(
     status: data.status || 'Draft',
     termsAndConditions: data.termsAndConditions || [],
     totalAmount: data.totalAmount,
+    totalDiscount: data.totalDiscount || 0,
     items: itemDocs,
     createdBy: new mongoose.Types.ObjectId(userId),
   });
@@ -161,7 +164,8 @@ export async function updateQuotation(
       throw ApiError.notFound(`Product not found: ${item.productId}`);
     }
 
-    const lineTotal = item.quantity * item.unitPrice;
+    const discountPercent = item.discountPercent || 0;
+    const lineTotal = item.quantity * item.unitPrice * (1 - discountPercent / 100);
 
     itemDocs.push({
       productId: new mongoose.Types.ObjectId(item.productId),
@@ -172,6 +176,7 @@ export async function updateQuotation(
       },
       quantity: item.quantity,
       unitPrice: item.unitPrice,
+      discountPercent,
       selectedSize: item.selectedSize || '',
       selectedTexture: item.selectedTexture || '',
       total: Math.round(lineTotal * 100) / 100,
@@ -189,6 +194,7 @@ export async function updateQuotation(
   quotation.status = data.status || 'Draft';
   quotation.termsAndConditions = data.termsAndConditions || [];
   quotation.totalAmount = data.totalAmount;
+  quotation.totalDiscount = data.totalDiscount || 0;
   quotation.items = itemDocs as typeof quotation.items;
 
   await quotation.save();

@@ -1090,10 +1090,9 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
           <span class="totals-row__label">SUBTOTAL</span>
           <span class="totals-row__value">${formatCurrency(data.summary.subtotal)}</span>
         </div>
-        <!-- Discount - Mocked, not in current data model -->
         <div class="totals-row">
-          <span class="totals-row__label">DISCOUNT %</span>
-          <span class="totals-row__value">${formatCurrency(data.summary.taxAmount)}</span>
+          <span class="totals-row__label">DISCOUNT (${data.summary.discountPercent}%)</span>
+          <span class="totals-row__value">- ${formatCurrency(data.summary.discountAmount)}</span>
         </div>
         <div class="grand-total-box">
           <span class="grand-total__label">GRAND TOTAL</span>
