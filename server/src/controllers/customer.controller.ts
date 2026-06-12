@@ -29,7 +29,7 @@ export const listCustomers = asyncHandler(async (req: Request, res: Response) =>
 // ─────────────────────────────────────────────
 export const getCustomerByIdHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const customer = await getCustomerById(id);
+  const customer = await getCustomerById(id as any);
   res.status(200).json(
     ApiResponse.success('Customer retrieved', customer.toJSON()).toJSON()
   );
@@ -66,7 +66,7 @@ export const updateCustomerHandler = asyncHandler(async (req: Request, res: Resp
     throw ApiError.badRequest('Validation failed', errors);
   }
 
-  const customer = await updateCustomer(id, result.data, req.user.userId);
+  const customer = await updateCustomer(id as any, result.data, req.user.userId);
   res.status(200).json(
     ApiResponse.success('Customer updated successfully', customer.toJSON()).toJSON()
   );
@@ -78,7 +78,7 @@ export const updateCustomerHandler = asyncHandler(async (req: Request, res: Resp
 export const deleteCustomerHandler = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw ApiError.unauthorized();
   const { id } = req.params;
-  await deleteCustomer(id);
+  await deleteCustomer(id as any);
   res.status(200).json(
     ApiResponse.success('Customer deleted successfully').toJSON()
   );
