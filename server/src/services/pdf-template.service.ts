@@ -1115,7 +1115,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
         <span class="signature-area__prepared">Prepared By</span>
         <span class="signature-area__name">Neptune Innovations</span>
         <!-- Mocked signature name -->
-        <div class="signature-area__sig">Mamta</div>
+        <div class="signature-area__sig">Sumo</div>
       </div>
 
       <!-- Thank You -->
