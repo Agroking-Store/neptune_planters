@@ -72,7 +72,10 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
           </td>
           <td class="td-qty">${item.quantity}</td>
           <td class="td-price">${formatCurrency(item.unitPrice).replace('₹', '').trim()}</td>
-          <td class="td-discount">${item.discountPercent || 0}%</td>
+          <td class="td-discount">
+            <div>${item.discountPercent || 0}%</div>
+            ${item.discountPercent ? `<div class="discount-amount">(₹${formatCurrency((item.unitPrice * item.quantity) * (item.discountPercent / 100)).replace('₹', '').trim()})</div>` : ''}
+          </td>
           <td class="td-total">${formatCurrency(item.total).replace('₹', '').trim()}</td>
           <td class="td-img">
             <div class="img-cell">
@@ -232,7 +235,6 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     .header__planter-img img {
       width: 240px;
       height: auto;
-      filter: drop-shadow(0 10px 20px rgba(0,0,0,0.25));
     }
 
     /* Right side of header */
@@ -730,6 +732,18 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       margin-bottom: 4px;
     }
 
+    .product-dims {
+      font-size: 10px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .discount-amount {
+      font-size: 10px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
     .signature-area__name {
       font-size: 11.5px;
       color: #1f2937;
@@ -981,15 +995,16 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     <section class="addresses">
       <div class="address-col">
         <div class="address-col__header">
-          <h3 class="address-col__label">BILL TO</h3>
+          <h3 class="address-col__label">ABOUT US</h3>
           <div class="address-col__line"></div>
         </div>
-        <h4 class="address-col__name">${data.customerDisplayName}</h4>
+        <h4 class="address-col__name">Neptune Planters</h4>
         <p class="address-col__text">
-          ${data.customerAddress.replace(/,\s*/g, ',<br/>')}
+          Sr No 34/1, Holkarwadi,<br/>
+          Handewadi, Pune-412308<br/>
+          Phone: +91 97652 76111<br/>
+          Email: connect@shopneptune.in
         </p>
-        <!-- GSTIN - Mocked, not in current data model -->
-        <p class="address-col__gstin">GSTIN: 27ABCDE1234F1Z5</p>
       </div>
 
       <div class="address-col address-col--ship">
@@ -1000,6 +1015,10 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
         <h4 class="address-col__name">${data.customerDisplayName}</h4>
         <p class="address-col__text">
           ${data.customerAddress.replace(/,\s*/g, ',<br/>')}
+        </p>
+        <p class="address-col__text" style="margin-top: 8px;">
+          ${data.customerPhone ? `Phone: ${data.customerPhone}<br/>` : ''}
+          ${data.customerEmail ? `Email: ${data.customerEmail}` : ''}
         </p>
       </div>
 
@@ -1041,10 +1060,9 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     <!-- ═══════════════ SUMMARY (Notes + Bank + Totals) ═══════════════ -->
     <section class="summary-section">
 
-      <!-- Notes -->
       <div class="notes-col">
         <div class="section-header">
-          <h3 class="section-header__title">NOTES</h3>
+          <h3 class="section-header__title">TERMS & CONDITIONS</h3>
           <div class="section-header__line"></div>
         </div>
         <ul class="notes-list">
@@ -1067,7 +1085,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
           <div class="bank-row">
             <span class="bank-row__label">A/C Name</span>
             <span class="bank-row__sep">:</span>
-            <span class="bank-row__value">Neptune Innovations</span>
+            <span class="bank-row__value">Neptune Planters</span>
           </div>
           <div class="bank-row">
             <span class="bank-row__label">A/C No.</span>
@@ -1113,7 +1131,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       <!-- Signature -->
       <div class="signature-area">
         <span class="signature-area__prepared">Prepared By</span>
-        <span class="signature-area__name">Neptune Innovations</span>
+        <span class="signature-area__name">Neptune Planters</span>
         <!-- Mocked signature name -->
         <div class="signature-area__sig">Sumo</div>
       </div>
@@ -1146,24 +1164,22 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
 
     <!-- ═══════════════ BOTTOM CONTACT BAR ═══════════════ -->
     <div class="contact-bar">
-      <div style="display:flex;align-items:center;">
-        <span class="contact-bar__item">
-          <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">phone</span></span>
-          <span>+91 97652 76111</span>
-        </span>
-        <span class="contact-bar__item">
-          <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">mail</span></span>
-          <span>connect@shopneptune.in</span>
-        </span>
-        <span class="contact-bar__item">
-          <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">language</span></span>
-          <span>www.shopneptune.in</span>
-        </span>
-      </div>
-      <div class="contact-bar__address">
+      <span class="contact-bar__item">
+        <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">phone</span></span>
+        <span>+91 97652 76111</span>
+      </span>
+      <span class="contact-bar__item">
+        <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">mail</span></span>
+        <span>connect@shopneptune.in</span>
+      </span>
+      <span class="contact-bar__item">
+        <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">language</span></span>
+        <span>www.shopneptune.in</span>
+      </span>
+      <span class="contact-bar__item">
         <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:16px">location_on</span></span>
-        <span>Sr No 34/1, Holkarwadi, Handewadi,<br/>Pune-412308</span>
-      </div>
+        <span>Sr No 34/1, Holkarwadi, Handewadi, Pune-412308</span>
+      </span>
     </div>
 
   </main>
