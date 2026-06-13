@@ -58,7 +58,7 @@ interface ProductRecord {
   size?: string;
   description?: string;
   sizes?: string[];
-  productImages?: { type: string; url: string; linkedUrl?: string }[];
+  productImages?: { type: string; url: string; linkedUrl?: string; linkedReferenceUrl?: string }[];
 }
 
 // ── Local quotation item shape ────────────────────────────────────────
@@ -736,8 +736,8 @@ const handleUpdateCustomer = async (updatedCustomer: CustomerRecord) => {
                   const textureImgObj = p?.productImages?.find((i: any) => i.type === "texture" && i.url === currentTexture);
 
                   const productImage =
-                    it.image ||
                     textureImgObj?.linkedUrl ||
+                    it.image ||
                     p?.productImages?.find((i: any) => i.type === "product")?.url ||
                     p?.productImages?.[0]?.url;
                   

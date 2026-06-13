@@ -23,7 +23,7 @@ function NewItem() {
   // ── Form state ────────────────────────────────────────────────────────
   const [image, setImage] = useState<string | undefined>();
   const [referenceImage, setRefImage] = useState<string | undefined>();
-  const [textureImages, setTextureImages] = useState<{ url: string, linkedUrl: string }[]>([]);
+  const [textureImages, setTextureImages] = useState<{ url: string, linkedUrl: string, linkedReferenceUrl: string }[]>([]);
 
   const [form, setForm] = useState({
     productName: "", hsnNumber: "", description: "",
@@ -39,12 +39,14 @@ function NewItem() {
     reader.readAsDataURL(f);
   };
 
-  const handleTextureFile = (idx: number, f: File, isLinked: boolean = false) => {
+  const handleTextureFile = (idx: number, f: File, type: 'texture' | 'product' | 'reference' = 'texture') => {
     const reader = new FileReader();
     reader.onload = () => {
       const newTextures = [...textureImages];
-      if (isLinked) {
+      if (type === 'product') {
         newTextures[idx].linkedUrl = reader.result as string;
+      } else if (type === 'reference') {
+        newTextures[idx].linkedReferenceUrl = reader.result as string;
       } else {
         newTextures[idx].url = reader.result as string;
       }
@@ -54,7 +56,7 @@ function NewItem() {
   };
 
   const addTextureSlot = () => {
-    setTextureImages([...textureImages, { url: "", linkedUrl: "" }]);
+    setTextureImages([...textureImages, { url: "", linkedUrl: "", linkedReferenceUrl: "" }]);
   };
 
   const removeTextureSlot = (idx: number) => {
@@ -93,7 +95,7 @@ function NewItem() {
     const productImages = [
       image && { type: "product", url: image, publicId: "" },
       referenceImage && { type: "reference", url: referenceImage, publicId: "" },
-      ...textureImages.filter(t => t.url).map(t => ({ type: "texture", url: t.url, publicId: "", linkedUrl: t.linkedUrl }))
+      ...textureImages.filter(t => t.url).map(t => ({ type: "texture", url: t.url, publicId: "", linkedUrl: t.linkedUrl, linkedReferenceUrl: t.linkedReferenceUrl }))
     ].filter(Boolean);
 
     const payload = {
@@ -215,28 +217,42 @@ function NewItem() {
                           <ImageDrop
                             label={`Texture Image ${i + 1}`}
                             value={img.url}
-                            onPick={() => textureImgRefs.current[i * 2]?.click()}
+                            onPick={() => textureImgRefs.current[i * 3]?.click()}
                             onClear={() => {
                               const newTextures = [...textureImages];
                               newTextures[i].url = "";
                               setTextureImages(newTextures);
                             }}
-                            inputRef={(el) => { textureImgRefs.current[i * 2] = el; }}
-                            onFile={(f) => handleTextureFile(i, f, false)}
+                            inputRef={(el) => { textureImgRefs.current[i * 3] = el; }}
+                            onFile={(f) => handleTextureFile(i, f, 'texture')}
                           />
                         </div>
                         <div className="w-40">
                           <ImageDrop
                             label={`Product Img for Texture ${i + 1}`}
                             value={img.linkedUrl}
-                            onPick={() => textureImgRefs.current[i * 2 + 1]?.click()}
+                            onPick={() => textureImgRefs.current[i * 3 + 1]?.click()}
                             onClear={() => {
                               const newTextures = [...textureImages];
                               newTextures[i].linkedUrl = "";
                               setTextureImages(newTextures);
                             }}
-                            inputRef={(el) => { textureImgRefs.current[i * 2 + 1] = el; }}
-                            onFile={(f) => handleTextureFile(i, f, true)}
+                            inputRef={(el) => { textureImgRefs.current[i * 3 + 1] = el; }}
+                            onFile={(f) => handleTextureFile(i, f, 'product')}
+                          />
+                        </div>
+                        <div className="w-40">
+                          <ImageDrop
+                            label={`Ref Img for Texture ${i + 1}`}
+                            value={img.linkedReferenceUrl}
+                            onPick={() => textureImgRefs.current[i * 3 + 2]?.click()}
+                            onClear={() => {
+                              const newTextures = [...textureImages];
+                              newTextures[i].linkedReferenceUrl = "";
+                              setTextureImages(newTextures);
+                            }}
+                            inputRef={(el) => { textureImgRefs.current[i * 3 + 2] = el; }}
+                            onFile={(f) => handleTextureFile(i, f, 'reference')}
                           />
                         </div>
                       </div>
