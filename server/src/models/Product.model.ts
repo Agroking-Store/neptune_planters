@@ -15,6 +15,7 @@ export interface IProductImage {
   publicId: string;
   linkedUrl?: string;
   linkedReferenceUrl?: string;
+  name?: string;
 }
 
 // ─────────────────────────────────────────────
@@ -56,6 +57,7 @@ const productImageSchema = new Schema<IProductImage>(
     publicId: { type: String, default: '' },
     linkedUrl: { type: String, default: '' },
     linkedReferenceUrl: { type: String, default: '' },
+    name: { type: String, default: '' },
   },
   { _id: false }
 );

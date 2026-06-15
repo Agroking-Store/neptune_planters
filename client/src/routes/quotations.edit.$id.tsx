@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   Edit,
   Save,
+  Settings,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { formatINR } from "@/lib/store";
@@ -24,6 +25,7 @@ import { toast } from "sonner";
 import { api, ApiClientError } from "@/lib/api";
 import { downloadQuotationPDF } from "@/lib/pdf";
 
+import { SettingsDialog } from "@/components/SettingsDialog";
 export const Route = createFileRoute("/quotations/edit/$id")({
   head: () => ({ meta: [{ title: "Edit Quotation — Indux" }] }),
   beforeLoad: () => {
@@ -126,7 +128,7 @@ function EditQuotation() {
   // ── Form state ──────────────────────────────────────────────────────
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [selectedCustomerName, setSelectedCustomerName] = useState("");
-  const [customer, setCustomer] = useState({ name: "", email: "", phone: "" });
+  const [customer, setCustomer] = useState({ name: "", email: "", phone: "", gstNumber: "" });
   const [terms, setTerms] = useState<string[]>([
     "100% secure payment",
     "No warranty",
@@ -140,10 +142,17 @@ function EditQuotation() {
   const [saving, setSaving] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // ── Add Customer Dialog state ──────────────────────────────────────
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [dialogPrefillName, setDialogPrefillName] = useState("");
   const [pdfDownloading, setPdfDownloading] = useState(false);
+
+  const [defaultValues, setDefaultValues] = useState({
+    validTill: { days: 0, months: 1 },
+    advancePayment: 50,
+    deliveryTime: 10,
+    transportationCharges: 0,
+  });
 
   // Load existing quotation data
   useEffect(() => {
@@ -157,8 +166,15 @@ function EditQuotation() {
             name: data.customerSnapshot?.customerName || "",
             email: data.customerSnapshot?.email || "",
             phone: data.customerSnapshot?.phoneNumber || "",
+            gstNumber: data.customerSnapshot?.gstNumber || "",
           });
           setTerms(data.termsAndConditions || []);
+          setDefaultValues({
+            validTill: data.validTill || { days: 0, months: 1 },
+            advancePayment: data.advancePayment || 50,
+            deliveryTime: data.deliveryTime || 10,
+            transportationCharges: data.transportationCharges || 0,
+          });
           if (data.followUpDate) {
             setFollowUp(
               new Date(data.followUpDate).toISOString().split("T")[0],
@@ -207,7 +223,7 @@ function EditQuotation() {
   const totals = useMemo(() => {
     let subtotal = 0;
     let totalDiscount = 0;
-    
+
     items.forEach((it) => {
       const lineSubtotal = it.quantity * it.price;
       const discount = lineSubtotal * ((it.discountPercent || 0) / 100);
@@ -215,11 +231,21 @@ function EditQuotation() {
       totalDiscount += discount;
     });
 
-    const grand = subtotal - totalDiscount;
+    const transportation = defaultValues.transportationCharges || 0;
+    const transportationTax = transportation * 0.18;
+    const transportationWithTax = transportation + transportationTax;
+
+    const grand = subtotal - totalDiscount + transportationWithTax;
     const discountPercent = subtotal > 0 ? (totalDiscount / subtotal) * 100 : 0;
 
-    return { grand: Math.max(0, grand), subtotal, totalDiscount, discountPercent };
-  }, [items]);
+    return {
+      grand: Math.max(0, grand),
+      subtotal,
+      totalDiscount,
+      discountPercent,
+      transportationWithTax
+    };
+  }, [items, defaultValues.transportationCharges]);
 
   const addItem = (productId: string) => {
     const found = products.find((i) => i._id === productId);
@@ -279,6 +305,10 @@ function EditQuotation() {
       customerId: selectedCustomerId,
       followUpDate: followUp || "",
       termsAndConditions: terms,
+      validTill: defaultValues.validTill,
+      advancePayment: defaultValues.advancePayment,
+      deliveryTime: defaultValues.deliveryTime,
+      transportationCharges: defaultValues.transportationCharges,
       totalAmount: totals.grand,
       totalDiscount: totals.totalDiscount,
       items: items.map((it) => {
@@ -293,8 +323,8 @@ function EditQuotation() {
         const availableTextures = it.availableTextures?.length
           ? it.availableTextures
           : p?.productImages
-              ?.filter((i) => i.type === "texture")
-              .map((i) => i.url) || [];
+            ?.filter((i) => i.type === "texture")
+            .map((i) => i.url) || [];
         return {
           productId: it.productId,
           quantity: it.quantity,
@@ -380,6 +410,7 @@ function EditQuotation() {
         name: c.customerName,
         email: c.email || "",
         phone: c.phoneNumber || "",
+        gstNumber: c.gstNumber || "",
       });
     }
   };
@@ -397,6 +428,7 @@ function EditQuotation() {
       name: c.customerName,
       email: c.email || "",
       phone: c.phoneNumber || "",
+      gstNumber: c.gstNumber || "",
     });
     setShowCustomerDialog(false);
     setDialogPrefillName("");
@@ -407,57 +439,58 @@ function EditQuotation() {
   );
 
   // Add these handler functions
-const handleEditCustomer = (customer: CustomerRecord) => {
-  setEditingCustomer(customer);
-  setShowEditCustomerDialog(true);
-};
+  const handleEditCustomer = (customer: CustomerRecord) => {
+    setEditingCustomer(customer);
+    setShowEditCustomerDialog(true);
+  };
 
-const handleDeleteCustomer = async (id: string, name: string) => {
-  try {
-    await api.delete(`/customers/${id}`);
-    toast.success(`Customer "${name}" deleted successfully`);
-    // Refresh customer list
-    await fetchCustomers();
-    // If the deleted customer was selected, clear selection
-    if (selectedCustomerId === id) {
-      setSelectedCustomerId("");
-      setSelectedCustomerName("");
-      setCustomer({ name: "", email: "", phone: "" });
+  const handleDeleteCustomer = async (id: string, name: string) => {
+    try {
+      await api.delete(`/customers/${id}`);
+      toast.success(`Customer "${name}" deleted successfully`);
+      // Refresh customer list
+      await fetchCustomers();
+      // If the deleted customer was selected, clear selection
+      if (selectedCustomerId === id) {
+        setSelectedCustomerId("");
+        setSelectedCustomerName("");
+        setCustomer({ name: "", email: "", phone: "", gstNumber: "" });
+      }
+    } catch (err) {
+      if (err instanceof ApiClientError) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to delete customer");
+      }
     }
-  } catch (err) {
-    if (err instanceof ApiClientError) {
-      toast.error(err.message);
-    } else {
-      toast.error("Failed to delete customer");
-    }
-  }
-};
+  };
 
-const handleUpdateCustomer = async (updatedCustomer: CustomerRecord) => {
-  try {
-    await api.put(`/customers/${updatedCustomer._id}`, updatedCustomer);
-    toast.success("Customer updated successfully");
-    // Refresh customer list
-    await fetchCustomers();
-    // Update selected customer if it's the same
-    if (selectedCustomerId === updatedCustomer._id) {
-      setSelectedCustomerName(updatedCustomer.customerName);
-      setCustomer({
-        name: updatedCustomer.customerName,
-        email: updatedCustomer.email || "",
-        phone: updatedCustomer.phoneNumber || "",
-      });
+  const handleUpdateCustomer = async (updatedCustomer: CustomerRecord) => {
+    try {
+      await api.put(`/customers/${updatedCustomer._id}`, updatedCustomer);
+      toast.success("Customer updated successfully");
+      // Refresh customer list
+      await fetchCustomers();
+      // Update selected customer if it's the same
+      if (selectedCustomerId === updatedCustomer._id) {
+        setSelectedCustomerName(updatedCustomer.customerName);
+        setCustomer({
+          name: updatedCustomer.customerName,
+          email: updatedCustomer.email || "",
+          phone: updatedCustomer.phoneNumber || "",
+          gstNumber: updatedCustomer.gstNumber || "",
+        });
+      }
+      setShowEditCustomerDialog(false);
+      setEditingCustomer(null);
+    } catch (err) {
+      if (err instanceof ApiClientError) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to update customer");
+      }
     }
-    setShowEditCustomerDialog(false);
-    setEditingCustomer(null);
-  } catch (err) {
-    if (err instanceof ApiClientError) {
-      toast.error(err.message);
-    } else {
-      toast.error("Failed to update customer");
-    }
-  }
-};
+  };
 
   if (initialLoading) {
     return (
@@ -490,7 +523,15 @@ const handleUpdateCustomer = async (updatedCustomer: CustomerRecord) => {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowSettingsDialog(true)}
+            className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors"
+            title="Settings"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
           <button
             onClick={() => save(false)}
             disabled={saving}
@@ -526,67 +567,171 @@ const handleUpdateCustomer = async (updatedCustomer: CustomerRecord) => {
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {/* Customer Section */}
-<Section
-  icon={<User className="w-5 h-5" />}
-  title="Customer Details"
-  right={
-    <button
-      onClick={() => {
-        setDialogPrefillName("");
-        setShowCustomerDialog(true);
-      }}
-      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-medium shadow-elegant hover:opacity-95"
-    >
-      <Plus className="w-4 h-4" /> Add Customer
-    </button>
-  }
->
-  <div className="grid sm:grid-cols-2 gap-4">
-    <Field label="Select Customer *">
-      <SearchableSelect
-        value={selectedCustomerName}
-        options={customers.map((c) => ({
-          id: c._id,
-          label: c.customerName,
-          data: c,
-        }))}
-        onChange={onCustomerSelected}
-        onAdd={onAddNewCustomer}
-        onEdit={handleEditCustomer}
-        onDelete={handleDeleteCustomer}
-        placeholder={customersLoading ? "Loading customers…" : "Search customer…"}
-        addLabel="Add customer"
-        disabled={customersLoading}
-      />
-    </Field>
-    <Field label="Email">
-      <input
-        value={customer.email}
-        readOnly
-        disabled
-        className={`${input} bg-muted/50 cursor-not-allowed`}
-        placeholder="Select a customer first"
-      />
-    </Field>
-    <Field label="Phone">
-      <input
-        value={customer.phone}
-        readOnly
-        disabled
-        className={`${input} bg-muted/50 cursor-not-allowed`}
-        placeholder="Select a customer first"
-      />
-    </Field>
-    <Field label="Follow-up Date">
-      <input
-        type="date"
-        value={followUp}
-        onChange={(e) => setFollowUp(e.target.value)}
-        className={input}
-      />
-    </Field>
-  </div>
-</Section>
+          <Section
+            icon={<User className="w-5 h-5" />}
+            title="Customer Details"
+            right={
+              <button
+                onClick={() => {
+                  setDialogPrefillName("");
+                  setShowCustomerDialog(true);
+                }}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-primary text-primary-foreground text-sm font-medium shadow-elegant hover:opacity-95"
+              >
+                <Plus className="w-4 h-4" /> Add Customer
+              </button>
+            }
+          >
+            <div className="flex flex-col gap-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <Field label="Select Customer *">
+                  <SearchableSelect
+                    value={selectedCustomerName}
+                    options={customers.map((c) => ({
+                      id: c._id,
+                      label: c.customerName,
+                      data: c,
+                    }))}
+                    onChange={onCustomerSelected}
+                    onAdd={onAddNewCustomer}
+                    onEdit={handleEditCustomer}
+                    onDelete={handleDeleteCustomer}
+                    placeholder={customersLoading ? "Loading customers…" : "Search customer…"}
+                    addLabel="Add customer"
+                    disabled={customersLoading}
+                  />
+                </Field>
+                <Field label="Email">
+                  <input
+                    value={customer.email}
+                    readOnly
+                    disabled
+                    className={`${input} bg-muted/50 cursor-not-allowed`}
+                    placeholder="Select a customer first"
+                  />
+                </Field>
+              </div>
+              <div className="grid sm:grid-cols-3 gap-4">
+                <Field label="Mobile Number">
+                  <input
+                    value={customer.phone}
+                    readOnly
+                    disabled
+                    className={`${input} bg-muted/50 cursor-not-allowed`}
+                    placeholder="Select a customer first"
+                  />
+                </Field>
+                <Field label="GST No.">
+                  <input
+                    value={customer.gstNumber}
+                    readOnly
+                    disabled
+                    className={`${input} bg-muted/50 cursor-not-allowed`}
+                    placeholder="Select a customer first"
+                  />
+                </Field>
+                <Field label="Follow-up Date">
+                  <input
+                    type="date"
+                    value={followUp}
+                    onChange={(e) => setFollowUp(e.target.value)}
+                    className={input}
+                  />
+                </Field>
+              </div>
+            </div>
+          </Section>
+
+          {/* Order Details */}
+          <Section icon={<ListChecks className="w-5 h-5" />} title="Order Details" subtitle="Quotation conditions and logistics">
+            <div className="flex flex-col lg:flex-row gap-4">
+
+              <div className="flex-1 lg:flex-[1.4]">
+                <Field label="Valid Till">
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1 group">
+                      <input
+                        type="number"
+                        min={0}
+                        value={defaultValues.validTill.days}
+                        onChange={(e) => setDefaultValues({ ...defaultValues, validTill: { ...defaultValues.validTill, days: Number(e.target.value) } })}
+                        className={`${input} pl-3 pr-11 font-medium`}
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-xs font-medium text-muted-foreground group-focus-within:text-primary transition-colors">
+                        Days
+                      </div>
+                    </div>
+                    <div className="relative flex-1 group">
+                      <input
+                        type="number"
+                        min={0}
+                        value={defaultValues.validTill.months}
+                        onChange={(e) => setDefaultValues({ ...defaultValues, validTill: { ...defaultValues.validTill, months: Number(e.target.value) } })}
+                        className={`${input} pl-3 pr-14 font-medium`}
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-xs font-medium text-muted-foreground group-focus-within:text-primary transition-colors">
+                        Months
+                      </div>
+                    </div>
+                  </div>
+                </Field>
+              </div>
+
+              <div className="flex-1 lg:flex-[0.8]">
+                <Field label="Advance Payment">
+                  <div className="relative group">
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={defaultValues.advancePayment}
+                      onChange={(e) => setDefaultValues({ ...defaultValues, advancePayment: Number(e.target.value) })}
+                      className={`${input} pl-3 pr-8 font-medium`}
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">
+                      %
+                    </div>
+                  </div>
+                </Field>
+              </div>
+
+              <div className="flex-1 lg:flex-[0.8]">
+                <Field label="Delivery Time">
+                  <div className="relative group">
+                    <input
+                      type="number"
+                      min={0}
+                      value={defaultValues.deliveryTime}
+                      onChange={(e) => setDefaultValues({ ...defaultValues, deliveryTime: Number(e.target.value) })}
+                      className={`${input} pl-3 pr-11 font-medium`}
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-xs font-medium text-muted-foreground group-focus-within:text-primary transition-colors">
+                      Days
+                    </div>
+                  </div>
+                </Field>
+              </div>
+
+              <div className="flex-1 lg:flex-[1.2]">
+                <Field label="Transportation Charges">
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground font-medium group-focus-within:text-primary transition-colors">
+                      ₹
+                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      value={defaultValues.transportationCharges}
+                      onChange={(e) => setDefaultValues({ ...defaultValues, transportationCharges: Number(e.target.value) })}
+                      className={`${input} pl-8 font-medium`}
+                      placeholder="0"
+                    />
+                  </div>
+                </Field>
+              </div>
+
+            </div>
+          </Section>
 
           <Section
             icon={<ListChecks className="w-5 h-5" />}
@@ -726,13 +871,13 @@ const handleUpdateCustomer = async (updatedCustomer: CustomerRecord) => {
                   const availableTextures = it.availableTextures?.length
                     ? it.availableTextures
                     : p?.productImages
-                        ?.filter((i: any) => i.type === "texture")
-                        .map((i: any) => i.url) || [];
+                      ?.filter((i: any) => i.type === "texture")
+                      .map((i: any) => i.url) || [];
                   const currentTexture =
                     it.selectedTexture ||
                     availableTextures[0] ||
                     "";
-                  
+
                   const textureImgObj = p?.productImages?.find((i: any) => i.type === "texture" && i.url === currentTexture);
 
                   const productImage =
@@ -740,7 +885,7 @@ const handleUpdateCustomer = async (updatedCustomer: CustomerRecord) => {
                     it.image ||
                     p?.productImages?.find((i: any) => i.type === "product")?.url ||
                     p?.productImages?.[0]?.url;
-                  
+
                   const productDescription =
                     it.description || p?.description || "";
 
@@ -957,6 +1102,16 @@ const handleUpdateCustomer = async (updatedCustomer: CustomerRecord) => {
                   </span>
                 }
               />
+              {totals.transportationWithTax > 0 && (
+                <Row
+                  label={<span className="text-muted-foreground">Transportation + Tax</span>}
+                  value={
+                    <span className="font-medium">
+                      + {formatINR(totals.transportationWithTax)}
+                    </span>
+                  }
+                />
+              )}
               <div className="pt-2 mt-2 border-t border-border">
                 <Row
                   label={<span className="font-semibold">Grand Total</span>}
@@ -984,15 +1139,19 @@ const handleUpdateCustomer = async (updatedCustomer: CustomerRecord) => {
       )}
 
       {showEditCustomerDialog && editingCustomer && (
-  <EditCustomerDialog
-    customer={editingCustomer}
-    onClose={() => {
-      setShowEditCustomerDialog(false);
-      setEditingCustomer(null);
-    }}
-    onUpdate={handleUpdateCustomer}
-  />
-)}
+        <EditCustomerDialog
+          customer={editingCustomer}
+          onClose={() => {
+            setShowEditCustomerDialog(false);
+            setEditingCustomer(null);
+          }}
+          onUpdate={handleUpdateCustomer}
+        />
+      )}
+
+      {showSettingsDialog && (
+        <SettingsDialog onClose={() => setShowSettingsDialog(false)} />
+      )}
     </div>
   );
 }
@@ -1295,25 +1454,30 @@ const input =
 
 function Section({
   title,
+  subtitle,
   icon,
   right,
   children,
 }: {
   title: string;
+  subtitle?: string;
   icon?: React.ReactNode;
   right?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-soft">
-      <div className="flex items-center justify-between gap-3 mb-4">
+      <div className="flex items-start sm:items-center justify-between gap-3 mb-5">
         <div className="flex items-center gap-3">
           {icon && (
-            <div className="w-9 h-9 rounded-xl bg-accent grid place-items-center text-accent-foreground">
+            <div className="w-9 h-9 rounded-xl bg-accent grid place-items-center text-accent-foreground shrink-0">
               {icon}
             </div>
           )}
-          <h2 className="font-display font-semibold text-lg">{title}</h2>
+          <div>
+            <h2 className="font-display font-semibold text-lg leading-tight">{title}</h2>
+            {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
+          </div>
         </div>
         {right}
       </div>
@@ -1402,7 +1566,7 @@ function SearchableSelect({
     setOpen(false);
     setQuery("");
   };
-  
+
   const add = () => {
     if (!canAdd) return;
     onAdd(q);

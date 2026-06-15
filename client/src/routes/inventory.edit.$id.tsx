@@ -24,7 +24,7 @@ function EditItem() {
   // ── Form state ────────────────────────────────────────────────────────
   const [image, setImage]               = useState<string | undefined>();
   const [referenceImage, setRefImage]   = useState<string | undefined>();
-  const [textureImages, setTextureImages] = useState<{ url: string, linkedUrl: string, linkedReferenceUrl: string }[]>([]);
+  const [textureImages, setTextureImages] = useState<{ url: string, linkedUrl: string, linkedReferenceUrl: string, name: string }[]>([]);
 
   const [form, setForm] = useState({
     productName: "", hsnNumber: "", description: "",
@@ -61,7 +61,7 @@ function EditItem() {
 
             if (prodImg) setImage(prodImg.url);
             if (refImg) setRefImage(refImg.url);
-            if (texImgs.length > 0) setTextureImages(texImgs.map((img: any) => ({ url: img.url, linkedUrl: img.linkedUrl || "", linkedReferenceUrl: img.linkedReferenceUrl || "" })));
+            if (texImgs.length > 0) setTextureImages(texImgs.map((img: any) => ({ url: img.url, linkedUrl: img.linkedUrl || "", linkedReferenceUrl: img.linkedReferenceUrl || "", name: img.name || "" })));
           }
         }
       } catch (err) {
@@ -96,7 +96,7 @@ function EditItem() {
   };
 
   const addTextureSlot = () => {
-    setTextureImages([...textureImages, { url: "", linkedUrl: "", linkedReferenceUrl: "" }]);
+    setTextureImages([...textureImages, { url: "", linkedUrl: "", linkedReferenceUrl: "", name: "" }]);
   };
 
   const removeTextureSlot = (idx: number) => {
@@ -145,7 +145,7 @@ function EditItem() {
     const productImages = [
       image         && { type: "product",   url: image,         publicId: "" },
       referenceImage && { type: "reference", url: referenceImage, publicId: "" },
-      ...textureImages.filter(t => t.url).map(t => ({ type: "texture", url: t.url, publicId: "", linkedUrl: t.linkedUrl, linkedReferenceUrl: t.linkedReferenceUrl }))
+      ...textureImages.filter(t => t.url).map(t => ({ type: "texture", url: t.url, publicId: "", linkedUrl: t.linkedUrl, linkedReferenceUrl: t.linkedReferenceUrl, name: t.name }))
     ].filter(Boolean);
 
     const payload = {
@@ -272,6 +272,20 @@ function EditItem() {
                 <div className="space-y-4">
                   {textureImages.map((img, i) => (
                     <div key={i} className="relative group p-4 border border-border rounded-xl bg-card">
+                      <div className="mb-4 sm:w-1/2">
+                        <Field label={`Texture Name ${i + 1}`}>
+                          <input
+                            value={img.name}
+                            onChange={(e) => {
+                              const newTextures = [...textureImages];
+                              newTextures[i].name = e.target.value;
+                              setTextureImages(newTextures);
+                            }}
+                            className={input}
+                            placeholder="e.g. Matte Black"
+                          />
+                        </Field>
+                      </div>
                       <div className="flex flex-wrap gap-4">
                         <div className="w-40">
                           <ImageDrop 

@@ -47,6 +47,13 @@ export interface IQuotation {
   followUpDate?: Date;
   status: QuotationStatus;
   termsAndConditions: string[];
+  validTill?: {
+    days: number;
+    months: number;
+  };
+  advancePayment?: number;
+  deliveryTime?: number;
+  transportationCharges?: number;
   totalAmount: number;
   totalDiscount: number;
   items: IQuotationItem[];
@@ -165,6 +172,22 @@ const quotationSchema = new Schema<IQuotationDocument, IQuotationModel>(
     termsAndConditions: {
       type: [String],
       default: [],
+    },
+    validTill: {
+      days: { type: Number, default: 15 },
+      months: { type: Number, default: 0 },
+    },
+    advancePayment: {
+      type: Number,
+      default: 0,
+    },
+    deliveryTime: {
+      type: Number,
+      default: 10,
+    },
+    transportationCharges: {
+      type: Number,
+      default: 0,
     },
     totalAmount: {
       type: Number,

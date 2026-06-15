@@ -6,6 +6,7 @@ import { Product } from '../models/Product.model';
 import { ApiError } from '../utils/ApiError';
 import { logger } from '../utils/logger';
 import { buildQuotationHtml } from './pdf-template.service';
+import { Settings, ISettings } from '../models/Settings.model';
 
 // ─────────────────────────────────────────────
 // Types for PDF template data
@@ -45,6 +46,7 @@ export interface PdfTemplateData {
   };
   items: PdfItemData[];
   termsAndConditions: string[];
+  settings: ISettings | null;
 }
 
 // ─────────────────────────────────────────────
@@ -168,6 +170,7 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
     },
     items,
     termsAndConditions: quotation.termsAndConditions || [],
+    settings: await Settings.findOne().lean(),
   };
 }
 

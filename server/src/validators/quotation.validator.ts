@@ -50,6 +50,14 @@ export const createQuotationSchema = z.object({
     .default('Draft'),
 
   termsAndConditions: z.array(z.string()).default([]),
+  
+  validTill: z.object({
+    days: z.number().default(15),
+    months: z.number().default(0),
+  }).optional(),
+  advancePayment: z.number().default(0),
+  deliveryTime: z.number().default(10),
+  transportationCharges: z.number().default(0),
 
   // Overall billing values
   totalAmount: z.number().min(0).default(0),

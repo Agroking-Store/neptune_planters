@@ -15,7 +15,9 @@ import {
   Check,
   ChevronDown,
   ArrowLeft,
+  Settings,
 } from "lucide-react";
+import { SettingsDialog } from "@/components/SettingsDialog";
 import { AppShell } from "@/components/AppShell";
 import { formatINR } from "@/lib/store";
 import { toast } from "sonner";
@@ -47,6 +49,7 @@ interface CustomerRecord {
   email?: string;
   phoneNumber?: string;
   address?: string;
+  gstNumber?: string;
 }
 
 // ── API type for product (from inventory) ─────────────────────────────
@@ -124,7 +127,7 @@ function NewQuotation() {
   // ── Form state ──────────────────────────────────────────────────────
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [selectedCustomerName, setSelectedCustomerName] = useState("");
-  const [customer, setCustomer] = useState({ name: "", email: "", phone: "" });
+  const [customer, setCustomer] = useState({ name: "", email: "", phone: "", gstNumber: "" });
   const [terms, setTerms] = useState<string[]>([
     "100% secure payment",
     "No warranty",
@@ -137,6 +140,13 @@ function NewQuotation() {
   const pickerRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
   const [initialLoading, setInitialLoading] = useState(!!copyFrom);
+
+  const [defaultValues, setDefaultValues] = useState({
+    validTill: { days: 0, months: 1 },
+    advancePayment: 50,
+    deliveryTime: 10,
+    transportationCharges: 0,
+  });
 
   // Load existing quotation data if copyFrom is provided
   useEffect(() => {
@@ -151,8 +161,15 @@ function NewQuotation() {
             name: data.customerSnapshot?.customerName || "",
             email: data.customerSnapshot?.email || "",
             phone: data.customerSnapshot?.phoneNumber || "",
+            gstNumber: data.customerSnapshot?.gstNumber || "",
           });
           setTerms(data.termsAndConditions || []);
+          setDefaultValues({
+            validTill: data.validTill || "",
+            advancePayment: data.advancePayment || "",
+            deliveryTime: data.deliveryTime || "",
+            transportationCharges: data.transportationCharges || "0",
+          });
           if (data.followUpDate) {
             setFollowUp(
               new Date(data.followUpDate).toISOString().split("T")[0],
@@ -186,6 +203,7 @@ function NewQuotation() {
 
   // ── Add Customer Dialog state ──────────────────────────────────────
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [dialogPrefillName, setDialogPrefillName] = useState("");
 
   // Close picker when clicking outside
@@ -204,7 +222,7 @@ function NewQuotation() {
   const totals = useMemo(() => {
     let subtotal = 0;
     let totalDiscount = 0;
-    
+
     items.forEach((it) => {
       const lineSubtotal = it.quantity * it.price;
       const discount = lineSubtotal * ((it.discountPercent || 0) / 100);
@@ -212,11 +230,21 @@ function NewQuotation() {
       totalDiscount += discount;
     });
 
-    const grand = subtotal - totalDiscount;
+    const transportation = defaultValues.transportationCharges || 0;
+    const transportationTax = transportation * 0.18;
+    const transportationWithTax = transportation + transportationTax;
+
+    const grand = subtotal - totalDiscount + transportationWithTax;
     const discountPercent = subtotal > 0 ? (totalDiscount / subtotal) * 100 : 0;
 
-    return { grand: Math.max(0, grand), subtotal, totalDiscount, discountPercent };
-  }, [items]);
+    return {
+      grand: Math.max(0, grand),
+      subtotal,
+      totalDiscount,
+      discountPercent,
+      transportationWithTax
+    };
+  }, [items, defaultValues.transportationCharges]);
 
   const addItem = (id: string) => {
     const found = products.find((i) => i._id === id);
@@ -277,6 +305,10 @@ function NewQuotation() {
       followUpDate: followUp || "",
       status: "Draft" as const,
       termsAndConditions: terms,
+      validTill: defaultValues.validTill,
+      advancePayment: defaultValues.advancePayment,
+      deliveryTime: defaultValues.deliveryTime,
+      transportationCharges: defaultValues.transportationCharges,
       totalAmount: totals.grand,
       totalDiscount: totals.totalDiscount,
       items: items.map((it) => {
@@ -291,8 +323,8 @@ function NewQuotation() {
         const availableTextures = it.availableTextures?.length
           ? it.availableTextures
           : p?.productImages
-              ?.filter((i) => i.type === "texture")
-              .map((i) => i.url) || [];
+            ?.filter((i) => i.type === "texture")
+            .map((i) => i.url) || [];
         return {
           productId: it.productId,
           quantity: it.quantity,
@@ -372,6 +404,7 @@ function NewQuotation() {
         name: c.customerName,
         email: c.email || "",
         phone: c.phoneNumber || "",
+        gstNumber: c.gstNumber || "",
       });
     }
   };
@@ -382,7 +415,6 @@ function NewQuotation() {
     setShowCustomerDialog(true);
   };
 
-  // ── Callback when a new customer is created via the dialog ──────────
   const onCustomerCreated = (c: CustomerRecord) => {
     // Add to local customer list so the dropdown reflects it immediately
     setCustomers((prev) => [c, ...prev]);
@@ -392,9 +424,31 @@ function NewQuotation() {
       name: c.customerName,
       email: c.email || "",
       phone: c.phoneNumber || "",
+      gstNumber: c.gstNumber || "",
     });
     setShowCustomerDialog(false);
     setDialogPrefillName("");
+  };
+
+  const handleDeleteCustomer = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this customer?")) return;
+    try {
+      await api.delete(`/customers/${id}`);
+      setCustomers(customers.filter(c => c._id !== id));
+      toast.success("Customer deleted");
+      if (selectedCustomerId === id) {
+        setSelectedCustomerId("");
+        setSelectedCustomerName("");
+        setCustomer({ name: "", email: "", phone: "", gstNumber: "" });
+      }
+    } catch (err) {
+      if (err instanceof ApiClientError) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to delete customer");
+      }
+    }
   };
 
   const pickerResults = products.filter(
@@ -433,7 +487,15 @@ function NewQuotation() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowSettingsDialog(true)}
+            className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors"
+            title="Settings"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
           <button
             onClick={() => save(false)}
             disabled={saving}
@@ -476,51 +538,157 @@ function NewQuotation() {
               </button>
             }
           >
-            <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Select Customer *">
-                <SearchableSelect
-                  value={selectedCustomerName}
-                  options={customers.map((c) => ({
-                    id: c._id,
-                    label: c.customerName,
-                  }))}
-                  onChange={onCustomerSelected}
-                  onAdd={onAddNewCustomer}
-                  placeholder={
-                    customersLoading ? "Loading customers…" : "Search customer…"
-                  }
-                  addLabel="Add customer"
-                  disabled={customersLoading}
-                />
-              </Field>
-              <Field label="Email">
-                <input
-                  value={customer.email}
-                  onChange={(e) =>
-                    setCustomer({ ...customer, email: e.target.value })
-                  }
-                  className={input}
-                  placeholder="john@company.com"
-                />
-              </Field>
-              <Field label="Phone">
-                <input
-                  value={customer.phone}
-                  onChange={(e) =>
-                    setCustomer({ ...customer, phone: e.target.value })
-                  }
-                  className={input}
-                  placeholder="+91 98XXXXXXXX"
-                />
-              </Field>
-              <Field label="Follow-up Date">
-                <input
-                  type="date"
-                  value={followUp}
-                  onChange={(e) => setFollowUp(e.target.value)}
-                  className={input}
-                />
-              </Field>
+            <div className="flex flex-col gap-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <Field label="Select Customer *">
+                  <SearchableSelect
+                    value={selectedCustomerName}
+                    options={customers.map((c) => ({
+                      id: c._id,
+                      label: c.customerName,
+                    }))}
+                    onChange={onCustomerSelected}
+                    onAdd={onAddNewCustomer}
+                    onDelete={handleDeleteCustomer}
+                    placeholder={
+                      customersLoading ? "Loading customers…" : "Search customer…"
+                    }
+                    addLabel="Add customer"
+                    disabled={customersLoading}
+                  />
+                </Field>
+                <Field label="Email">
+                  <input
+                    value={customer.email}
+                    onChange={(e) =>
+                      setCustomer({ ...customer, email: e.target.value })
+                    }
+                    className={input}
+                    placeholder="john@company.com"
+                  />
+                </Field>
+              </div>
+              <div className="grid sm:grid-cols-3 gap-4">
+                <Field label="Mobile Number">
+                  <input
+                    value={customer.phone}
+                    onChange={(e) =>
+                      setCustomer({ ...customer, phone: e.target.value })
+                    }
+                    className={input}
+                    placeholder="+91 98XXXXXXXX"
+                  />
+                </Field>
+                <Field label="GST No.">
+                  <input
+                    value={customer.gstNumber}
+                    onChange={(e) =>
+                      setCustomer({ ...customer, gstNumber: e.target.value })
+                    }
+                    className={input}
+                    placeholder="27AADCB2230M1Z2"
+                  />
+                </Field>
+                <Field label="Follow-up Date">
+                  <input
+                    type="date"
+                    value={followUp}
+                    onChange={(e) => setFollowUp(e.target.value)}
+                    className={input}
+                  />
+                </Field>
+              </div>
+            </div>
+          </Section>
+
+          {/* Order Details */}
+          <Section icon={<ListChecks className="w-5 h-5" />} title="Order Details" subtitle="Quotation conditions and logistics">
+            <div className="flex flex-col lg:flex-row gap-4">
+
+              <div className="flex-1 lg:flex-[1.4]">
+                <Field label="Valid Till">
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1 group">
+                      <input
+                        type="number"
+                        min={0}
+                        value={defaultValues.validTill.days}
+                        onChange={(e) => setDefaultValues({ ...defaultValues, validTill: { ...defaultValues.validTill, days: Number(e.target.value) } })}
+                        className={`${input} pl-3 pr-11 font-medium`}
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-xs font-medium text-muted-foreground group-focus-within:text-primary transition-colors">
+                        Days
+                      </div>
+                    </div>
+                    <div className="relative flex-1 group">
+                      <input
+                        type="number"
+                        min={0}
+                        value={defaultValues.validTill.months}
+                        onChange={(e) => setDefaultValues({ ...defaultValues, validTill: { ...defaultValues.validTill, months: Number(e.target.value) } })}
+                        className={`${input} pl-3 pr-14 font-medium`}
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-xs font-medium text-muted-foreground group-focus-within:text-primary transition-colors">
+                        Months
+                      </div>
+                    </div>
+                  </div>
+                </Field>
+              </div>
+
+              <div className="flex-1 lg:flex-[0.8]">
+                <Field label="Advance Payment">
+                  <div className="relative group">
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={defaultValues.advancePayment}
+                      onChange={(e) => setDefaultValues({ ...defaultValues, advancePayment: Number(e.target.value) })}
+                      className={`${input} pl-3 pr-8 font-medium`}
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors">
+                      %
+                    </div>
+                  </div>
+                </Field>
+              </div>
+
+              <div className="flex-1 lg:flex-[0.8]">
+                <Field label="Delivery Time">
+                  <div className="relative group">
+                    <input
+                      type="number"
+                      min={0}
+                      value={defaultValues.deliveryTime}
+                      onChange={(e) => setDefaultValues({ ...defaultValues, deliveryTime: Number(e.target.value) })}
+                      className={`${input} pl-3 pr-11 font-medium`}
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-xs font-medium text-muted-foreground group-focus-within:text-primary transition-colors">
+                      Days
+                    </div>
+                  </div>
+                </Field>
+              </div>
+
+              <div className="flex-1 lg:flex-[1.2]">
+                <Field label="Transportation Charges">
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground font-medium group-focus-within:text-primary transition-colors">
+                      ₹
+                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      value={defaultValues.transportationCharges}
+                      onChange={(e) => setDefaultValues({ ...defaultValues, transportationCharges: Number(e.target.value) })}
+                      className={`${input} pl-8 font-medium`}
+                      placeholder="0"
+                    />
+                  </div>
+                </Field>
+              </div>
+
             </div>
           </Section>
 
@@ -663,13 +831,13 @@ function NewQuotation() {
                   const availableTextures = it.availableTextures?.length
                     ? it.availableTextures
                     : p?.productImages
-                        ?.filter((i: any) => i.type === "texture")
-                        .map((i: any) => i.url) || [];
+                      ?.filter((i: any) => i.type === "texture")
+                      .map((i: any) => i.url) || [];
                   const currentTexture =
                     it.selectedTexture ||
                     availableTextures[0] ||
                     "";
-                  
+
                   const textureImgObj = p?.productImages?.find((i: any) => i.type === "texture" && i.url === currentTexture);
 
                   const productImage =
@@ -677,7 +845,7 @@ function NewQuotation() {
                     it.image ||
                     p?.productImages?.find((i: any) => i.type === "product")?.url ||
                     p?.productImages?.[0]?.url;
-                  
+
                   const productDescription =
                     it.description || p?.description || "";
                   return (
@@ -895,6 +1063,16 @@ function NewQuotation() {
                   </span>
                 }
               />
+              {totals.transportationWithTax > 0 && (
+                <Row
+                  label={<span className="text-muted-foreground">Transportation + Tax</span>}
+                  value={
+                    <span className="font-medium">
+                      + {formatINR(totals.transportationWithTax)}
+                    </span>
+                  }
+                />
+              )}
               <div className="pt-2 mt-2 border-t border-border">
                 <Row
                   label={<span className="font-semibold">Grand Total</span>}
@@ -921,6 +1099,11 @@ function NewQuotation() {
           prefillName={dialogPrefillName}
         />
       )}
+
+      {/* ── Settings Dialog ─────────────────────────────────────────── */}
+      {showSettingsDialog && (
+        <SettingsDialog onClose={() => setShowSettingsDialog(false)} />
+      )}
     </div>
   );
 }
@@ -940,6 +1123,7 @@ function AddCustomerDialog({
     email: "",
     phoneNumber: "",
     address: "",
+    gstNumber: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -1047,6 +1231,14 @@ function AddCustomerDialog({
                 placeholder="123 Main Street, Mumbai"
               />
             </Field>
+            <Field label="GST No.">
+              <input
+                value={form.gstNumber}
+                onChange={(e) => setForm({ ...form, gstNumber: e.target.value })}
+                className={input}
+                placeholder="27AADCB2230M1Z2"
+              />
+            </Field>
           </div>
 
           {/* Actions */}
@@ -1086,25 +1278,30 @@ const input =
 
 function Section({
   title,
+  subtitle,
   icon,
   right,
   children,
 }: {
   title: string;
+  subtitle?: string;
   icon?: React.ReactNode;
   right?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-soft">
-      <div className="flex items-center justify-between gap-3 mb-4">
+      <div className="flex items-start sm:items-center justify-between gap-3 mb-5">
         <div className="flex items-center gap-3">
           {icon && (
-            <div className="w-9 h-9 rounded-xl bg-accent grid place-items-center text-accent-foreground">
+            <div className="w-9 h-9 rounded-xl bg-accent grid place-items-center text-accent-foreground shrink-0">
               {icon}
             </div>
           )}
-          <h2 className="font-display font-semibold text-lg">{title}</h2>
+          <div>
+            <h2 className="font-display font-semibold text-lg leading-tight">{title}</h2>
+            {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
+          </div>
         </div>
         {right}
       </div>
@@ -1151,6 +1348,7 @@ function SearchableSelect({
   options,
   onChange,
   onAdd,
+  onDelete,
   placeholder = "Search…",
   addLabel = "Add new",
   disabled = false,
@@ -1159,6 +1357,7 @@ function SearchableSelect({
   options: { id: string; label: string }[];
   onChange: (id: string, label: string) => void;
   onAdd: (label: string) => void;
+  onDelete?: (id: string, e: React.MouseEvent) => void;
   placeholder?: string;
   addLabel?: string;
   disabled?: boolean;
@@ -1230,17 +1429,31 @@ function SearchableSelect({
           </div>
           <div className="max-h-56 overflow-auto py-1">
             {filtered.map((o) => (
-              <button
-                key={o.id}
-                type="button"
-                onClick={() => pick(o)}
-                className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted text-left"
-              >
-                <span>{o.label}</span>
-                {o.label === value && (
-                  <Check className="w-4 h-4 text-primary" />
+              <div key={o.id} className="w-full flex items-center justify-between hover:bg-muted group">
+                <button
+                  type="button"
+                  onClick={() => pick(o)}
+                  className="flex-1 px-3 py-2 text-sm text-left flex items-center justify-between"
+                >
+                  <span>{o.label}</span>
+                  {o.label === value && (
+                    <Check className="w-4 h-4 text-primary" />
+                  )}
+                </button>
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(o.id, e);
+                    }}
+                    className="p-2 opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity mr-1"
+                    title="Delete option"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 )}
-              </button>
+              </div>
             ))}
             {filtered.length === 0 && !canAdd && (
               <div className="px-3 py-4 text-xs text-muted-foreground text-center">

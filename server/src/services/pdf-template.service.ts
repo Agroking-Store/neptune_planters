@@ -62,6 +62,29 @@ const logoDataUri = getImageDataUri('logo-1.png');
 const potDataUri = getImageDataUri('Picsart_26-06-12_00-14-40-385.png');
 
 export function buildQuotationHtml(data: PdfTemplateData): string {
+  // Use settings if available, else fallback to hardcoded defaults
+  const settings = data.settings || {} as any;
+  const finalLogo = settings.logoImg || logoDataUri;
+  const finalPlanter = settings.planterImg || potDataUri;
+  const cName = settings.companyName || 'Neptune Planters';
+  const cAdd1 = settings.addressLine1 || 'Sr No 34/1, Holkarwadi,';
+  const cAdd2 = settings.addressLine2 || 'Handewadi, Pune-412308';
+  const cPhone = settings.phone || '+91 97652 76111';
+  const cEmail = settings.email || 'connect@shopneptune.in';
+  const cGst = settings.gstNo || '';
+  const bName = settings.bankName || 'HDFC Bank';
+  const bAccName = settings.accountName || 'Neptune Planters';
+  const bAccNo = settings.accountNo || '50200067523491';
+  const bIfsc = settings.ifscCode || 'HDFC0001234';
+  const bBranch = settings.branch || 'Hadapsar, Pune';
+  const bUpi = settings.upiId || '';
+  const prepBy = settings.preparedBy || 'Neptune Planters';
+  const sigText = settings.signatureText || 'Sumo';
+  const fMobile = settings.footerMobile || '+91 97652 76111';
+  const fInsta = settings.footerInstagram || '';
+  const fWeb = settings.footerWebsite || 'www.shopneptune.in';
+  const fLoc = settings.footerLocation || 'Sr No 34/1, Holkarwadi, Handewadi, Pune-412308';
+
   // Generate Items HTML
   const itemsHtml = data.items.map(item => `
         <tr>
@@ -919,7 +942,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
 
       <!-- Brand area (left) -->
       <div class="header__brand">
-        <img src="${logoDataUri}" alt="Neptune Logo" class="header__logo-img" />
+        ${finalLogo ? `<img src="${finalLogo}" alt="Logo" class="header__logo-img" />` : ''}
         <div class="header__tagline">
           <p>Crafted Spaces.</p>
           <p>Timeless Design.</p>
@@ -928,7 +951,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
 
       <!-- Planter hero image -->
       <div class="header__planter-img">
-        <img src="${potDataUri}" alt="Planter" />
+        ${finalPlanter ? `<img src="${finalPlanter}" alt="Planter" />` : ''}
       </div>
 
       <!-- Right side -->
@@ -943,8 +966,8 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
           </div>
           <p class="header__greeting">
             Thank you for considering Neptune.<br/>
-            We are pleased to submit our quotation<br/>
-            as per your requirements.
+            We are pleased to submit our quotation as per your requirements.<br/>
+            
           </p>
         </div>
 
@@ -995,21 +1018,22 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     <section class="addresses">
       <div class="address-col">
         <div class="address-col__header">
-          <h3 class="address-col__label">ABOUT US</h3>
+          <h3 class="address-col__label">COMPANY DETAILS</h3>
           <div class="address-col__line"></div>
         </div>
-        <h4 class="address-col__name">Neptune Planters</h4>
+        <h4 class="address-col__name">${cName}</h4>
         <p class="address-col__text">
-          Sr No 34/1, Holkarwadi,<br/>
-          Handewadi, Pune-412308<br/>
-          Phone: +91 97652 76111<br/>
-          Email: connect@shopneptune.in
+          ${cAdd1}<br/>
+          ${cAdd2}<br/>
+          ${cPhone ? `Phone: ${cPhone}<br/>` : ''}
+          ${cEmail ? `Email: ${cEmail}<br/>` : ''}
+          ${cGst ? `GST No: ${cGst}` : ''}
         </p>
       </div>
 
       <div class="address-col address-col--ship">
         <div class="address-col__header">
-          <h3 class="address-col__label">SHIP TO</h3>
+          <h3 class="address-col__label">CLIENT DETAILS</h3>
           <div class="address-col__line"></div>
         </div>
         <h4 class="address-col__name">${data.customerDisplayName}</h4>
@@ -1048,7 +1072,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
             <th class="w-total">TOTAL (₹)</th>
             <th class="w-pimg">PRODUCT IMG</th>
             <th class="w-rimg">REFERENCE IMG</th>
-            <th class="w-texture">STONE TEXTURE</th>
+            <th class="w-texture">COLOUR</th>
           </tr>
         </thead>
         <tbody>
@@ -1080,28 +1104,34 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
           <div class="bank-row">
             <span class="bank-row__label">Bank Name</span>
             <span class="bank-row__sep">:</span>
-            <span class="bank-row__value">HDFC Bank</span>
+            <span class="bank-row__value">${bName}</span>
           </div>
           <div class="bank-row">
             <span class="bank-row__label">A/C Name</span>
             <span class="bank-row__sep">:</span>
-            <span class="bank-row__value">Neptune Planters</span>
+            <span class="bank-row__value">${bAccName}</span>
           </div>
           <div class="bank-row">
             <span class="bank-row__label">A/C No.</span>
             <span class="bank-row__sep">:</span>
-            <span class="bank-row__value">50200067523491</span>
+            <span class="bank-row__value">${bAccNo}</span>
           </div>
           <div class="bank-row">
             <span class="bank-row__label">IFSC Code</span>
             <span class="bank-row__sep">:</span>
-            <span class="bank-row__value">HDFC0001234</span>
+            <span class="bank-row__value">${bIfsc}</span>
           </div>
           <div class="bank-row">
             <span class="bank-row__label">Branch</span>
             <span class="bank-row__sep">:</span>
-            <span class="bank-row__value">Hadapsar, Pune</span>
+            <span class="bank-row__value">${bBranch}</span>
           </div>
+          ${bUpi ? `
+          <div class="bank-row">
+            <span class="bank-row__label">UPI ID</span>
+            <span class="bank-row__sep">:</span>
+            <span class="bank-row__value">${bUpi}</span>
+          </div>` : ''}
         </div>
       </div>
 
@@ -1131,9 +1161,8 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       <!-- Signature -->
       <div class="signature-area">
         <span class="signature-area__prepared">Prepared By</span>
-        <span class="signature-area__name">Neptune Planters</span>
-        <!-- Mocked signature name -->
-        <div class="signature-area__sig">Sumo</div>
+        <span class="signature-area__name">${prepBy}</span>
+        <div class="signature-area__sig">${sigText}</div>
       </div>
 
       <!-- Thank You -->
@@ -1166,19 +1195,24 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     <div class="contact-bar">
       <span class="contact-bar__item">
         <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">phone</span></span>
-        <span>+91 97652 76111</span>
+        <span>${fMobile}</span>
       </span>
+      ${fInsta ? `
+      <span class="contact-bar__item">
+        <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">photo_camera</span></span>
+        <span>${fInsta}</span>
+      </span>` : `
       <span class="contact-bar__item">
         <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">mail</span></span>
-        <span>connect@shopneptune.in</span>
-      </span>
+        <span>${cEmail}</span>
+      </span>`}
       <span class="contact-bar__item">
         <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">language</span></span>
-        <span>www.shopneptune.in</span>
+        <span>${fWeb}</span>
       </span>
       <span class="contact-bar__item">
         <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:16px">location_on</span></span>
-        <span>Sr No 34/1, Holkarwadi, Handewadi, Pune-412308</span>
+        <span>${fLoc}</span>
       </span>
     </div>
 
