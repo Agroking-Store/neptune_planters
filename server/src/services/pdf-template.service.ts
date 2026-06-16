@@ -234,8 +234,8 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     }
 
     .header__logo-img {
-      width: 193px;
-      height: 69px;
+      width: 250px;
+      height: 90px;
       margin-bottom: 32px;
       object-fit: contain;
     }
@@ -283,7 +283,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
 
     .header__title {
       font-family: 'Libre Caslon Text', serif;
-      font-size: 42px;
+      font-size: 32px; 
       color: var(--text-main);
       line-height: 1;
       letter-spacing: 0.05em;
@@ -833,7 +833,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     }
 
     .qr-section__line {
-      height: 60px;
+      height: 90px;
       width: 1.5px;
       background: var(--gold);
       margin-right: 20px;
@@ -841,17 +841,18 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     }
 
     .qr-section__code {
-      border: 1px solid var(--gold);
-      padding: 3px;
-      border-radius: 2px;
+      border: 2px solid var(--gold);
+      padding: 6px;
+      border-radius: 4px;
       margin-right: 20px;
       flex-shrink: 0;
       background: white;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
     .qr-section__code img {
-      width: 52px;
-      height: 52px;
+      width: 80px;
+      height: 80px;
       display: block;
     }
 
