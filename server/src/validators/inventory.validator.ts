@@ -10,6 +10,7 @@ const productImageSchema = z.object({
   publicId: z.string().default(''),
   linkedUrl: z.string().optional().default(''),
   linkedReferenceUrl: z.string().optional().default(''),
+  name: z.string().optional().default(''),
 });
 
 // ─────────────────────────────────────────────

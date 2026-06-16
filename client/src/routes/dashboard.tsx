@@ -18,6 +18,7 @@ import {
   Package,
   X,
   Check,
+  Loader2,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useDB, formatINR, store } from "@/lib/store";
@@ -55,6 +56,8 @@ function DashboardInner() {
   const [status, setStatus] = useState<string>("All");
   const [quotations, setQuotations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [activeStatusMenuId, setActiveStatusMenuId] = useState<string | null>(
     null,
   );
@@ -184,33 +187,43 @@ function DashboardInner() {
   });
 
   const handleSendWhatsapp = async (q: any) => {
-    const mapped = mapToPdf(q);
-    await downloadQuotationPDF(mapped as any);
+    try {
+      setSendingId(q._id || q.id);
+      const mapped = mapToPdf(q);
+      await downloadQuotationPDF(mapped as any);
 
-    if (mapped.phoneNumber) {
-      const cleanPhone = mapped.phoneNumber.replace(/\D/g, "");
-      const msg = encodeURIComponent(
-        `Hello! Here is your quotation: ${mapped.number}. The PDF has been downloaded to your device.`,
-      );
-      window.open(`https://wa.me/${cleanPhone}?text=${msg}`, "_blank");
-      toast.success("Quotation sent");
-    } else {
-      toast.info("No phone number found. PDF downloaded.");
-    }
+      if (mapped.phoneNumber) {
+        const cleanPhone = mapped.phoneNumber.replace(/\D/g, "");
+        const msg = encodeURIComponent(
+          `Hello! Here is your quotation: ${mapped.number}. The PDF has been downloaded to your device.`,
+        );
+        window.open(`https://wa.me/${cleanPhone}?text=${msg}`, "_blank");
+        toast.success("Quotation sent");
+      } else {
+        toast.info("No phone number found. PDF downloaded.");
+      }
 
-    if (
-      q.status !== "Sent" &&
-      q.status !== "Accepted" &&
-      q.status !== "Rejected"
-    ) {
-      handleUpdateStatus(q._id || q.id, "Sent");
+      if (
+        q.status !== "Sent" &&
+        q.status !== "Accepted" &&
+        q.status !== "Rejected"
+      ) {
+        handleUpdateStatus(q._id || q.id, "Sent");
+      }
+    } finally {
+      setSendingId(null);
     }
   };
 
   const handleDownload = async (q: any) => {
-    toast.success("Download triggered");
-    const mapped = mapToPdf(q);
-    await downloadQuotationPDF(mapped as any);
+    try {
+      setDownloadingId(q._id || q.id);
+      toast.success("Download triggered");
+      const mapped = mapToPdf(q);
+      await downloadQuotationPDF(mapped as any);
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   const stats = useMemo(() => {
@@ -515,12 +528,14 @@ function DashboardInner() {
                         <IconBtn
                           onClick={() => handleSendWhatsapp(q)}
                           label="Send WhatsApp"
+                          isLoading={sendingId === qId}
                         >
                           <Send className="w-4 h-4 text-blue-600" />
                         </IconBtn>
                         <IconBtn
                           onClick={() => handleDownload(q)}
                           label="Download PDF"
+                          isLoading={downloadingId === qId}
                         >
                           <Download className="w-4 h-4 text-emerald-600" />
                         </IconBtn>
@@ -637,6 +652,7 @@ function DashboardInner() {
                     <IconBtn
                       onClick={() => handleSendWhatsapp(q)}
                       label="Send WhatsApp"
+                      isLoading={sendingId === qId}
                     >
                       <Send className="w-4 h-4 text-blue-600" />
                     </IconBtn>
@@ -644,6 +660,7 @@ function DashboardInner() {
                     <IconBtn
                       onClick={() => handleDownload(q)}
                       label="Download PDF"
+                      isLoading={downloadingId === qId}
                     >
                       <Download className="w-4 h-4 text-emerald-600" />
                     </IconBtn>
@@ -784,18 +801,28 @@ function IconBtn({
   children,
   onClick,
   label,
+  isLoading,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   label: string;
+  isLoading?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={isLoading}
       aria-label={label}
-      className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center transition-colors focus:outline-none"
+      className="relative w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center transition-colors focus:outline-none disabled:opacity-60 overflow-hidden"
     >
-      {children}
+      {isLoading ? (
+        <>
+          <div className="absolute inset-0 bg-primary/10 animate-pulse" />
+          <Loader2 className="w-4 h-4 animate-spin text-primary relative z-10" />
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 }

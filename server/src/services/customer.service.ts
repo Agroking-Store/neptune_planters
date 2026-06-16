@@ -78,6 +78,7 @@ export async function updateCustomer(
   customer.email = data.email;
   customer.phoneNumber = data.phoneNumber;
   customer.address = data.address;
+  customer.gstNumber = data.gstNumber;
 
   await customer.save();
   return customer;

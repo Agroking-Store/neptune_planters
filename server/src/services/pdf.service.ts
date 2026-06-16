@@ -23,6 +23,7 @@ export interface PdfItemData {
   productImageUrl: string;
   referenceImageUrl: string;
   textureImageUrl: string;
+  textureName: string;
 }
 
 export interface PdfTemplateData {
@@ -44,6 +45,12 @@ export interface PdfTemplateData {
     discountPercent: number;
     totalAmount: number;
   };
+  customerGst: string;
+  advancePayment: number;
+  deliveryTime: number;
+  transportationCharges: number;
+  grandTotal: number;
+  qrCodeDataUri: string;
   items: PdfItemData[];
   termsAndConditions: string[];
   settings: ISettings | null;
@@ -84,6 +91,7 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
     let productImageUrl = '';
     let referenceImageUrl = '';
     let textureImageUrl = '';
+    let textureName = '';
 
     // Fetch product to get images
     try {
@@ -97,10 +105,11 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
         if (referenceImg) referenceImageUrl = referenceImg.url;
         if (textureImg) textureImageUrl = textureImg.url;
         
-        // If a specific texture is selected, see if it has linked images
+        // If a specific texture is selected, see if it has linked images or a name
         if (item.selectedTexture) {
           const selectedTexImg = product.productImages.find((img: any) => img.type === 'texture' && img.url === item.selectedTexture);
           if (selectedTexImg) {
+            if (selectedTexImg.name) textureName = selectedTexImg.name;
             if (selectedTexImg.linkedUrl) {
               productImageUrl = selectedTexImg.linkedUrl;
             }
@@ -124,6 +133,7 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
       discountPercent: item.discountPercent || 0,
       total: item.total,
       selectedTexture: item.selectedTexture || '',
+      textureName,
       productImageUrl,
       referenceImageUrl,
       textureImageUrl: (item.selectedTexture && (item.selectedTexture.startsWith('http') || item.selectedTexture.startsWith('data:image'))) ? item.selectedTexture : textureImageUrl,
@@ -137,9 +147,39 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
     const subtotal = totalAmount + totalDiscount;
     const discountPercent = subtotal > 0 ? (totalDiscount / subtotal) * 100 : 0;
 
-  const createdDateObj = new Date(quotation.createdDate);
+  const settings = await Settings.findOne().lean();
+
+  const createdDateObj = new Date(quotation.updatedAt || quotation.createdAt || quotation.createdDate);
   const validTillDateObj = new Date(createdDateObj);
-  validTillDateObj.setMonth(validTillDateObj.getMonth() + 1);
+  if (quotation.validTill) {
+    validTillDateObj.setDate(validTillDateObj.getDate() + (quotation.validTill.days || 0));
+    validTillDateObj.setMonth(validTillDateObj.getMonth() + (quotation.validTill.months || 0));
+  } else {
+    validTillDateObj.setMonth(validTillDateObj.getMonth() + 1);
+  }
+
+  // Transportation + 18%
+  const transportationCharges = (quotation.transportationCharges || 0) * 1.18;
+  const grandTotal = totalAmount + transportationCharges;
+
+  // Generate QR Code URI
+  const upiId = settings?.upiId || '';
+  let qrCodeDataUri = '';
+  if (upiId) {
+    const amountStr = grandTotal.toFixed(2);
+    const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(settings?.companyName || 'Neptune Planters')}&am=${amountStr}&cu=INR`;
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiUri)}`;
+    try {
+      const resp = await fetch(qrApiUrl);
+      if (resp.ok) {
+        const arrayBuffer = await resp.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        qrCodeDataUri = `data:image/png;base64,${buffer.toString('base64')}`;
+      }
+    } catch (e) {
+      // console.error('Failed to fetch QR code from api.qrserver.com', e);
+    }
+  }
 
   return {
     quotationId: quotation.quotationId,
@@ -157,6 +197,12 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
     customerPhone: customer?.phoneNumber || '',
     customerEmail: customer?.email || '',
     customerAddress: customer?.address || '',
+    customerGst: (customer as any)?.gstNumber || '',
+    advancePayment: quotation.advancePayment || 0,
+    deliveryTime: quotation.deliveryTime || 0,
+    transportationCharges,
+    grandTotal,
+    qrCodeDataUri,
     companyDetails: {
       name: 'NEPTUNE INNOVATIONS',
       addressLine1: 'Sr No 34/1, Holkarwadi, Tukaram Marg,',
@@ -170,7 +216,7 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
     },
     items,
     termsAndConditions: quotation.termsAndConditions || [],
-    settings: await Settings.findOne().lean(),
+    settings: settings as any,
   };
 }
 

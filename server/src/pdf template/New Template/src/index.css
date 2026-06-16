@@ -1,21 +1,21 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Great+Vibes&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Great+Vibes&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-gold: #cba461;
-  --color-dark: #1a1816;
-  --color-page: #FAF7F2;
+  --color-gold: #9D7E6C;
+  --color-dark: #344450;
+  --color-page: #F9F9F9;
   --color-table-row: #FFFFFF;
-  --color-text-main: #333333;
-  --color-text-muted: #666666;
+  --color-text-main: #1a1c1c;
+  --color-text-muted: #43474b;
 
-  --font-serif: "Playfair Display", serif;
-  --font-sans: "Inter", sans-serif;
+  --font-serif: "Libre Caslon Text", serif;
+  --font-sans: "Plus Jakarta Sans", sans-serif;
   --font-signature: "Great Vibes", cursive;
 }
 
 body {
-  background-color: var(--color-dark); /* Surrounding background to make the page pop */
+  background-color: #f0f1f1; /* Surrounding background */
   padding: 2rem 0;
   display: flex;
   justify-content: center;

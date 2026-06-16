@@ -9,6 +9,7 @@ export interface ICustomer {
   email?: string;
   phoneNumber?: string;
   address?: string;
+  gstNumber?: string;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -48,6 +49,11 @@ const customerSchema = new Schema<ICustomerDocument, ICustomerModel>(
       default: '',
     },
     address: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    gstNumber: {
       type: String,
       trim: true,
       default: '',

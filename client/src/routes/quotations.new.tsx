@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ArrowLeft,
   Settings,
+  Edit,
 } from "lucide-react";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { AppShell } from "@/components/AppShell";
@@ -62,7 +63,7 @@ interface ProductRecord {
   size?: string;
   description?: string;
   sizes?: string[];
-  productImages?: { type: string; url: string; linkedUrl?: string; linkedReferenceUrl?: string }[];
+  productImages?: { type: string; url: string; linkedUrl?: string; linkedReferenceUrl?: string; name?: string }[];
 }
 
 // ── Local quotation item shape ────────────────────────────────────────
@@ -78,7 +79,7 @@ interface QuotationItemLocal {
   selectedSize: string;
   selectedTexture: string;
   availableSizes: string[];
-  availableTextures: string[];
+  availableTextures: { url: string; name: string }[];
   image?: string;
 }
 
@@ -135,16 +136,17 @@ function NewQuotation() {
   const [newTerm, setNewTerm] = useState("");
   const [items, setItems] = useState<QuotationItemLocal[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [pickQ, setPickQ] = useState("");
   const [followUp, setFollowUp] = useState<string>("");
   const pickerRef = useRef<HTMLDivElement>(null);
-  const [saving, setSaving] = useState(false);
   const [initialLoading, setInitialLoading] = useState(!!copyFrom);
 
   const [defaultValues, setDefaultValues] = useState({
     validTill: { days: 0, months: 1 },
     advancePayment: 50,
-    deliveryTime: 10,
+    deliveryTime: 12,
     transportationCharges: 0,
   });
 
@@ -206,6 +208,9 @@ function NewQuotation() {
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [dialogPrefillName, setDialogPrefillName] = useState("");
 
+  const [editingCustomer, setEditingCustomer] = useState<CustomerRecord | null>(null);
+  const [showEditCustomerDialog, setShowEditCustomerDialog] = useState(false);
+
   // Close picker when clicking outside
   useEffect(() => {
     if (!pickerOpen) return;
@@ -255,7 +260,7 @@ function NewQuotation() {
     const textures =
       found.productImages
         ?.filter((i) => i.type === "texture")
-        .map((i) => i.url) || [];
+        .map((i) => ({ url: i.url, name: i.name || "" })) || [];
     const sizes = found.sizes || [];
     setItems((p) => [
       ...p,
@@ -269,7 +274,7 @@ function NewQuotation() {
         price: found.unitPrice,
         discountPercent: 0,
         selectedSize: sizes[0] || "",
-        selectedTexture: textures[0] || img || "",
+        selectedTexture: textures[0]?.url || img || "",
         availableSizes: sizes,
         availableTextures: textures,
         image: img,
@@ -324,7 +329,7 @@ function NewQuotation() {
           ? it.availableTextures
           : p?.productImages
             ?.filter((i) => i.type === "texture")
-            .map((i) => i.url) || [];
+            .map((i) => ({ url: i.url, name: i.name || "" })) || [];
         return {
           productId: it.productId,
           quantity: it.quantity,
@@ -332,7 +337,7 @@ function NewQuotation() {
           discountPercent: it.discountPercent || 0,
           selectedSize: it.selectedSize || availableSizes[0] || "",
           selectedTexture:
-            it.selectedTexture || availableTextures[0] || productImage || "",
+            it.selectedTexture || availableTextures[0]?.url || productImage || "",
           total: Math.round(it.quantity * it.price * 100) / 100,
         };
       }),
@@ -371,13 +376,16 @@ function NewQuotation() {
               : undefined,
             createdAt: created.createdAt || new Date().toISOString(),
           };
-          downloadQuotationPDF(mappedForPdf);
-          toast.success("PDF download triggered");
+          setIsDownloadingPdf(true);
+          await downloadQuotationPDF(mappedForPdf);
+          toast.success("PDF downloaded successfully");
         } catch (pdfErr) {
           console.error("[Quotation] PDF download failed:", pdfErr);
           toast.error(
             "Failed to generate PDF. You can download it from the dashboard.",
           );
+        } finally {
+          setIsDownloadingPdf(false);
         }
       }
 
@@ -430,9 +438,7 @@ function NewQuotation() {
     setDialogPrefillName("");
   };
 
-  const handleDeleteCustomer = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this customer?")) return;
+  const handleDeleteCustomer = async (id: string, _label: string) => {
     try {
       await api.delete(`/customers/${id}`);
       setCustomers(customers.filter(c => c._id !== id));
@@ -448,6 +454,32 @@ function NewQuotation() {
       } else {
         toast.error("Failed to delete customer");
       }
+    }
+  };
+
+  const handleEditCustomer = (customer: CustomerRecord) => {
+    setEditingCustomer(customer);
+    setShowEditCustomerDialog(true);
+  };
+
+  const handleUpdateCustomer = async (updatedCustomer: CustomerRecord) => {
+    try {
+      // Refresh customer list
+      await fetchCustomers();
+      // Update selected customer if it's the same
+      if (selectedCustomerId === updatedCustomer._id) {
+        setSelectedCustomerName(updatedCustomer.customerName);
+        setCustomer({
+          name: updatedCustomer.customerName,
+          email: updatedCustomer.email || "",
+          phone: updatedCustomer.phoneNumber || "",
+          gstNumber: updatedCustomer.gstNumber || "",
+        });
+      }
+      setShowEditCustomerDialog(false);
+      setEditingCustomer(null);
+    } catch (err) {
+      console.error("Error refreshing customers:", err);
     }
   };
 
@@ -467,7 +499,8 @@ function NewQuotation() {
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6 max-w-6xl mx-auto pb-24">
       <div className="flex items-end justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-4">
           <button
@@ -512,10 +545,25 @@ function NewQuotation() {
           </button>
           <button
             onClick={() => save(true)}
-            disabled={saving}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            disabled={saving || isDownloadingPdf}
+            className={`relative inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 text-sm transition-all overflow-hidden ${saving || isDownloadingPdf ? "cursor-not-allowed opacity-90" : ""}`}
           >
-            <FileText className="w-4 h-4" /> Generate & download
+            {isDownloadingPdf ? (
+              <>
+                <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                <div className="absolute inset-y-0 left-0 w-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+                <Loader2 className="w-4 h-4 animate-spin relative z-10" />
+                <span className="relative z-10">Crafting PDF...</span>
+              </>
+            ) : saving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+              </>
+            ) : (
+              <>
+                <FileText className="w-4 h-4 transition-transform group-hover:scale-110" /> Generate & download
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -546,9 +594,11 @@ function NewQuotation() {
                     options={customers.map((c) => ({
                       id: c._id,
                       label: c.customerName,
+                      data: c,
                     }))}
                     onChange={onCustomerSelected}
                     onAdd={onAddNewCustomer}
+                    onEdit={handleEditCustomer}
                     onDelete={handleDeleteCustomer}
                     placeholder={
                       customersLoading ? "Loading customers…" : "Search customer…"
@@ -560,11 +610,10 @@ function NewQuotation() {
                 <Field label="Email">
                   <input
                     value={customer.email}
-                    onChange={(e) =>
-                      setCustomer({ ...customer, email: e.target.value })
-                    }
-                    className={input}
-                    placeholder="john@company.com"
+                    readOnly
+                    disabled
+                    className={`${input} bg-muted/50 cursor-not-allowed`}
+                    placeholder="Select a customer first"
                   />
                 </Field>
               </div>
@@ -572,21 +621,19 @@ function NewQuotation() {
                 <Field label="Mobile Number">
                   <input
                     value={customer.phone}
-                    onChange={(e) =>
-                      setCustomer({ ...customer, phone: e.target.value })
-                    }
-                    className={input}
-                    placeholder="+91 98XXXXXXXX"
+                    readOnly
+                    disabled
+                    className={`${input} bg-muted/50 cursor-not-allowed`}
+                    placeholder="Select a customer first"
                   />
                 </Field>
                 <Field label="GST No.">
                   <input
                     value={customer.gstNumber}
-                    onChange={(e) =>
-                      setCustomer({ ...customer, gstNumber: e.target.value })
-                    }
-                    className={input}
-                    placeholder="27AADCB2230M1Z2"
+                    readOnly
+                    disabled
+                    className={`${input} bg-muted/50 cursor-not-allowed`}
+                    placeholder="Select a customer first"
                   />
                 </Field>
                 <Field label="Follow-up Date">
@@ -832,10 +879,10 @@ function NewQuotation() {
                     ? it.availableTextures
                     : p?.productImages
                       ?.filter((i: any) => i.type === "texture")
-                      .map((i: any) => i.url) || [];
+                      .map((i: any) => ({ url: i.url, name: i.name || "" })) || [];
                   const currentTexture =
                     it.selectedTexture ||
-                    availableTextures[0] ||
+                    availableTextures[0]?.url ||
                     "";
 
                   const textureImgObj = p?.productImages?.find((i: any) => i.type === "texture" && i.url === currentTexture);
@@ -1100,11 +1147,24 @@ function NewQuotation() {
         />
       )}
 
+      {/* ── Edit Customer Dialog ────────────────────────────────────── */}
+      {showEditCustomerDialog && editingCustomer && (
+        <EditCustomerDialog
+          customer={editingCustomer}
+          onClose={() => {
+            setShowEditCustomerDialog(false);
+            setEditingCustomer(null);
+          }}
+          onUpdate={handleUpdateCustomer}
+        />
+      )}
+
       {/* ── Settings Dialog ─────────────────────────────────────────── */}
       {showSettingsDialog && (
         <SettingsDialog onClose={() => setShowSettingsDialog(false)} />
       )}
     </div>
+    </>
   );
 }
 
@@ -1272,6 +1332,161 @@ function AddCustomerDialog({
   );
 }
 
+// ── Edit Customer Dialog ────────────────────────────────────────────────
+function EditCustomerDialog({
+  customer,
+  onClose,
+  onUpdate,
+}: {
+  customer: CustomerRecord;
+  onClose: () => void;
+  onUpdate: (c: CustomerRecord) => void;
+}) {
+  const [form, setForm] = useState({
+    customerName: customer.customerName,
+    email: customer.email || "",
+    phoneNumber: customer.phoneNumber || "",
+    address: customer.address || "",
+    gstNumber: customer.gstNumber || "",
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  const handleBackdrop = (e: React.MouseEvent) => {
+    if (e.target === backdropRef.current) onClose();
+  };
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.customerName.trim()) {
+      toast.error("Customer name is required");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const updated = await api.put<CustomerRecord>(`/customers/${customer._id}`, form);
+      toast.success("Customer updated successfully");
+      onUpdate(updated);
+    } catch (err) {
+      if (err instanceof ApiClientError) {
+        toast.error(err.message);
+      } else {
+        toast.error("Internal server error. Contact admin.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      ref={backdropRef}
+      onClick={handleBackdrop}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+    >
+      <div className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-elegant animate-in fade-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-accent grid place-items-center text-accent-foreground">
+              <User className="w-5 h-5" />
+            </div>
+            <h2 className="font-display font-semibold text-lg">Edit Customer</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg border border-border hover:bg-muted grid place-items-center"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field label="Customer Name *">
+              <input
+                value={form.customerName}
+                onChange={(e) => setForm({ ...form, customerName: e.target.value })}
+                className={input}
+                placeholder="John Doe"
+                autoFocus
+              />
+            </Field>
+            <Field label="Email">
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className={input}
+                placeholder="john@company.com"
+              />
+            </Field>
+            <Field label="Phone Number">
+              <input
+                value={form.phoneNumber}
+                onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
+                className={input}
+                placeholder="+91 98XXXXXXXX"
+              />
+            </Field>
+            <Field label="Address">
+              <input
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                className={input}
+                placeholder="123 Main Street, Mumbai"
+              />
+            </Field>
+            <Field label="GST No.">
+              <input
+                value={form.gstNumber}
+                onChange={(e) => setForm({ ...form, gstNumber: e.target.value })}
+                className={input}
+                placeholder="27AADCB2230M1Z2"
+              />
+            </Field>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-sm font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-primary text-primary-foreground font-medium shadow-elegant hover:opacity-95 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" /> Update Customer
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Styles ─────────────────────────────────────────────────────────────
 const input =
   "w-full px-3 py-2.5 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring text-sm";
@@ -1320,10 +1535,10 @@ function Field({
   className?: string;
 }) {
   return (
-    <label className={`block ${className}`}>
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+    <div className={`block ${className}`}>
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
       <div className="mt-1.5">{children}</div>
-    </label>
+    </div>
   );
 }
 
@@ -1348,16 +1563,18 @@ function SearchableSelect({
   options,
   onChange,
   onAdd,
+  onEdit,
   onDelete,
   placeholder = "Search…",
   addLabel = "Add new",
   disabled = false,
 }: {
   value: string;
-  options: { id: string; label: string }[];
+  options: { id: string; label: string; data?: any }[];
   onChange: (id: string, label: string) => void;
   onAdd: (label: string) => void;
-  onDelete?: (id: string, e: React.MouseEvent) => void;
+  onEdit?: (data: any) => void;
+  onDelete?: (id: string, label: string) => void;
   placeholder?: string;
   addLabel?: string;
   disabled?: boolean;
@@ -1395,6 +1612,20 @@ function SearchableSelect({
     setQuery("");
   };
 
+  const handleEdit = (e: React.MouseEvent, data: any) => {
+    e.stopPropagation();
+    if (onEdit) onEdit(data);
+    setOpen(false);
+  };
+
+  const handleDelete = (e: React.MouseEvent, id: string, label: string) => {
+    e.stopPropagation();
+    if (confirm(`Delete customer "${label}"? This will affect existing quotations.`)) {
+      if (onDelete) onDelete(id, label);
+      setOpen(false);
+    }
+  };
+
   return (
     <div ref={wrapRef} className="relative">
       <button
@@ -1429,29 +1660,51 @@ function SearchableSelect({
           </div>
           <div className="max-h-56 overflow-auto py-1">
             {filtered.map((o) => (
-              <div key={o.id} className="w-full flex items-center justify-between hover:bg-muted group">
-                <button
-                  type="button"
-                  onClick={() => pick(o)}
-                  className="flex-1 px-3 py-2 text-sm text-left flex items-center justify-between"
-                >
+              <div
+                key={o.id}
+                onClick={(e) => {
+                  e.preventDefault();
+                  pick(o);
+                }}
+                className="flex items-center justify-between px-3 py-2 text-sm hover:bg-muted group cursor-pointer"
+              >
+                <div className="flex-1 text-left flex items-center justify-between">
                   <span>{o.label}</span>
                   {o.label === value && (
                     <Check className="w-4 h-4 text-primary" />
                   )}
-                </button>
-                {onDelete && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(o.id, e);
-                    }}
-                    className="p-2 opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity mr-1"
-                    title="Delete option"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                </div>
+                {o.data && (
+                  <div className="flex items-center gap-1 shrink-0 ml-2">
+                    {onEdit && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleEdit(e, o.data);
+                        }}
+                        className="p-1 rounded hover:bg-primary/10 text-primary"
+                        title="Edit customer"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDelete(e, o.id, o.label);
+                        }}
+                        className="p-1 rounded hover:bg-destructive/10 text-destructive"
+                        title="Delete customer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             ))}
@@ -1464,7 +1717,10 @@ function SearchableSelect({
           {canAdd && (
             <button
               type="button"
-              onClick={add}
+              onClick={(e) => {
+                e.preventDefault();
+                add();
+              }}
               className="w-full flex items-center gap-2 px-3 py-2.5 text-sm border-t border-border bg-accent/40 hover:bg-accent text-left"
             >
               <Plus className="w-4 h-4 text-primary" />
@@ -1484,7 +1740,7 @@ function TextureDropdown({
   value,
   onChange,
 }: {
-  textures: string[];
+  textures: { url: string; name: string }[];
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -1500,19 +1756,28 @@ function TextureDropdown({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
+  const currentObj = textures.find((t) => t.url === value);
+
   return (
     <div ref={wrapRef} className="relative w-max">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-10 h-10 rounded-lg border border-border bg-background overflow-hidden hover:opacity-80 transition-opacity grid place-items-center"
+        className="relative w-12 h-12 rounded-lg border border-border bg-background overflow-hidden hover:opacity-80 transition-opacity grid place-items-center group"
       >
         {value ? (
-          <img
-            src={value}
-            alt="Texture"
-            className="w-full h-full object-cover"
-          />
+          <>
+            <img
+              src={value}
+              alt="Texture"
+              className="w-full h-full object-cover"
+            />
+            {currentObj?.name && (
+              <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[9px] text-center truncate px-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                {currentObj.name}
+              </div>
+            )}
+          </>
         ) : (
           <div className="w-full h-full bg-accent text-xs flex items-center justify-center text-muted-foreground">
             None
@@ -1523,19 +1788,24 @@ function TextureDropdown({
         <div className="absolute z-20 mt-2 right-0 sm:left-0 sm:right-auto bg-popover border border-border rounded-xl shadow-elegant p-2 grid grid-cols-3 gap-2 w-max">
           {textures.map((tx) => (
             <button
-              key={tx}
+              key={tx.url}
               type="button"
               onClick={() => {
-                onChange(tx);
+                onChange(tx.url);
                 setOpen(false);
               }}
-              className={`w-10 h-10 rounded-lg overflow-hidden border-2 transition-colors ${value === tx ? "border-primary" : "border-transparent hover:border-border"}`}
+              className={`relative w-12 h-12 rounded-lg overflow-hidden border-2 transition-colors group ${value === tx.url ? "border-primary" : "border-transparent hover:border-border"}`}
             >
               <img
-                src={tx}
-                alt="Texture"
+                src={tx.url}
+                alt={tx.name || "Texture"}
                 className="w-full h-full object-cover"
               />
+              {tx.name && (
+                <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[9px] text-center truncate px-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {tx.name}
+                </div>
+              )}
             </button>
           ))}
           {textures.length === 0 && (

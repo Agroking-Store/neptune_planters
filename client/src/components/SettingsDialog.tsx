@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 interface ISettings {
   logoImg: string;
   planterImg: string;
+  hideDefaultPlanter: boolean;
   companyName: string;
   addressLine1: string;
   addressLine2: string;
@@ -29,22 +30,23 @@ interface ISettings {
 const defaultSettings: ISettings = {
   logoImg: "",
   planterImg: "",
+  hideDefaultPlanter: false,
   companyName: "Neptune Planters",
   addressLine1: "Sr No 34/1, Holkarwadi,",
   addressLine2: "Handewadi, Pune-412308",
   phone: "+91 97652 76111",
   email: "connect@shopneptune.in",
   gstNo: "",
-  bankName: "HDFC Bank",
-  accountName: "Neptune Planters",
-  accountNo: "50200067523491",
-  ifscCode: "HDFC0001234",
-  branch: "Hadapsar, Pune",
-  upiId: "",
+  bankName: "Punjab National Bank",
+  accountName: "Neptune Inovations",
+  accountNo: "1475202100000767",
+  ifscCode: "PUNB0147520",
+  branch: "Market Yard, Pune",
+  upiId: "neptuneinnovations@ibl",
   preparedBy: "Neptune Planters",
   signatureText: "Sumo",
   footerMobile: "+91 97652 76111",
-  footerInstagram: "",
+  footerInstagram: "neptuneplanters",
   footerWebsite: "www.shopneptune.in",
   footerLocation: "Sr No 34/1, Holkarwadi, Handewadi, Pune-412308",
 };
@@ -78,7 +80,7 @@ export function SettingsDialog({ onClose }: Props) {
     fetchSettings();
   }, []);
 
-  const handleChange = (field: keyof ISettings, value: string) => {
+  const handleChange = (field: keyof ISettings, value: string | boolean) => {
     setSettings((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -171,6 +173,18 @@ export function SettingsDialog({ onClose }: Props) {
                   onFile={(f) => readFile(f, "planterImg")}
                 />
               </div>
+            </div>
+            <div className="mt-4 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="hideDefaultPlanter"
+                checked={settings.hideDefaultPlanter}
+                onChange={(e) => handleChange("hideDefaultPlanter", e.target.checked)}
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+              />
+              <label htmlFor="hideDefaultPlanter" className="text-sm font-medium text-muted-foreground cursor-pointer">
+                Hide default planter image
+              </label>
             </div>
           </section>
 

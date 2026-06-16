@@ -58,30 +58,30 @@ function getImageDataUri(relativePath: string): string {
   }
 }
 
-const logoDataUri = getImageDataUri('logo-1.png');
+const logoDataUri = getImageDataUri('new logo.png');
 const potDataUri = getImageDataUri('Picsart_26-06-12_00-14-40-385.png');
 
 export function buildQuotationHtml(data: PdfTemplateData): string {
   // Use settings if available, else fallback to hardcoded defaults
   const settings = data.settings || {} as any;
   const finalLogo = settings.logoImg || logoDataUri;
-  const finalPlanter = settings.planterImg || potDataUri;
+  const finalPlanter = settings.planterImg || (settings.hideDefaultPlanter ? '' : potDataUri);
   const cName = settings.companyName || 'Neptune Planters';
   const cAdd1 = settings.addressLine1 || 'Sr No 34/1, Holkarwadi,';
   const cAdd2 = settings.addressLine2 || 'Handewadi, Pune-412308';
   const cPhone = settings.phone || '+91 97652 76111';
   const cEmail = settings.email || 'connect@shopneptune.in';
   const cGst = settings.gstNo || '';
-  const bName = settings.bankName || 'HDFC Bank';
-  const bAccName = settings.accountName || 'Neptune Planters';
-  const bAccNo = settings.accountNo || '50200067523491';
-  const bIfsc = settings.ifscCode || 'HDFC0001234';
-  const bBranch = settings.branch || 'Hadapsar, Pune';
-  const bUpi = settings.upiId || '';
+  const bName = settings.bankName || 'Punjab National Bank';
+  const bAccName = settings.accountName || 'Neptune Inovations';
+  const bAccNo = settings.accountNo || '1475202100000767';
+  const bIfsc = settings.ifscCode || 'PUNB0147520';
+  const bBranch = settings.branch || 'Market Yard, Pune';
+  const bUpi = settings.upiId || 'neptuneinnovations@ibl';
   const prepBy = settings.preparedBy || 'Neptune Planters';
   const sigText = settings.signatureText || 'Sumo';
   const fMobile = settings.footerMobile || '+91 97652 76111';
-  const fInsta = settings.footerInstagram || '';
+  const fInsta = settings.footerInstagram || '@neptuneplanters';
   const fWeb = settings.footerWebsite || 'www.shopneptune.in';
   const fLoc = settings.footerLocation || 'Sr No 34/1, Holkarwadi, Handewadi, Pune-412308';
 
@@ -112,9 +112,12 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
           </td>
           <td class="td-img">
             <div class="img-cell img-cell--texture">
-              ${item.textureImageUrl
-      ? `<img src="${item.textureImageUrl}" alt="Texture" />`
-      : (item.selectedTexture ? `<span>${item.selectedTexture}</span>` : '')}
+              ${item.textureImageUrl ? `<img src="${item.textureImageUrl}" alt="Texture" />` : ''}
+              ${item.textureName
+      ? `<div style="font-size: 8px; margin-top: 4px; color: #555; text-align: center; line-height: 1.1;">${item.textureName}</div>`
+      : (item.selectedTexture && !item.selectedTexture.startsWith('http') && !item.selectedTexture.startsWith('data:image')
+        ? `<div style="font-size: 8px; margin-top: 4px; color: #555; text-align: center; line-height: 1.1;">${item.selectedTexture}</div>`
+        : '')}
             </div>
           </td>
         </tr>
@@ -144,7 +147,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=Great+Vibes&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Great+Vibes&display=swap"
     rel="stylesheet" />
   <!-- Material Symbols for icons -->
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
@@ -163,20 +166,20 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     }
 
     :root {
-      --gold: #cba461;
-      --dark: #1a1816;
-      --page: #FAF7F2;
+      --gold: #9D7E6C;
+      --dark: #344450;
+      --page: #F9F9F9;
       --table-row: #FFFFFF;
-      --text-main: #333333;
-      --text-muted: #666666;
-      --border-light: #E5E0D8;
-      --cream-bg: #F9F4EB;
-      --light-grey-bg: #F5F2EB;
+      --text-main: #1a1c1c;
+      --text-muted: #43474b;
+      --border-light: #e2e2e2;
+      --cream-bg: #F9F7F5;
+      --light-grey-bg: #F9F7F5;
     }
 
     body {
-      font-family: 'Inter', sans-serif;
-      background: #E8E8E8;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: #f0f1f1;
       color: var(--text-main);
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
@@ -187,6 +190,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
        ═══════════════════════════════════════════ */
     .page {
       width: 1000px;
+      min-height: 1414px;
       margin: 0 auto;
       background: var(--page);
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
@@ -238,10 +242,10 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
 
     .header__tagline {
       text-align: center;
-      font-family: 'Playfair Display', serif;
+      font-family: 'Libre Caslon Text', serif;
       font-size: 13.5px;
       font-style: italic;
-      color: #e3cba0;
+      color: var(--gold);
       line-height: 1.5;
     }
 
@@ -278,9 +282,9 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     }
 
     .header__title {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Libre Caslon Text', serif;
       font-size: 42px;
-      color: #1f2937;
+      color: var(--text-main);
       line-height: 1;
       letter-spacing: 0.05em;
       margin-bottom: 12px;
@@ -317,7 +321,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     .header__greeting {
       font-size: 13px;
       line-height: 1.6;
-      color: #374151;
+      color: var(--text-muted);
       max-width: 200px;
     }
 
@@ -334,7 +338,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       flex-direction: column;
       gap: 16px;
       font-size: 11px;
-      color: #1f2937;
+      color: var(--text-main);
       border-left: 1px solid var(--border-light);
       padding-left: 32px;
       padding-top: 8px;
@@ -391,7 +395,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     .address-col--ship {
       width: 30%;
       padding-left: 32px;
-      border-left: 1px solid #dfc599;
+      border-left: 1px solid var(--gold);
     }
 
     .address-col__header {
@@ -412,25 +416,33 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     .address-col__line {
       width: 40px;
       height: 1.5px;
-      background: #dfc599;
+      background: var(--gold);
     }
 
     .address-col__name {
       font-weight: 600;
       font-size: 13px;
-      color: #111827;
+      color: #192C27;
       margin-bottom: 4px;
     }
 
     .address-col__text {
-      font-size: 12px;
-      color: #374151;
-      line-height: 1.7;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .address-col__gst {
+      font-size: 11px;
+      color: var(--text-main);
+      margin-top: 16px;
+      letter-spacing: 0.025em;
+      font-weight: 500;
     }
 
     .address-col__gstin {
       font-size: 11px;
-      color: #1f2937;
+      color: var(--text-main);
       margin-top: 16px;
       letter-spacing: 0.05em;
       font-weight: 500;
@@ -454,25 +466,25 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     }
 
     .quote-block__mark {
-      color: #dfc599;
+      color: var(--gold);
       font-size: 40px;
-      font-family: 'Playfair Display', serif;
+      font-family: 'Libre Caslon Text', serif;
       line-height: 1;
       display: block;
       margin-bottom: 4px;
     }
 
     .quote-block__text {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Libre Caslon Text', serif;
       font-size: 15px;
       line-height: 1.6;
-      color: #1f2937;
+      color: var(--text-main);
     }
 
     .quote-block__divider {
       width: 24px;
       height: 1.5px;
-      background: #dfc599;
+      background: var(--gold);
       margin: 16px auto 0;
     }
 
@@ -519,7 +531,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       border-left: 1px solid var(--border-light);
       border-right: 1px solid var(--border-light);
       font-size: 14px;
-      color: #1f2937;
+      color: var(--text-main);
       background: var(--table-row);
     }
 
@@ -530,7 +542,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     .product-name {
       font-weight: 700;
       font-size: 13px;
-      color: #111827;
+      color: #192C27;
       letter-spacing: 0.05em;
       text-transform: uppercase;
       line-height: 1.3;
@@ -539,7 +551,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     }
 
     .product-dims {
-      color: #a1a1aa;
+      color: #74777c;
       font-weight: 500;
       font-size: 11px;
       text-transform: uppercase;
@@ -600,7 +612,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     .section-header__line {
       width: 40px;
       height: 1.5px;
-      background: #dfc599;
+      background: var(--gold);
     }
 
     .notes-list {
@@ -612,7 +624,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       display: flex;
       align-items: flex-start;
       font-size: 11px;
-      color: #1f2937;
+      color: var(--text-main);
       line-height: 1.6;
       margin-bottom: 10px;
     }
@@ -623,7 +635,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       margin-top: 6px;
       width: 3px;
       height: 3px;
-      background: #1f2937;
+      background: var(--text-main);
       border-radius: 50%;
       flex-shrink: 0;
     }
@@ -632,13 +644,13 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     .bank-col {
       width: 33%;
       padding-left: 32px;
-      border-left: 1px solid #dfc599;
+      border-left: 1px solid var(--gold);
       padding-bottom: 8px;
     }
 
     .bank-details {
       font-size: 11px;
-      color: #1f2937;
+      color: var(--text-main);
     }
 
     .bank-row {
@@ -649,18 +661,18 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     .bank-row__label {
       width: 75px;
       font-weight: 500;
-      color: #374151;
+      color: var(--text-muted);
       flex-shrink: 0;
     }
 
     .bank-row__sep {
       margin-right: 32px;
-      color: #374151;
+      color: var(--text-muted);
     }
 
     .bank-row__value {
       font-weight: 500;
-      color: #1f2937;
+      color: var(--text-main);
     }
 
     /* Totals column */
@@ -683,7 +695,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       text-transform: uppercase;
       font-size: 10px;
       letter-spacing: 0.1em;
-      color: #374151;
+      color: var(--text-muted);
       width: 50%;
       border-right: 1px solid var(--border-light);
     }
@@ -713,7 +725,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     }
 
     .grand-total__amount {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Libre Caslon Text', serif;
       font-size: 32px;
       color: var(--gold);
       letter-spacing: 0.05em;
@@ -723,7 +735,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
 
     .grand-total__words {
       font-size: 10px;
-      color: #9ca3af;
+      color: #c3c7cb;
       line-height: 1.4;
     }
 
@@ -731,7 +743,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
        PRE-FOOTER (Signature + Thank You + QR)
        ═══════════════════════════════════════════ */
     .pre-footer {
-      margin: 40px 40px 32px;
+      margin: auto 40px 32px;
       padding-top: 32px;
       border-top: 1px solid var(--border-light);
       display: flex;
@@ -751,25 +763,25 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
 
     .signature-area__prepared {
       font-size: 10.5px;
-      color: #6b7280;
+      color: #74777c;
       margin-bottom: 4px;
     }
 
     .product-dims {
       font-size: 10px;
-      color: #6b7280;
+      color: #74777c;
       margin-top: 4px;
     }
 
     .discount-amount {
       font-size: 10px;
-      color: #6b7280;
+      color: #74777c;
       margin-top: 4px;
     }
 
     .signature-area__name {
       font-size: 11.5px;
-      color: #1f2937;
+      color: var(--text-main);
       font-weight: 500;
       position: relative;
       z-index: 10;
@@ -780,7 +792,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     .signature-area__sig {
       font-family: 'Great Vibes', cursive;
       font-size: 36px;
-      color: #1f2937;
+      color: var(--text-main);
       margin-top: 8px;
       margin-left: -8px;
       margin-bottom: -8px;
@@ -797,16 +809,16 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     }
 
     .thank-you p {
-      font-family: 'Playfair Display', serif;
+      font-family: 'Libre Caslon Text', serif;
       font-size: 15px;
-      color: #1f2937;
+      color: var(--text-main);
       line-height: 1.6;
     }
 
     .thank-you__divider {
       width: 32px;
       height: 1.5px;
-      background: #dfc599;
+      background: var(--gold);
       margin: 16px auto 0;
     }
 
@@ -823,13 +835,13 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     .qr-section__line {
       height: 60px;
       width: 1.5px;
-      background: #dfc599;
+      background: var(--gold);
       margin-right: 20px;
       opacity: 0.4;
     }
 
     .qr-section__code {
-      border: 1px solid #dfc599;
+      border: 1px solid var(--gold);
       padding: 3px;
       border-radius: 2px;
       margin-right: 20px;
@@ -855,7 +867,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       font-weight: 500;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #1f2937;
+      color: var(--text-main);
       line-height: 1.3;
     }
 
@@ -864,7 +876,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       height: 20px;
       margin-top: 8px;
       margin-left: -8px;
-      color: #dfc599;
+      color: var(--gold);
     }
 
     /* ═══════════════════════════════════════════
@@ -879,7 +891,6 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       justify-content: space-between;
       font-size: 11px;
       letter-spacing: 0.05em;
-      margin-top: auto;
     }
 
     .contact-bar__item {
@@ -965,9 +976,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
             <div class="line-right"></div>
           </div>
           <p class="header__greeting">
-            Thank you for considering Neptune.<br/>
-            We are pleased to submit our quotation as per your requirements.<br/>
-            
+            We are pleased to submit our quotation as per your requirements.            
           </p>
         </div>
 
@@ -999,14 +1008,14 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
               <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">verified_user</span></span>
               <div class="detail-row__content">
                 <span class="detail-row__label">Payment Terms</span>
-                <span class="detail-row__value">: &nbsp;100% Advance</span>
+                <span class="detail-row__value">: &nbsp;${data.advancePayment}% Advance</span>
               </div>
             </div>
             <div class="detail-row">
               <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">local_shipping</span></span>
               <div class="detail-row__content">
                 <span class="detail-row__label">Delivery</span>
-                <span class="detail-row__value">: &nbsp;7 - 10 Days</span>
+                <span class="detail-row__value">: &nbsp;${data.deliveryTime} Days</span>
               </div>
             </div>
           </div>
@@ -1023,12 +1032,11 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
         </div>
         <h4 class="address-col__name">${cName}</h4>
         <p class="address-col__text">
-          ${cAdd1}<br/>
-          ${cAdd2}<br/>
-          ${cPhone ? `Phone: ${cPhone}<br/>` : ''}
-          ${cEmail ? `Email: ${cEmail}<br/>` : ''}
-          ${cGst ? `GST No: ${cGst}` : ''}
+          ${cAdd1}<br/>${cAdd2}<br/>
+          Phone: ${cPhone}<br/>
+          Email: ${cEmail}
         </p>
+        ${cGst ? `<p class="address-col__gst">GSTIN: ${cGst}</p>` : ''}
       </div>
 
       <div class="address-col address-col--ship">
@@ -1038,12 +1046,11 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
         </div>
         <h4 class="address-col__name">${data.customerDisplayName}</h4>
         <p class="address-col__text">
-          ${data.customerAddress.replace(/,\s*/g, ',<br/>')}
-        </p>
-        <p class="address-col__text" style="margin-top: 8px;">
           ${data.customerPhone ? `Phone: ${data.customerPhone}<br/>` : ''}
-          ${data.customerEmail ? `Email: ${data.customerEmail}` : ''}
+          ${data.customerEmail ? `Email: ${data.customerEmail}<br/>` : ''}
+          ${data.customerAddress ? data.customerAddress.replace(/\n/g, '<br/>') : ''}
         </p>
+        ${data.customerGst ? `<p class="address-col__gst">GSTIN: ${data.customerGst}</p>` : ''}
       </div>
 
       <div class="quote-block">
@@ -1145,11 +1152,16 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
           <span class="totals-row__label">DISCOUNT (${data.summary.discountPercent}%)</span>
           <span class="totals-row__value">- ${formatCurrency(data.summary.discountAmount)}</span>
         </div>
+        ${data.transportationCharges > 0 ? `
+        <div class="totals-row">
+          <span class="totals-row__label">TRANSPORTATION CHARGES</span>
+          <span class="totals-row__value">+ ${formatCurrency(data.transportationCharges)}</span>
+        </div>` : ''}
         <div class="grand-total-box">
           <span class="grand-total__label">GRAND TOTAL</span>
-          <span class="grand-total__amount">${formatCurrency(data.summary.totalAmount)}</span>
+          <span class="grand-total__amount">${formatCurrency(data.grandTotal)}</span>
           <p class="grand-total__words">
-            (Rupees ${numberToWords(Math.round(data.summary.totalAmount))} Only)
+            (Rupees ${numberToWords(Math.round(data.grandTotal))} Only)
           </p>
         </div>
       </div>
@@ -1168,7 +1180,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       <!-- Thank You -->
       <div class="thank-you">
         <p>
-          Thank you for your business.<br/>
+          Thank you for considering Neptune.<br/>
           We look forward to being a part of<br/>
           your beautiful journey.
         </p>
@@ -1179,11 +1191,11 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
       <div class="qr-section">
         <div class="qr-section__line"></div>
         <div class="qr-section__code">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://shopneptune.in/products/&color=000&bgcolor=fff&margin=0" alt="QR Code" />
+          <img src="${data.qrCodeDataUri || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://shopneptune.in/&color=000&bgcolor=fff&margin=0'}" alt="QR Code" />
         </div>
         <div class="qr-section__text">
-          <span class="qr-section__label">SCAN TO VISIT</span>
-          <span class="qr-section__label">OUR COLLECTION</span>
+          <span class="qr-section__label">SCAN TO PAY</span>
+          <span class="qr-section__label">EXACT AMOUNT</span>
           <svg class="qr-section__arrow" viewBox="0 0 140 20" fill="none" stroke="currentColor">
             <path d="M2 16 L125 16 Q135 16, 137 5 M132 8 L137 5 L140 10" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
@@ -1197,15 +1209,16 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
         <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">phone</span></span>
         <span>${fMobile}</span>
       </span>
-      ${fInsta ? `
       <span class="contact-bar__item">
-        <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">photo_camera</span></span>
-        <span>${fInsta}</span>
-      </span>` : `
-      <span class="contact-bar__item">
-        <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">mail</span></span>
-        <span>${cEmail}</span>
-      </span>`}
+        <span class="contact-bar__icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+          </svg>
+        </span>
+        <span>${fInsta || '@neptuneplanters'}</span>
+      </span>
       <span class="contact-bar__item">
         <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">language</span></span>
         <span>${fWeb}</span>

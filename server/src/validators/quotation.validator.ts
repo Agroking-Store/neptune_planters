@@ -55,8 +55,8 @@ export const createQuotationSchema = z.object({
     days: z.number().default(15),
     months: z.number().default(0),
   }).optional(),
-  advancePayment: z.number().default(0),
-  deliveryTime: z.number().default(10),
+  advancePayment: z.number().default(50),
+  deliveryTime: z.number().default(12),
   transportationCharges: z.number().default(0),
 
   // Overall billing values

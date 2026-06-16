@@ -96,9 +96,9 @@ export default function App() {
 
         {/* Left Dark Panel Content */}
         <div className="w-[28%] text-gold p-10 pr-8 flex flex-col items-center justify-center relative z-10">
-          <img src={logoImg} alt="Neptune Logo" className="w-[193px] h-[69px] mb-8 object-contain" />
+          <img src={logoImg} alt="Neptune Logo" className="w-[193px] h-[69px] mb-8 object-contain brightness-0 invert opacity-90" />
           
-          <div className="text-center font-serif text-[13.5px] italic text-[#e3cba0] leading-snug">
+          <div className="text-center font-serif text-[13.5px] italic text-[#9D7E6C] leading-snug">
             <p>Crafted Spaces.</p>
             <p>Timeless Design.</p>
           </div>
@@ -114,14 +114,14 @@ export default function App() {
           
           {/* Middle Title Area */}
           <div className="w-[55%] pt-14 pl-[120px] flex flex-col justify-start">
-            <h2 className="font-serif text-[42px] text-gray-800 leading-none tracking-wide mb-3">QUOTATION</h2>
+            <h2 className="font-serif text-[42px] text-[#1a1c1c] leading-none tracking-wide mb-3">QUOTATION</h2>
             <div className="flex items-center w-36 mb-6">
               <div className="w-8 h-[1px] bg-gold"></div>
               <div className="w-1.5 h-1.5 rounded-full bg-gold mx-1"></div>
               <div className="flex-1 h-[1px] bg-gold"></div>
             </div>
             
-            <p className="text-[13px] leading-relaxed text-gray-700 max-w-[200px]">
+            <p className="text-[13px] leading-relaxed text-[#43474b] max-w-[200px]">
               Thank you for considering Neptune.<br/>
               We are pleased to submit our quotation<br/>
               as per your requirements.
@@ -130,7 +130,7 @@ export default function App() {
 
           {/* Right Meta Info Area */}
           <div className="w-[45%] pt-14 pr-12 pl-4">
-            <div className="flex flex-col gap-4 text-[11px] text-gray-800 border-l border-[#E5E0D8] pl-8 py-2 mt-2">
+            <div className="flex flex-col gap-4 text-[11px] text-[#1a1c1c] border-l border-[#e2e2e2] pl-8 py-2 mt-2">
               <div className="flex items-start gap-4">
                 <FileText className="w-4 h-4 text-gold mt-[-1px]" strokeWidth={1.5} />
                 <div className="flex flex-1">
@@ -177,25 +177,25 @@ export default function App() {
         <div className="w-[30%] pl-2">
           <div className="flex items-center mb-3">
             <h3 className="uppercase text-gold text-[10px] font-semibold tracking-[0.2em] mr-4">BILL TO</h3>
-            <div className="w-10 h-[1.5px] bg-[#dfc599]"></div>
+            <div className="w-10 h-[1.5px] bg-[#9D7E6C]"></div>
           </div>
-          <h4 className="font-semibold text-[13px] text-gray-900 mb-1">ABC Developers</h4>
-          <p className="text-[12px] text-gray-700 leading-[1.7]">
+          <h4 className="font-semibold text-[13px] text-[#192C27] mb-1">ABC Developers</h4>
+          <p className="text-[12px] text-[#43474b] leading-[1.7]">
             Green Acres Villas,<br/>
             Bandra West,<br/>
             Mumbai - 400050<br/>
             Maharashtra, India
           </p>
-          <p className="text-[11px] text-gray-800 mt-4 tracking-wide font-medium">GSTIN: 27ABCDE1234F1Z5</p>
+          <p className="text-[11px] text-[#1a1c1c] mt-4 tracking-wide font-medium">GSTIN: 27ABCDE1234F1Z5</p>
         </div>
         
-        <div className="w-[30%] pl-8 border-l border-[#dfc599]">
+        <div className="w-[30%] pl-8 border-l border-[#9D7E6C]">
           <div className="flex items-center mb-3">
             <h3 className="uppercase text-gold text-[10px] font-semibold tracking-[0.2em] mr-4">SHIP TO</h3>
-            <div className="w-10 h-[1.5px] bg-[#dfc599]"></div>
+            <div className="w-10 h-[1.5px] bg-[#9D7E6C]"></div>
           </div>
-          <h4 className="font-semibold text-[13px] text-gray-900 mb-1">ABC Developers</h4>
-          <p className="text-[12px] text-gray-700 leading-[1.7]">
+          <h4 className="font-semibold text-[13px] text-[#192C27] mb-1">ABC Developers</h4>
+          <p className="text-[12px] text-[#43474b] leading-[1.7]">
             Green Acres Villas,<br/>
             Bandra West,<br/>
             Mumbai - 400050<br/>
@@ -204,21 +204,21 @@ export default function App() {
         </div>
         
         <div className="w-[40%] flex items-center justify-end pl-4">
-          <div className="text-center w-[95%] bg-[#F9F4EB] px-6 py-6 pb-5 rounded-sm">
-            <span className="text-[#dfc599] text-[40px] font-serif leading-none block mb-1">“</span>
-            <p className="font-serif text-[15px] leading-[1.6] text-gray-800">
+          <div className="text-center w-[95%] bg-[#F9F7F5] px-6 py-6 pb-5 rounded-sm">
+            <span className="text-[#9D7E6C] text-[40px] font-serif leading-none block mb-1">“</span>
+            <p className="font-serif text-[15px] leading-[1.6] text-[#1a1c1c]">
               We don't just make planters,<br/>
               we craft spaces that<br/>
               leave impressions.
             </p>
-            <div className="w-6 h-[1.5px] bg-[#dfc599] mx-auto mt-4"></div>
+            <div className="w-6 h-[1.5px] bg-[#9D7E6C] mx-auto mt-4"></div>
           </div>
         </div>
       </div>
 
       {/* Table Section */}
       <div className="px-8 mb-6 mt-2">
-        <table className="w-full text-center border-collapse border-b border-[#E5E0D8]">
+        <table className="w-full text-center border-collapse border-b border-[#e2e2e2]">
           <thead>
             <tr className="bg-dark text-gold text-[10px] uppercase font-bold tracking-[0.1em]">
               <th className="py-[16px] px-2 font-bold w-[7%]">SR. NO.</th>
@@ -231,44 +231,44 @@ export default function App() {
               <th className="py-[16px] px-2 font-bold w-[16%]">STONE TEXTURE</th>
             </tr>
           </thead>
-          <tbody className="text-[13px] text-gray-800 align-middle">
+          <tbody className="text-[13px] text-[#1a1c1c] align-middle">
             
-            <tr className="bg-table-row border-b border-[#E5E0D8]">
-              <td className="py-2 px-2 border-x border-[#E5E0D8] text-[14px]">1</td>
-              <td className="py-2 px-2 border-x border-[#E5E0D8]">
-                <div className="font-bold text-[13px] text-gray-900 tracking-[0.05em] uppercase leading-tight mb-1 mt-1">KADHAI</div>
-                <div className="text-[#a1a1aa] font-medium text-[11px] uppercase pb-1">20×20</div>
+            <tr className="bg-table-row border-b border-[#e2e2e2]">
+              <td className="py-2 px-2 border-x border-[#e2e2e2] text-[14px]">1</td>
+              <td className="py-2 px-2 border-x border-[#e2e2e2]">
+                <div className="font-bold text-[13px] text-[#192C27] tracking-[0.05em] uppercase leading-tight mb-1 mt-1">KADHAI</div>
+                <div className="text-[#74777c] font-medium text-[11px] uppercase pb-1">20×20</div>
               </td>
-              <td className="py-2 px-2 border-x border-[#E5E0D8] text-[14px]">4</td>
-              <td className="py-2 px-2 border-x border-[#E5E0D8] text-[14px]">2,000</td>
-              <td className="py-2 px-2 border-x border-[#E5E0D8] text-[14px]">8,000</td>
-              <td className="py-2 px-2 border-x border-[#E5E0D8]">
+              <td className="py-2 px-2 border-x border-[#e2e2e2] text-[14px]">4</td>
+              <td className="py-2 px-2 border-x border-[#e2e2e2] text-[14px]">2,000</td>
+              <td className="py-2 px-2 border-x border-[#e2e2e2] text-[14px]">8,000</td>
+              <td className="py-2 px-2 border-x border-[#e2e2e2]">
                 <KadhaiProductImg className="mx-auto block h-[65px] w-auto max-w-[120px]" />
               </td>
-              <td className="py-2 px-2 border-x border-[#E5E0D8]">
+              <td className="py-2 px-2 border-x border-[#e2e2e2]">
                 <GardenReferenceImg className="mx-auto block h-[75px] w-auto" />
               </td>
-              <td className="py-2 px-2 border-x border-[#E5E0D8]">
+              <td className="py-2 px-2 border-x border-[#e2e2e2]">
                 <BlackStone className="mx-auto block h-[52px] w-[52px] rounded-full" />
               </td>
             </tr>
 
-            <tr className="bg-table-row border-b border-[#E5E0D8]">
-              <td className="py-2 px-2 border-x border-[#E5E0D8] text-[14px]">2</td>
-              <td className="py-2 px-2 border-x border-[#E5E0D8]">
-                <div className="font-bold text-[13px] text-gray-900 tracking-[0.05em] uppercase leading-tight mb-1 mt-1">KADHAI</div>
-                <div className="text-[#a1a1aa] font-medium text-[11px] uppercase pb-1">40×40</div>
+            <tr className="bg-table-row border-b border-[#e2e2e2]">
+              <td className="py-2 px-2 border-x border-[#e2e2e2] text-[14px]">2</td>
+              <td className="py-2 px-2 border-x border-[#e2e2e2]">
+                <div className="font-bold text-[13px] text-[#192C27] tracking-[0.05em] uppercase leading-tight mb-1 mt-1">KADHAI</div>
+                <div className="text-[#74777c] font-medium text-[11px] uppercase pb-1">40×40</div>
               </td>
-              <td className="py-2 px-2 border-x border-[#E5E0D8] text-[14px]">1</td>
-              <td className="py-2 px-2 border-x border-[#E5E0D8] text-[14px]">2,000</td>
-              <td className="py-2 px-2 border-x border-[#E5E0D8] text-[14px]">2,000</td>
-              <td className="py-2 px-2 border-x border-[#E5E0D8]">
+              <td className="py-2 px-2 border-x border-[#e2e2e2] text-[14px]">1</td>
+              <td className="py-2 px-2 border-x border-[#e2e2e2] text-[14px]">2,000</td>
+              <td className="py-2 px-2 border-x border-[#e2e2e2] text-[14px]">2,000</td>
+              <td className="py-2 px-2 border-x border-[#e2e2e2]">
                 <KadhaiProductImg className="mx-auto block h-[65px] w-auto max-w-[120px]" />
               </td>
-              <td className="py-2 px-2 border-x border-[#E5E0D8]">
+              <td className="py-2 px-2 border-x border-[#e2e2e2]">
                 <GardenReferenceImg className="mx-auto block h-[75px] w-auto" />
               </td>
-              <td className="py-2 px-2 border-x border-[#E5E0D8]">
+              <td className="py-2 px-2 border-x border-[#e2e2e2]">
                 <BrownStone className="mx-auto block h-[52px] w-[52px] rounded-full" />
               </td>
             </tr>
@@ -284,67 +284,67 @@ export default function App() {
         <div className="w-[33%] pr-4 pb-2">
           <div className="flex items-center mb-4">
             <h3 className="uppercase text-gold text-[11px] font-semibold tracking-wider mr-4">NOTES</h3>
-            <div className="w-10 h-[1.5px] bg-[#dfc599]"></div>
+            <div className="w-10 h-[1.5px] bg-[#9D7E6C]"></div>
           </div>
-          <ul className="text-[11px] text-gray-800 leading-[1.6] space-y-[10px]">
+          <ul className="text-[11px] text-[#1a1c1c] leading-[1.6] space-y-[10px]">
             <li className="flex items-start">
-              <span className="mr-2 mt-[6px] w-[3px] h-[3px] bg-gray-800 rounded-full shrink-0"></span>
+              <span className="mr-2 mt-[6px] w-[3px] h-[3px] bg-[#43474b] rounded-full shrink-0"></span>
               <span>Transportation & installation extra as applicable.</span>
             </li>
             <li className="flex items-start">
-              <span className="mr-2 mt-[6px] w-[3px] h-[3px] bg-gray-800 rounded-full shrink-0"></span>
+              <span className="mr-2 mt-[6px] w-[3px] h-[3px] bg-[#43474b] rounded-full shrink-0"></span>
               <span>Goods once sold will not be taken back<br/>or exchanged.</span>
             </li>
             <li className="flex items-start">
-              <span className="mr-2 mt-[6px] w-[3px] h-[3px] bg-gray-800 rounded-full shrink-0"></span>
+              <span className="mr-2 mt-[6px] w-[3px] h-[3px] bg-[#43474b] rounded-full shrink-0"></span>
               <span>Delivery within 7-10 working days from<br/>the date of order.</span>
             </li>
             <li className="flex items-start">
-              <span className="mr-2 mt-[6px] w-[3px] h-[3px] bg-gray-800 rounded-full shrink-0"></span>
+              <span className="mr-2 mt-[6px] w-[3px] h-[3px] bg-[#43474b] rounded-full shrink-0"></span>
               <span>This quotation is valid for 15 days.</span>
             </li>
           </ul>
         </div>
 
         {/* Bank Details */}
-        <div className="w-[33%] pl-8 border-l border-[#dfc599] pb-2">
+        <div className="w-[33%] pl-8 border-l border-[#9D7E6C] pb-2">
           <div className="flex items-center mb-4">
             <h3 className="uppercase text-gold text-[11px] font-semibold tracking-wider mr-4">BANK DETAILS</h3>
-            <div className="w-10 h-[1.5px] bg-[#dfc599]"></div>
+            <div className="w-10 h-[1.5px] bg-[#9D7E6C]"></div>
           </div>
-          <div className="text-[11px] text-gray-800 space-y-3">
+          <div className="text-[11px] text-[#1a1c1c] space-y-3">
             <div className="flex">
-              <span className="w-[75px] font-medium text-gray-700">Bank Name</span><span className="mr-8 text-gray-700">:</span><span className="font-medium text-gray-800">HDFC Bank</span>
+              <span className="w-[75px] font-medium text-[#43474b]">Bank Name</span><span className="mr-8 text-[#43474b]">:</span><span className="font-medium text-[#1a1c1c]">HDFC Bank</span>
             </div>
             <div className="flex">
-              <span className="w-[75px] font-medium text-gray-700">A/C Name</span><span className="mr-8 text-gray-700">:</span><span className="font-medium text-gray-800">Neptune Innovations</span>
+              <span className="w-[75px] font-medium text-[#43474b]">A/C Name</span><span className="mr-8 text-[#43474b]">:</span><span className="font-medium text-[#1a1c1c]">Neptune Innovations</span>
             </div>
             <div className="flex">
-              <span className="w-[75px] font-medium text-gray-700">A/C No.</span><span className="mr-8 text-gray-700">:</span><span className="font-medium text-gray-800">50200067523491</span>
+              <span className="w-[75px] font-medium text-[#43474b]">A/C No.</span><span className="mr-8 text-[#43474b]">:</span><span className="font-medium text-[#1a1c1c]">50200067523491</span>
             </div>
             <div className="flex">
-              <span className="w-[75px] font-medium text-gray-700">IFSC Code</span><span className="mr-8 text-gray-700">:</span><span className="font-medium text-gray-800">HDFC0001234</span>
+              <span className="w-[75px] font-medium text-[#43474b]">IFSC Code</span><span className="mr-8 text-[#43474b]">:</span><span className="font-medium text-[#1a1c1c]">HDFC0001234</span>
             </div>
             <div className="flex">
-              <span className="w-[75px] font-medium text-gray-700">Branch</span><span className="mr-8 text-gray-700">:</span><span className="font-medium text-gray-800">Hadapsar, Pune</span>
+              <span className="w-[75px] font-medium text-[#43474b]">Branch</span><span className="mr-8 text-[#43474b]">:</span><span className="font-medium text-[#1a1c1c]">Hadapsar, Pune</span>
             </div>
           </div>
         </div>
 
         {/* Totals Box */}
         <div className="w-[34%] ml-auto bg-page flex flex-col">
-          <div className="flex border border-[#E5E0D8] border-b-0 bg-[#F5F2EB]">
-             <span className="px-5 py-4 uppercase text-[10px] tracking-widest text-gray-700 w-1/2 border-r border-[#E5E0D8]">SUBTOTAL</span>
+          <div className="flex border border-[#e2e2e2] border-b-0 bg-[#F9F7F5]">
+             <span className="px-5 py-4 uppercase text-[10px] tracking-widest text-[#43474b] w-1/2 border-r border-[#e2e2e2]">SUBTOTAL</span>
              <span className="px-5 py-4 text-right w-1/2 text-sm font-medium">₹ 10,000.00</span>
           </div>
-          <div className="flex border border-[#E5E0D8] border-b-0 bg-[#F5F2EB]">
-             <span className="px-5 py-4 uppercase text-[10px] tracking-widest text-gray-700 w-1/2 border-r border-[#E5E0D8]">DISCOUNT %</span>
+          <div className="flex border border-[#e2e2e2] border-b-0 bg-[#F9F7F5]">
+             <span className="px-5 py-4 uppercase text-[10px] tracking-widest text-[#43474b] w-1/2 border-r border-[#e2e2e2]">DISCOUNT %</span>
              <span className="px-5 py-4 text-right w-1/2 text-sm font-medium">₹ 1,800.00</span>
           </div>
           <div className="bg-dark text-white p-5 flex flex-col">
              <span className="uppercase text-[10px] tracking-widest text-gold mb-1">GRAND TOTAL</span>
              <span className="font-serif text-[32px] text-gold tracking-wide leading-none mb-2">₹ 11,800.00</span>
-             <p className="text-[10px] text-gray-400 leading-snug">
+             <p className="text-[10px] text-[#c3c7cb] leading-snug">
                (Rupees Eleven Thousand Eight Hundred Only)
              </p>
           </div>
@@ -352,38 +352,38 @@ export default function App() {
       </div>
 
       {/* Pre-Footer Grid */}
-      <div className="mx-10 mt-10 mb-8 pt-8 border-t border-[#E5E0D8] flex items-end justify-between">
+      <div className="mx-10 mt-10 mb-8 pt-8 border-t border-[#e2e2e2] flex items-end justify-between">
         
         {/* Signature Area */}
         <div className="flex flex-col items-start relative w-[25%] pl-2">
-           <span className="text-[10.5px] text-gray-500 mb-1">Prepared By</span>
-           <span className="text-[11.5px] text-gray-800 font-medium z-10 relative bg-page pr-2">Neptune Innovations</span>
-           <div className="font-signature text-4xl text-gray-800 mt-2 -ml-2 -mb-2 relative z-10 transform -rotate-2">
+           <span className="text-[10.5px] text-[#74777c] mb-1">Prepared By</span>
+           <span className="text-[11.5px] text-[#1a1c1c] font-medium z-10 relative bg-page pr-2">Neptune Innovations</span>
+           <div className="font-signature text-4xl text-[#192C27] mt-2 -ml-2 -mb-2 relative z-10 transform -rotate-2">
              Mamta
            </div>
         </div>
 
         {/* Thank You Message */}
         <div className="text-center w-[40%] pb-[14px]">
-           <p className="font-serif text-[15px] text-gray-800 leading-[1.6]">
+           <p className="font-serif text-[15px] text-[#1a1c1c] leading-[1.6]">
              Thank you for your business.<br/>
              We look forward to being a part of<br/>
              your beautiful journey.
            </p>
-           <div className="w-8 h-[1.5px] bg-[#dfc599] mx-auto mt-4"></div>
+           <div className="w-8 h-[1.5px] bg-[#9D7E6C] mx-auto mt-4"></div>
         </div>
 
         {/* QR Section */}
         <div className="w-[35%] flex justify-end items-center pr-2 pb-2">
-           <div className="h-[60px] w-[1.5px] bg-[#dfc599] mr-5 opacity-40"></div>
-           <div className="border border-[#dfc599] p-[3px] rounded-sm mr-5 shrink-0 bg-white">
+           <div className="h-[60px] w-[1.5px] bg-[#9D7E6C] mr-5 opacity-40"></div>
+           <div className="border border-[#9D7E6C] p-[3px] rounded-sm mr-5 shrink-0 bg-white">
              <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://shopneptune.in/products/&color=000&bgcolor=fff&margin=0" alt="QR Code" className="w-[52px] h-[52px] block" />
            </div>
            <div className="flex flex-col relative w-[130px] pt-1">
-              <span className="text-[10px] font-medium tracking-[0.08em] pb-[2px] uppercase text-gray-800 leading-tight">SCAN TO VISIT</span>
-              <span className="text-[10px] font-medium tracking-[0.08em] uppercase text-gray-800 leading-tight">OUR COLLECTION</span>
+              <span className="text-[10px] font-medium tracking-[0.08em] pb-[2px] uppercase text-[#1a1c1c] leading-tight">SCAN TO VISIT</span>
+              <span className="text-[10px] font-medium tracking-[0.08em] uppercase text-[#1a1c1c] leading-tight">OUR COLLECTION</span>
               
-              <svg className="w-[140px] h-5 text-[#dfc599] mt-2 block -ml-2" viewBox="0 0 140 20" fill="none" stroke="currentColor">
+              <svg className="w-[140px] h-5 text-[#9D7E6C] mt-2 block -ml-2" viewBox="0 0 140 20" fill="none" stroke="currentColor">
                  <path d="M2 16 L125 16 Q135 16, 137 5 M132 8 L137 5 L140 10" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
            </div>

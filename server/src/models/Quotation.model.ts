@@ -7,6 +7,7 @@ export interface ICustomerSnapshot {
   customerName: string;
   email?: string;
   phoneNumber?: string;
+  gstNumber?: string;
 }
 
 // ─────────────────────────────────────────────
@@ -75,6 +76,7 @@ const customerSnapshotSchema = new Schema<ICustomerSnapshot>(
     customerName: { type: String, required: true },
     email: { type: String, default: '' },
     phoneNumber: { type: String, default: '' },
+    gstNumber: { type: String, default: '' },
   },
   { _id: false }
 );

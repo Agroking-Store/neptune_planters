@@ -60,7 +60,7 @@ interface ProductRecord {
   size?: string;
   description?: string;
   sizes?: string[];
-  productImages?: { type: string; url: string; linkedUrl?: string; linkedReferenceUrl?: string }[];
+  productImages?: { type: string; url: string; linkedUrl?: string; linkedReferenceUrl?: string; name?: string }[];
 }
 
 // ── Local quotation item shape ────────────────────────────────────────
@@ -76,7 +76,7 @@ interface QuotationItemLocal {
   selectedSize: string;
   selectedTexture: string;
   availableSizes: string[];
-  availableTextures: string[];
+  availableTextures: { url: string; name: string }[];
   image?: string;
 }
 
@@ -150,7 +150,7 @@ function EditQuotation() {
   const [defaultValues, setDefaultValues] = useState({
     validTill: { days: 0, months: 1 },
     advancePayment: 50,
-    deliveryTime: 10,
+    deliveryTime: 12,
     transportationCharges: 0,
   });
 
@@ -256,7 +256,7 @@ function EditQuotation() {
     const textures =
       found.productImages
         ?.filter((i) => i.type === "texture")
-        .map((i) => i.url) || [];
+        .map((i) => ({ url: i.url, name: i.name || "" })) || [];
     const sizes = found.sizes || [];
     setItems((p) => [
       ...p,
@@ -270,7 +270,7 @@ function EditQuotation() {
         price: found.unitPrice,
         discountPercent: 0,
         selectedSize: sizes[0] || "",
-        selectedTexture: textures[0] || img || "",
+        selectedTexture: textures[0]?.url || img || "",
         availableSizes: sizes,
         availableTextures: textures,
         image: img,
@@ -324,7 +324,7 @@ function EditQuotation() {
           ? it.availableTextures
           : p?.productImages
             ?.filter((i) => i.type === "texture")
-            .map((i) => i.url) || [];
+            .map((i) => ({ url: i.url, name: i.name || "" })) || [];
         return {
           productId: it.productId,
           quantity: it.quantity,
@@ -332,7 +332,7 @@ function EditQuotation() {
           discountPercent: it.discountPercent || 0,
           selectedSize: it.selectedSize || availableSizes[0] || "",
           selectedTexture:
-            it.selectedTexture || availableTextures[0] || productImage || "",
+            it.selectedTexture || availableTextures[0]?.url || productImage || "",
           total: Math.round(it.quantity * it.price * 100) / 100,
         };
       }),
@@ -467,8 +467,6 @@ function EditQuotation() {
 
   const handleUpdateCustomer = async (updatedCustomer: CustomerRecord) => {
     try {
-      await api.put(`/customers/${updatedCustomer._id}`, updatedCustomer);
-      toast.success("Customer updated successfully");
       // Refresh customer list
       await fetchCustomers();
       // Update selected customer if it's the same
@@ -484,11 +482,7 @@ function EditQuotation() {
       setShowEditCustomerDialog(false);
       setEditingCustomer(null);
     } catch (err) {
-      if (err instanceof ApiClientError) {
-        toast.error(err.message);
-      } else {
-        toast.error("Failed to update customer");
-      }
+      console.error("Error refreshing customers:", err);
     }
   };
 
@@ -872,10 +866,10 @@ function EditQuotation() {
                     ? it.availableTextures
                     : p?.productImages
                       ?.filter((i: any) => i.type === "texture")
-                      .map((i: any) => i.url) || [];
+                      .map((i: any) => ({ url: i.url, name: i.name || "" })) || [];
                   const currentTexture =
                     it.selectedTexture ||
-                    availableTextures[0] ||
+                    availableTextures[0]?.url ||
                     "";
 
                   const textureImgObj = p?.productImages?.find((i: any) => i.type === "texture" && i.url === currentTexture);
@@ -1318,6 +1312,7 @@ function EditCustomerDialog({
     email: customer.email || "",
     phoneNumber: customer.phoneNumber || "",
     address: customer.address || "",
+    gstNumber: customer.gstNumber || "",
   });
   const [submitting, setSubmitting] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -1416,6 +1411,14 @@ function EditCustomerDialog({
                 placeholder="123 Main Street, Mumbai"
               />
             </Field>
+            <Field label="GST No.">
+              <input
+                value={form.gstNumber}
+                onChange={(e) => setForm({ ...form, gstNumber: e.target.value })}
+                className={input}
+                placeholder="27AADCB2230M1Z2"
+              />
+            </Field>
           </div>
 
           {/* Actions */}
@@ -1496,10 +1499,10 @@ function Field({
   className?: string;
 }) {
   return (
-    <label className={`block ${className}`}>
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+    <div className={`block ${className}`}>
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
       <div className="mt-1.5">{children}</div>
-    </label>
+    </div>
   );
 }
 
@@ -1624,34 +1627,42 @@ function SearchableSelect({
             {filtered.map((o) => (
               <div
                 key={o.id}
-                className="flex items-center justify-between px-3 py-2 text-sm hover:bg-muted"
+                onClick={(e) => {
+                  e.preventDefault();
+                  pick(o);
+                }}
+                className="flex items-center justify-between px-3 py-2 text-sm hover:bg-muted cursor-pointer"
               >
-                <button
-                  type="button"
-                  onClick={() => pick(o)}
-                  className="flex-1 text-left"
-                >
+                <div className="flex-1 text-left flex items-center justify-between">
                   <span>{o.label}</span>
                   {o.label === value && (
                     <Check className="w-4 h-4 text-primary inline ml-2" />
                   )}
-                </button>
+                </div>
                 {o.data && (
                   <div className="flex items-center gap-1 shrink-0 ml-2">
-                    <button
-                      type="button"
-                      onClick={(e) => handleEdit(e, o.data!)}
-                      className="p-1 rounded hover:bg-primary/10 text-primary"
-                      title="Edit customer"
-                    >
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleEdit(e, o.data!);
+                        }}
+                        className="p-1 rounded hover:bg-primary/10 text-primary"
+                        title="Edit customer"
+                      >
                       <Edit className="w-3.5 h-3.5" />
                     </button>
-                    <button
-                      type="button"
-                      onClick={(e) => handleDelete(e, o.id, o.label)}
-                      className="p-1 rounded hover:bg-destructive/10 text-destructive"
-                      title="Delete customer"
-                    >
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDelete(e, o.id, o.label);
+                        }}
+                        className="p-1 rounded hover:bg-destructive/10 text-destructive"
+                        title="Delete customer"
+                      >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -1667,7 +1678,10 @@ function SearchableSelect({
           {canAdd && (
             <button
               type="button"
-              onClick={add}
+              onClick={(e) => {
+                e.preventDefault();
+                add();
+              }}
               className="w-full flex items-center gap-2 px-3 py-2.5 text-sm border-t border-border bg-accent/40 hover:bg-accent text-left"
             >
               <Plus className="w-4 h-4 text-primary" />
@@ -1687,7 +1701,7 @@ function TextureDropdown({
   value,
   onChange,
 }: {
-  textures: string[];
+  textures: { url: string; name: string }[];
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -1703,19 +1717,28 @@ function TextureDropdown({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
+  const currentObj = textures.find((t) => t.url === value);
+
   return (
     <div ref={wrapRef} className="relative w-max">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-10 h-10 rounded-lg border border-border bg-background overflow-hidden hover:opacity-80 transition-opacity grid place-items-center"
+        className="relative w-12 h-12 rounded-lg border border-border bg-background overflow-hidden hover:opacity-80 transition-opacity grid place-items-center group"
       >
         {value ? (
-          <img
-            src={value}
-            alt="Texture"
-            className="w-full h-full object-cover"
-          />
+          <>
+            <img
+              src={value}
+              alt="Texture"
+              className="w-full h-full object-cover"
+            />
+            {currentObj?.name && (
+              <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[9px] text-center truncate px-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                {currentObj.name}
+              </div>
+            )}
+          </>
         ) : (
           <div className="w-full h-full bg-accent text-xs flex items-center justify-center text-muted-foreground">
             None
@@ -1726,19 +1749,24 @@ function TextureDropdown({
         <div className="absolute z-20 mt-2 right-0 sm:left-0 sm:right-auto bg-popover border border-border rounded-xl shadow-elegant p-2 grid grid-cols-3 gap-2 w-max">
           {textures.map((tx) => (
             <button
-              key={tx}
+              key={tx.url}
               type="button"
               onClick={() => {
-                onChange(tx);
+                onChange(tx.url);
                 setOpen(false);
               }}
-              className={`w-10 h-10 rounded-lg overflow-hidden border-2 transition-colors ${value === tx ? "border-primary" : "border-transparent hover:border-border"}`}
+              className={`relative w-12 h-12 rounded-lg overflow-hidden border-2 transition-colors group ${value === tx.url ? "border-primary" : "border-transparent hover:border-border"}`}
             >
               <img
-                src={tx}
-                alt="Texture"
+                src={tx.url}
+                alt={tx.name || "Texture"}
                 className="w-full h-full object-cover"
               />
+              {tx.name && (
+                <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[9px] text-center truncate px-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {tx.name}
+                </div>
+              )}
             </button>
           ))}
           {textures.length === 0 && (

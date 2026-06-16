@@ -62,6 +62,7 @@ export async function createQuotation(
     customerName: customer.customerName,
     email: customer.email || '',
     phoneNumber: customer.phoneNumber || '',
+    gstNumber: customer.gstNumber || '',
   };
 
   // 2. Build items with product snapshots
@@ -105,7 +106,6 @@ export async function createQuotation(
       followUpDate = undefined;
     }
   }
-  // 5. Create the document
   const quotation = new Quotation({
     customerId: new mongoose.Types.ObjectId(data.customerId),
     customerSnapshot,
@@ -113,6 +113,10 @@ export async function createQuotation(
     followUpDate: followUpDate || null,
     status: data.status || 'Draft',
     termsAndConditions: data.termsAndConditions || [],
+    validTill: data.validTill,
+    advancePayment: data.advancePayment,
+    deliveryTime: data.deliveryTime,
+    transportationCharges: data.transportationCharges,
     totalAmount: data.totalAmount,
     totalDiscount: data.totalDiscount || 0,
     items: itemDocs,
@@ -151,6 +155,7 @@ export async function updateQuotation(
     customerName: customer.customerName,
     email: customer.email || '',
     phoneNumber: customer.phoneNumber || '',
+    gstNumber: customer.gstNumber || '',
   };
 
   // Re-build items with fresh product snapshots
@@ -193,6 +198,10 @@ export async function updateQuotation(
   quotation.followUpDate = followUpDate as Date | undefined;
   quotation.status = data.status || 'Draft';
   quotation.termsAndConditions = data.termsAndConditions || [];
+  quotation.validTill = data.validTill;
+  quotation.advancePayment = data.advancePayment;
+  quotation.deliveryTime = data.deliveryTime;
+  quotation.transportationCharges = data.transportationCharges;
   quotation.totalAmount = data.totalAmount;
   quotation.totalDiscount = data.totalDiscount || 0;
   quotation.items = itemDocs as typeof quotation.items;
