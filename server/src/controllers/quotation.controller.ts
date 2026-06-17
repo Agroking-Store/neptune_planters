@@ -75,7 +75,7 @@ export const updateQuotationHandler = asyncHandler(async (req: Request, res: Res
   // Sync Sales Tracking if the quotation is Accepted
   if (quotation.status === 'Accepted') {
     const existingSales = await Sale.find({ quotationId: quotation._id });
-    const saleDate = existingSales.length > 0 ? existingSales[0].saleDate : new Date();
+    const saleDate = existingSales[0]?.saleDate || new Date();
     const month = `${saleDate.getFullYear()}-${String(saleDate.getMonth() + 1).padStart(2, '0')}`;
     const year = saleDate.getFullYear();
 

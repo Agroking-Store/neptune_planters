@@ -15,7 +15,7 @@ async function getSettings() {
 // ─────────────────────────────────────────────
 // GET /api/settings
 // ─────────────────────────────────────────────
-export const getSettingsHandler = asyncHandler(async (req: Request, res: Response) => {
+export const getSettingsHandler = asyncHandler(async (_req: Request, res: Response) => {
   const settings = await getSettings();
   res.status(200).json(
     ApiResponse.success('Settings retrieved successfully', settings.toJSON()).toJSON()
@@ -42,8 +42,7 @@ export const updateSettingsHandler = asyncHandler(async (req: Request, res: Resp
 // ─────────────────────────────────────────────
 // POST /api/settings/reset
 // ─────────────────────────────────────────────
-export const resetSettingsHandler = asyncHandler(async (req: Request, res: Response) => {
-  const settings = await getSettings();
+export const resetSettingsHandler = asyncHandler(async (_req: Request, res: Response) => {
   
   // Overwrite with defaults by recreating the document
   await Settings.deleteMany({});
