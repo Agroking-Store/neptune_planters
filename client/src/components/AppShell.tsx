@@ -26,7 +26,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         });
     };
 
-    useEffect(() => { setOpen(false); }, [location.pathname]);
+    useEffect(() => { 
+        setOpen(false); 
+        
+        // Dynamically update title
+        let pageTitle = "Panel";
+        const path = location.pathname;
+        if (path.startsWith("/dashboard")) pageTitle = "Quotations";
+        else if (path.startsWith("/quotations/new")) pageTitle = "Add Quotation";
+        else if (path.startsWith("/quotations/edit")) pageTitle = "Edit Quotation";
+        else if (path.startsWith("/inventory/new")) pageTitle = "Add Inventory";
+        else if (path.startsWith("/inventory/edit")) pageTitle = "Edit Inventory";
+        else if (path.startsWith("/inventory")) pageTitle = "Inventory";
+        
+        document.title = `Neptune | ${pageTitle}`;
+    }, [location.pathname]);
 
     return (
         <div className="min-h-screen bg-background">
@@ -42,7 +56,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                     </button>
                     <Link to="/dashboard" className="flex items-center gap-2 min-w-0">
-                        <img src="/logo-1.png" alt="Neptune Planters" className="h-13 w-auto object-contain" />
+                        <img src="/logo.png" alt="Neptune Planters" className="h-13 w-auto object-contain" />
                     </Link>
 
                     <div className="ml-auto flex items-center gap-2">
@@ -73,7 +87,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className={`fixed top-0 left-0 z-50 h-screen w-72 bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"}`}
             >
                 <div className="px-5 py-4 flex items-center gap-2 border-b border-sidebar-border">
-                    <img src="/logo-1.png" alt="Neptune Planters" className="h-15 w-auto object-contain" />
+                    <img src="/logo.png" alt="Neptune Planters" className="h-15 w-auto object-contain" />
                     <button className="ml-auto p-2 rounded-lg hover:bg-sidebar-accent" onClick={() => setOpen(false)} aria-label="Close">
                         <X className="w-5 h-5" />
                     </button>
