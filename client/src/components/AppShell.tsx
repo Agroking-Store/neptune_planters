@@ -42,13 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                     </button>
                     <Link to="/dashboard" className="flex items-center gap-2 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-primary grid place-items-center shadow-elegant shrink-0">
-                            <Sparkles className="w-4 h-4 text-primary-foreground" />
-                        </div>
-                        <div className="min-w-0">
-                            <div className="font-display font-semibold text-sm leading-tight truncate">Neptune Planters</div>
-                            <div className="text-[10px] text-muted-foreground truncate">Quotation suite</div>
-                        </div>
+                        <img src="/logo-1.png" alt="Neptune Planters" className="h-13 w-auto object-contain" />
                     </Link>
 
                     <div className="ml-auto flex items-center gap-2">
@@ -79,13 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className={`fixed top-0 left-0 z-50 h-screen w-72 bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"}`}
             >
                 <div className="px-5 py-4 flex items-center gap-2 border-b border-sidebar-border">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-primary grid place-items-center shadow-elegant">
-                        <Sparkles className="w-5 h-5 text-primary-foreground" />
-                    </div>
-                    <div className="min-w-0">
-                        <div className="font-display font-semibold text-base leading-tight">Neptune Planters</div>
-                        <div className="text-xs text-muted-foreground">Quotation suite</div>
-                    </div>
+                    <img src="/logo-1.png" alt="Neptune Planters" className="h-15 w-auto object-contain" />
                     <button className="ml-auto p-2 rounded-lg hover:bg-sidebar-accent" onClick={() => setOpen(false)} aria-label="Close">
                         <X className="w-5 h-5" />
                     </button>
@@ -93,8 +81,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                     {nav.map(({ to, label, icon: Icon, exactPaths, prefixPaths }) => {
-                        const active = exactPaths.some(p => location.pathname === p) || 
-                                       prefixPaths.some(p => location.pathname === p || location.pathname.startsWith(`${p}/`));
+                        const active = exactPaths.some(p => location.pathname === p) ||
+                            prefixPaths.some(p => location.pathname === p || location.pathname.startsWith(`${p}/`));
                         return (
                             <Link
                                 key={to}
