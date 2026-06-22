@@ -48,18 +48,19 @@ function numberToWords(num: number): string {
 // Load template images as base64 data URIs
 function getImageDataUri(relativePath: string): string {
   try {
-    const imgPath = path.resolve(__dirname, '..', 'pdf template', 'New Template', 'assets', relativePath);
+    const imgPath = path.resolve(__dirname, '..', '..', 'assets', relativePath);
     const imgBuffer = fs.readFileSync(imgPath);
     const ext = path.extname(relativePath).toLowerCase().replace('.', '');
     const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
     return `data:${mime};base64,${imgBuffer.toString('base64')}`;
-  } catch {
+  } catch (error) {
+    console.warn(`[PDF] Could not load fallback image: ${relativePath}`, error);
     return '';
   }
 }
 
-const logoDataUri = getImageDataUri('new logo.png');
-const potDataUri = getImageDataUri('Picsart_26-06-12_00-14-40-385.png');
+const logoDataUri = getImageDataUri('Quotation logo.png');
+const potDataUri = getImageDataUri('planter img.png');
 
 export function buildQuotationHtml(data: PdfTemplateData): string {
   // Use settings if available, else fallback to hardcoded defaults
