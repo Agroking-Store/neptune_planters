@@ -235,8 +235,8 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     }
 
     .header__logo-img {
-      width: 250px;
-      height: 90px;
+      width: 280px;
+      height: 110px;
       margin-bottom: 32px;
       object-fit: contain;
     }
@@ -284,7 +284,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
 
     .header__title {
       font-family: 'Libre Caslon Text', serif;
-      font-size: 32px; 
+      font-size: 28px; 
       color: var(--text-main);
       line-height: 1;
       letter-spacing: 0.05em;
