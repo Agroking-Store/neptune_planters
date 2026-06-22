@@ -62,11 +62,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <div className="ml-auto flex items-center gap-2">
                         <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-border">
                             <div className="w-8 h-8 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground font-semibold text-xs">
-                                {(user?.name || "U").slice(0, 1).toUpperCase()}
+                                S
                             </div>
                             <div className="min-w-0 hidden md:block">
-                                <div className="text-xs font-medium truncate max-w-[140px]">{user?.name || "Guest"}</div>
-                                <div className="text-[10px] text-muted-foreground truncate max-w-[140px]">{user?.email || "—"}</div>
+                                <div className="text-xs font-medium truncate max-w-[140px]">Sudarshan Sharma</div>
+                                <div className="text-[10px] text-muted-foreground truncate max-w-[140px]">connect@shopneptune.in</div>
                             </div>
                         </div>
                     </div>
@@ -112,11 +112,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <div className="p-4 border-t border-sidebar-border">
                     <div className="flex items-center gap-3 mb-3">
                         <div className="w-9 h-9 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground font-semibold text-sm">
-                            {(user?.name || "U").slice(0, 1).toUpperCase()}
+                            S
                         </div>
                         <div className="min-w-0">
-                            <div className="text-sm font-medium truncate">{user?.name || "Guest"}</div>
-                            <div className="text-xs text-muted-foreground truncate">{user?.email || "—"}</div>
+                            <div className="text-sm font-medium truncate">Sudarshan Sharma</div>
+                            <div className="text-xs text-muted-foreground truncate">connect@shopneptune.in</div>
                         </div>
                     </div>
                     <button
