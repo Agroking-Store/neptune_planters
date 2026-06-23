@@ -8,7 +8,8 @@
     "build": "tsc --project tsconfig.json",
     "start": "node dist/server.js",
     "seed": "ts-node-dev --transpile-only src/utils/seed.ts",
-    "seed:inventory": "ts-node-dev --transpile-only src/utils/seedInventory.ts"
+    "seed:inventory": "ts-node-dev --transpile-only src/utils/seedInventory.ts",
+    "transfer:data": "ts-node-dev --transpile-only src/utils/transferData.ts"
   },
   "keywords": [],
   "author": "",
