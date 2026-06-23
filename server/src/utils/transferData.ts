@@ -46,24 +46,24 @@ async function transferData() {
     }
 
     const collections = await sourceDb.listCollections().toArray();
-    
+
     for (const collectionInfo of collections) {
       const collectionName = collectionInfo.name;
-      
+
       // Skip system collections
       if (collectionName.startsWith('system.')) continue;
 
       console.log(`\n📦 Processing collection: ${collectionName}`);
-      
+
       const sourceCollection = sourceDb.collection(collectionName);
       const destCollection = destDb.collection(collectionName);
-      
+
       const documents = await sourceCollection.find({}).toArray();
-      
+
       if (documents.length > 0) {
         console.log(`Clearing existing data in destination ${collectionName}...`);
         await destCollection.deleteMany({});
-        
+
         console.log(`Transferring ${documents.length} documents...`);
         await destCollection.insertMany(documents);
         console.log(`✅ Completed ${collectionName}`);
@@ -85,3 +85,25 @@ async function transferData() {
 }
 
 transferData();
+
+
+
+
+
+
+
+
+
+// How to use it
+// To use this script, make sure you provide the production database connection string via an environment variable called DEST_MONGODB_URI.
+
+// The MONGODB_URI from your .env file (or mongodb://localhost:27017/neptune_planters by default) will be used as the source.
+
+// You can run this directly in PowerShell like so:
+
+// powershell
+// cd server
+// # Set your production URI as an environment variable in PowerShell
+// $env:DEST_MONGODB_URI="mongodb+srv://<username>:<password>@cluster.mongodb.net/neptune_planters?retryWrites=true&w=majority"
+// # Run the transfer script
+// npm run transfer:data
