@@ -3,6 +3,7 @@ import { FileText, Package, LogOut, Plus, Menu, X, Sparkles, PackagePlus, Settin
 import { useEffect, useState } from "react";
 import { useDB } from "@/lib/store";
 import { useLogout, useMe } from "@/lib/auth";
+import { ProfileDialog } from "./ProfileDialog";
 
 const nav = [
     { to: "/dashboard", label: "Quotations", icon: FileText, exactPaths: ["/dashboard"], prefixPaths: ["/quotations/edit"] },
@@ -17,6 +18,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const navigate = useNavigate();
     const { location } = useRouterState();
     const [open, setOpen] = useState(false);
+    const [showProfile, setShowProfile] = useState(false);
     const logoutMutation = useLogout();
     const { data: user } = useMe();
 
@@ -62,15 +64,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </Link>
 
                     <div className="ml-auto flex items-center gap-2">
-                        <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-border">
+                        <button 
+                            onClick={() => setShowProfile(true)}
+                            className="hidden sm:flex items-center gap-2 pl-2 border-l border-border hover:opacity-80 transition-opacity text-left"
+                        >
                             <div className="w-8 h-8 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground font-semibold text-xs">
-                                S
+                                {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
                             </div>
                             <div className="min-w-0 hidden md:block">
-                                <div className="text-xs font-medium truncate max-w-[140px]">Sudarshan Sharma</div>
-                                <div className="text-[10px] text-muted-foreground truncate max-w-[140px]">connect@shopneptune.in</div>
+                                <div className="text-xs font-medium truncate max-w-[140px]">{user?.name || "Loading..."}</div>
+                                <div className="text-[10px] text-muted-foreground truncate max-w-[140px]">{user?.email || ""}</div>
                             </div>
-                        </div>
+                        </button>
                     </div>
                 </div>
             </header>
@@ -112,15 +117,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </nav>
 
                 <div className="p-4 border-t border-sidebar-border">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground font-semibold text-sm">
-                            S
+                    <button 
+                        onClick={() => setShowProfile(true)}
+                        className="flex items-center gap-3 mb-3 w-full hover:bg-muted/50 p-2 -mx-2 rounded-xl transition-colors text-left"
+                    >
+                        <div className="w-9 h-9 rounded-full bg-gradient-primary grid place-items-center text-primary-foreground font-semibold text-sm shrink-0">
+                            {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
                         </div>
                         <div className="min-w-0">
-                            <div className="text-sm font-medium truncate">Sudarshan Sharma</div>
-                            <div className="text-xs text-muted-foreground truncate">connect@shopneptune.in</div>
+                            <div className="text-sm font-medium truncate">{user?.name || "Loading..."}</div>
+                            <div className="text-xs text-muted-foreground truncate">{user?.email || ""}</div>
                         </div>
-                    </div>
+                    </button>
                     <button
                         onClick={handleLogout}
                         disabled={logoutMutation.isPending}
@@ -134,6 +142,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <main className="px-4 sm:px-6 lg:px-10 py-6 lg:py-10 max-w-[1400px] mx-auto">
                 {children}
             </main>
+
+            {showProfile && user && (
+                <ProfileDialog user={user} onClose={() => setShowProfile(false)} />
+            )}
         </div>
     );
 }

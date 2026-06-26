@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { login, refresh, logout, getMe } from '../controllers/auth.controller';
+import { login, refresh, logout, getMe, updateMe } from '../controllers/auth.controller';
 import { authenticate } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
 import { loginSchema } from '../validators/auth.validator';
@@ -25,5 +25,8 @@ router.post('/logout', authenticate, logout);
 
 // GET /api/auth/me
 router.get('/me', authenticate, getMe);
+
+// PUT /api/auth/me
+router.put('/me', authenticate, updateMe);
 
 export default router;

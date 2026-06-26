@@ -98,3 +98,41 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
     ApiResponse.success('User profile retrieved', user.toJSON()).toJSON()
   );
 });
+
+// ─────────────────────────────────────────────
+// PUT /api/auth/me
+// ─────────────────────────────────────────────
+export const updateMe = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw ApiError.unauthorized('Not authenticated');
+  }
+
+  const user = await User.findById(req.user.userId).exec();
+  if (!user) {
+    throw ApiError.notFound('User not found');
+  }
+
+  const { name, email, password } = req.body as {
+    name?: string;
+    email?: string;
+    password?: string;
+  };
+
+  if (name) user.name = name;
+  if (email) {
+    const existing = await User.findOne({ email });
+    if (existing && existing._id.toString() !== user._id.toString()) {
+      throw ApiError.badRequest('Email already in use');
+    }
+    user.email = email;
+  }
+  if (password) {
+    user.password = password;
+  }
+
+  await user.save();
+
+  res.status(200).json(
+    ApiResponse.success('Profile updated successfully', user.toJSON()).toJSON()
+  );
+});
