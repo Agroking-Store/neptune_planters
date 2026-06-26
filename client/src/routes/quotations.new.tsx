@@ -179,6 +179,7 @@ function NewQuotation() {
           }
           setItems(
             (data.items || []).map((it: any) => ({
+              id: crypto.randomUUID(),
               productId: it.productId,
               name: it.productSnapshot?.productName || "",
               hsnNumber: it.productSnapshot?.hsnNumber || "",
