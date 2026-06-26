@@ -250,38 +250,6 @@ function Login() {
             </div>
           </div>
 
-          {/* Quotation Mockup Card */}
-          <div className="mt-16 w-full max-w-2xl bg-white rounded-[2rem] p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-border/50 text-left relative z-10">
-            <div className="flex items-start justify-between mb-8">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Quotation</p>
-                <h3 className="font-display text-2xl font-bold">QUO-0766</h3>
-              </div>
-              <div className="px-4 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 text-sm font-semibold border border-emerald-500/20">
-                Accepted
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-8 mb-8">
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Customer</p>
-                <p className="font-medium text-foreground">Kumar Industries</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Total Amount</p>
-                <p className="font-medium text-foreground">₹1,12,089.00</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Items</p>
-                <p className="font-medium text-foreground">2 items</p>
-              </div>
-            </div>
-
-            <button className="w-full py-4 rounded-2xl bg-primary/10 text-primary font-semibold text-center hover:bg-primary/15 transition-colors">
-              Download PDF
-            </button>
-          </div>
-
           {/* Footer Highlights */}
           <div className="grid grid-cols-3 gap-8 mt-12 pt-8 border-t border-border/60 w-full text-left">
             <div className="flex gap-4">
