@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { api, ApiClientError } from "@/lib/api";
 import { downloadQuotationPDF } from "@/lib/pdf";
 
-import { SettingsDialog } from "@/components/SettingsDialog";
+
 export const Route = createFileRoute("/quotations/edit/$id")({
   head: () => ({ meta: [{ title: "Edit Quotation — Indux" }] }),
   beforeLoad: () => {
@@ -143,7 +143,7 @@ function EditQuotation() {
   const [initialLoading, setInitialLoading] = useState(true);
 
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+
   const [dialogPrefillName, setDialogPrefillName] = useState("");
   const [pdfDownloading, setPdfDownloading] = useState(false);
 
@@ -518,14 +518,7 @@ function EditQuotation() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowSettingsDialog(true)}
-            className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors"
-            title="Settings"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
+
           <button
             onClick={() => save(false)}
             disabled={saving}
@@ -1143,9 +1136,7 @@ function EditQuotation() {
         />
       )}
 
-      {showSettingsDialog && (
-        <SettingsDialog onClose={() => setShowSettingsDialog(false)} />
-      )}
+
     </div>
   );
 }

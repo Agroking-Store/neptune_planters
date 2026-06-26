@@ -15,10 +15,8 @@ import {
   Check,
   ChevronDown,
   ArrowLeft,
-  Settings,
   Edit,
 } from "lucide-react";
-import { SettingsDialog } from "@/components/SettingsDialog";
 import { AppShell } from "@/components/AppShell";
 import { formatINR } from "@/lib/store";
 import { toast } from "sonner";
@@ -206,7 +204,7 @@ function NewQuotation() {
 
   // ── Add Customer Dialog state ──────────────────────────────────────
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  // Settings Dialog State (Removed)
   const [dialogPrefillName, setDialogPrefillName] = useState("");
 
   const [editingCustomer, setEditingCustomer] = useState<CustomerRecord | null>(null);
@@ -522,14 +520,7 @@ function NewQuotation() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowSettingsDialog(true)}
-            className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors"
-            title="Settings"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
+
           <button
             onClick={() => save(false)}
             disabled={saving}
@@ -1158,11 +1149,6 @@ function NewQuotation() {
           }}
           onUpdate={handleUpdateCustomer}
         />
-      )}
-
-      {/* ── Settings Dialog ─────────────────────────────────────────── */}
-      {showSettingsDialog && (
-        <SettingsDialog onClose={() => setShowSettingsDialog(false)} />
       )}
     </div>
     </>

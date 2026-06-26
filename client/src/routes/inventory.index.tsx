@@ -201,7 +201,7 @@ function Inventory() {
         if (r.productImage) {
           const imgData = await resolveImage(r.productImage);
           if (imgData) {
-            const imgId = wb.addImage({ buffer: imgData.buf, extension: imgData.ext });
+            const imgId = wb.addImage({ buffer: imgData.buf as any, extension: imgData.ext });
             ws.addImage(imgId, {
               tl: { col: 1.1, row: rowNum - 0.9 },
               ext: { width: 65, height: 65 },
@@ -213,7 +213,7 @@ function Inventory() {
         if (isTexImage) {
           const texData = await resolveImage(texVal);
           if (texData) {
-            const texImgId = wb.addImage({ buffer: texData.buf, extension: texData.ext });
+            const texImgId = wb.addImage({ buffer: texData.buf as any, extension: texData.ext });
             ws.addImage(texImgId, {
               tl: { col: 3.1, row: rowNum - 0.9 },
               ext: { width: 65, height: 65 },

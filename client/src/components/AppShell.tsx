@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { FileText, Package, LogOut, Plus, Menu, X, Sparkles, PackagePlus } from "lucide-react";
+import { FileText, Package, LogOut, Plus, Menu, X, Sparkles, PackagePlus, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDB } from "@/lib/store";
 import { useLogout, useMe } from "@/lib/auth";
@@ -9,6 +9,7 @@ const nav = [
     { to: "/quotations/new", label: "Add Quotation", icon: Plus, exactPaths: ["/quotations/new"], prefixPaths: [] },
     { to: "/inventory", label: "Inventory", icon: Package, exactPaths: ["/inventory"], prefixPaths: ["/inventory/edit"] },
     { to: "/inventory/new", label: "Add Inventory", icon: PackagePlus, exactPaths: ["/inventory/new"], prefixPaths: [] },
+    { to: "/settings", label: "Settings", icon: Settings, exactPaths: ["/settings"], prefixPaths: [] },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -38,6 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         else if (path.startsWith("/inventory/new")) pageTitle = "Add Inventory";
         else if (path.startsWith("/inventory/edit")) pageTitle = "Edit Inventory";
         else if (path.startsWith("/inventory")) pageTitle = "Inventory";
+        else if (path.startsWith("/settings")) pageTitle = "Settings";
         
         document.title = `Neptune | ${pageTitle}`;
     }, [location.pathname]);
