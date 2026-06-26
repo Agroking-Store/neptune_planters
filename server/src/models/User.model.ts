@@ -14,6 +14,8 @@ export interface IUser {
   role: UserRole;
   isActive: boolean;
   refreshTokens: string[];
+  resetPasswordOtp?: string;
+  resetPasswordOtpExpiry?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -68,6 +70,14 @@ const userSchema = new Schema<IUserDocument, IUserModel>(
       type: [String],
       default: [],
       select: false, // Hidden by default
+    },
+    resetPasswordOtp: {
+      type: String,
+      select: false,
+    },
+    resetPasswordOtpExpiry: {
+      type: Date,
+      select: false,
     },
   },
   {

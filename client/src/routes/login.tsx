@@ -8,8 +8,16 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  FileText,
+  Leaf,
+  Users,
+  TrendingUp,
+  ShieldCheck,
+  CloudDownload,
+  Zap,
 } from "lucide-react";
 import { useLogin } from "@/lib/auth";
+import { ForgotPasswordModal } from "@/components/ForgotPasswordModal";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -33,6 +41,7 @@ function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [err, setErr] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,18 +145,28 @@ function Login() {
               </div>
             </label>
 
-            <label className="flex items-center gap-2 cursor-pointer pt-1">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                disabled={isPending}
-                className="rounded border-border text-primary focus:ring-primary w-4 h-4 cursor-pointer"
-              />
-              <span className="text-sm text-muted-foreground select-none">
-                Remember me
-              </span>
-            </label>
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  disabled={isPending}
+                  className="rounded border-border text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                />
+                <span className="text-sm text-muted-foreground select-none">
+                  Remember me
+                </span>
+              </label>
+              
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(true)}
+                className="text-sm font-medium text-primary hover:underline focus:outline-none"
+              >
+                Forgot Password?
+              </button>
+            </div>
 
             {err && (
               <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">
@@ -177,35 +196,123 @@ function Login() {
       </div>
 
       {/* Visual */}
-      <div className="hidden lg:flex relative items-center justify-center bg-gradient-hero overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-soft opacity-60" />
-        <div className="relative max-w-md p-10 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-card/70 backdrop-blur border border-border text-xs text-muted-foreground mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-gradient-primary" />{" "}
-            Trusted by modern sales teams
+      <div className="hidden lg:flex relative flex-col items-center justify-center overflow-hidden bg-[#F9F8FD]">
+        {/* Decorative background blobs */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+          <div className="absolute -top-[20%] -right-[10%] w-[60%] h-[60%] rounded-full bg-primary/10 blur-[120px]" />
+          <div className="absolute top-[40%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[100px]" />
+        </div>
+
+        <div className="relative w-full max-w-[800px] p-12 text-center flex flex-col items-center">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-border text-sm font-medium text-muted-foreground mb-8 shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-primary" />{" "}
+            Built for plant businesses like yours
           </div>
-          <h2 className="font-display text-4xl font-semibold leading-tight">
-            Every quotation, beautifully accounted for.
+
+          {/* Heading */}
+          <h2 className="font-display text-5xl font-bold leading-tight text-foreground tracking-tight max-w-2xl">
+            Create professional quotations <span className="text-primary">in minutes.</span>
           </h2>
-          <p className="mt-4 text-muted-foreground">
-            Inventory, pricing and PDFs in one streamlined workspace.
+          <p className="mt-5 text-lg text-muted-foreground max-w-xl">
+            Generate accurate quotes, manage customers, track accepted orders, and grow your plant business.
           </p>
-          <div className="mt-10 rounded-2xl border border-border bg-card/80 backdrop-blur p-5 shadow-elegant text-left">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>QUO-0766</span>
-              <span className="px-2 py-0.5 rounded-full bg-warning/15 text-warning">
-                Draft
-              </span>
+
+          {/* 4 Feature Columns */}
+          <div className="grid grid-cols-4 gap-6 mt-12 w-full max-w-4xl text-left">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
+                <FileText className="w-6 h-6" />
+              </div>
+              <h4 className="font-semibold text-foreground mb-2">Smart Quotations</h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">Create, customize and send quotes in seconds</p>
             </div>
-            <div className="mt-3 font-display text-2xl font-semibold">
-              ₹1,12,089.00
+            <div className="flex flex-col items-center text-center">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
+                <Leaf className="w-6 h-6" />
+              </div>
+              <h4 className="font-semibold text-foreground mb-2">Plant Catalogue</h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">Organize plants with prices & details</p>
             </div>
-            <div className="mt-1 text-sm text-muted-foreground">
-              Kumar Industries • 2 items
+            <div className="flex flex-col items-center text-center">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
+                <Users className="w-6 h-6" />
+              </div>
+              <h4 className="font-semibold text-foreground mb-2">Customer Management</h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">Keep all your customer information in one place</p>
+            </div>
+            <div className="flex flex-col items-center text-center">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <h4 className="font-semibold text-foreground mb-2">Sales Insights</h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">Track accepted quotes and top selling plants</p>
             </div>
           </div>
+
+          {/* Quotation Mockup Card */}
+          <div className="mt-16 w-full max-w-2xl bg-white rounded-[2rem] p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-border/50 text-left relative z-10">
+            <div className="flex items-start justify-between mb-8">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Quotation</p>
+                <h3 className="font-display text-2xl font-bold">QUO-0766</h3>
+              </div>
+              <div className="px-4 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 text-sm font-semibold border border-emerald-500/20">
+                Accepted
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-8 mb-8">
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Customer</p>
+                <p className="font-medium text-foreground">Kumar Industries</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Total Amount</p>
+                <p className="font-medium text-foreground">₹1,12,089.00</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Items</p>
+                <p className="font-medium text-foreground">2 items</p>
+              </div>
+            </div>
+
+            <button className="w-full py-4 rounded-2xl bg-primary/10 text-primary font-semibold text-center hover:bg-primary/15 transition-colors">
+              Download PDF
+            </button>
+          </div>
+
+          {/* Footer Highlights */}
+          <div className="grid grid-cols-3 gap-8 mt-12 pt-8 border-t border-border/60 w-full text-left">
+            <div className="flex gap-4">
+              <ShieldCheck className="w-8 h-8 text-primary shrink-0 opacity-80" />
+              <div>
+                <h5 className="font-semibold text-primary mb-1">Secure & Private</h5>
+                <p className="text-xs text-muted-foreground">Your data is safe with us</p>
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <CloudDownload className="w-8 h-8 text-primary shrink-0 opacity-80" />
+              <div>
+                <h5 className="font-semibold text-primary mb-1">PDF Ready</h5>
+                <p className="text-xs text-muted-foreground">Download & share instantly</p>
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <Zap className="w-8 h-8 text-primary shrink-0 opacity-80" />
+              <div>
+                <h5 className="font-semibold text-primary mb-1">Made for Speed</h5>
+                <p className="text-xs text-muted-foreground">Fast, simple & efficient</p>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <ForgotPasswordModal onClose={() => setShowForgotModal(false)} />
+      )}
     </div>
   );
 }

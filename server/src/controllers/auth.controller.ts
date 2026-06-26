@@ -136,3 +136,65 @@ export const updateMe = asyncHandler(async (req: Request, res: Response) => {
     ApiResponse.success('Profile updated successfully', user.toJSON()).toJSON()
   );
 });
+
+// ─────────────────────────────────────────────
+// POST /api/auth/forgot-password
+// ─────────────────────────────────────────────
+import { sendOtpEmail } from '../utils/mailer';
+import crypto from 'crypto';
+
+export const forgotPassword = asyncHandler(async (_req: Request, res: Response) => {
+  // Find the single admin in the system
+  const admin = await User.findOne({ role: 'admin' });
+  if (!admin) {
+    throw ApiError.notFound('Admin user not found in the system');
+  }
+
+  // Generate a 6-digit OTP
+  const otp = crypto.randomInt(100000, 999999).toString();
+  
+  // Set OTP and expiry (10 minutes from now)
+  admin.resetPasswordOtp = otp;
+  admin.resetPasswordOtpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+  await admin.save();
+
+  // Send email to admin
+  await sendOtpEmail(admin.email, otp);
+
+  res.status(200).json(
+    ApiResponse.success('OTP sent to admin email successfully').toJSON()
+  );
+});
+
+// ─────────────────────────────────────────────
+// POST /api/auth/reset-password
+// ─────────────────────────────────────────────
+export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { otp, newPassword } = req.body as { otp: string; newPassword: string };
+
+  if (!otp || !newPassword) {
+    throw ApiError.badRequest('OTP and newPassword are required');
+  }
+
+  // Find admin user with this OTP that hasn't expired
+  const admin = await User.findOne({
+    role: 'admin',
+    resetPasswordOtp: otp,
+    resetPasswordOtpExpiry: { $gt: new Date() } // expiry is strictly greater than now
+  });
+
+  if (!admin) {
+    throw ApiError.badRequest('Invalid or expired OTP');
+  }
+
+  // Update password and clear OTP
+  admin.password = newPassword;
+  admin.resetPasswordOtp = undefined;
+  admin.resetPasswordOtpExpiry = undefined;
+  
+  await admin.save();
+
+  res.status(200).json(
+    ApiResponse.success('Password has been reset successfully').toJSON()
+  );
+});

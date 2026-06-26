@@ -47,4 +47,10 @@ export const env = {
   // Derived
   IS_PRODUCTION: optionalEnv('NODE_ENV', 'development') === 'production',
   IS_DEVELOPMENT: optionalEnv('NODE_ENV', 'development') === 'development',
+
+  // Email Config
+  SMTP_HOST: optionalEnv('SMTP_HOST', ''),
+  SMTP_PORT: parseInt(optionalEnv('SMTP_PORT', '587'), 10),
+  SMTP_USER: optionalEnv('SMTP_USER', ''),
+  SMTP_PASS: optionalEnv('SMTP_PASS', ''),
 } as const;
