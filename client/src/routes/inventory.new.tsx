@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { toast } from "sonner";
 import { isAuthenticated } from "@/lib/auth";
 import { api, ApiClientError } from "@/lib/api";
+import imageCompression from 'browser-image-compression';
 
 export const Route = createFileRoute("/inventory/new")({
   head: () => ({ meta: [{ title: "Add Inventory Item — Indux" }] }),
@@ -33,26 +34,50 @@ function NewItem() {
   const [sizes, setSizes] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  const readFile = (f: File, setter: (s: string) => void) => {
-    const reader = new FileReader();
-    reader.onload = () => setter(reader.result as string);
-    reader.readAsDataURL(f);
+  const readFile = async (f: File, setter: (s: string) => void) => {
+    try {
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      };
+      const compressedFile = await imageCompression(f, options);
+      const reader = new FileReader();
+      reader.onload = () => setter(reader.result as string);
+      reader.readAsDataURL(compressedFile);
+    } catch (error) {
+      console.error("Image compression error:", error);
+      toast.error("Failed to compress image");
+    }
   };
 
-  const handleTextureFile = (idx: number, f: File, type: 'texture' | 'product' | 'reference' = 'texture') => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const newTextures = [...textureImages];
-      if (type === 'product') {
-        newTextures[idx].linkedUrl = reader.result as string;
-      } else if (type === 'reference') {
-        newTextures[idx].linkedReferenceUrl = reader.result as string;
-      } else {
-        newTextures[idx].url = reader.result as string;
-      }
-      setTextureImages(newTextures);
-    };
-    reader.readAsDataURL(f);
+  const handleTextureFile = async (idx: number, f: File, type: 'texture' | 'product' | 'reference' = 'texture') => {
+    try {
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      };
+      const compressedFile = await imageCompression(f, options);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setTextureImages(prev => {
+          const newTextures = [...prev];
+          if (type === 'product') {
+            newTextures[idx].linkedUrl = reader.result as string;
+          } else if (type === 'reference') {
+            newTextures[idx].linkedReferenceUrl = reader.result as string;
+          } else {
+            newTextures[idx].url = reader.result as string;
+          }
+          return newTextures;
+        });
+      };
+      reader.readAsDataURL(compressedFile);
+    } catch (error) {
+      console.error("Texture compression error:", error);
+      toast.error("Failed to compress texture");
+    }
   };
 
   const addTextureSlot = () => {
