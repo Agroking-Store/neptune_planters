@@ -77,6 +77,7 @@ export async function updateProduct(
   product.sizes = data.sizes;
   product.status = data.status;
   product.productImages = data.productImages;
+  product.variants = data.variants;
 
   await product.save();
   return product;

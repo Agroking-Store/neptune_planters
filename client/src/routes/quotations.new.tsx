@@ -62,6 +62,7 @@ interface ProductRecord {
   description?: string;
   sizes?: string[];
   productImages?: { type: string; url: string; linkedUrl?: string; linkedReferenceUrl?: string; name?: string }[];
+  variants?: { size: string; texture: string; price: number; productImage: string; referenceImage: string }[];
 }
 
 // ── Local quotation item shape ────────────────────────────────────────
@@ -119,8 +120,22 @@ function NewQuotation() {
     }
   };
 
+  const [globalTextures, setGlobalTextures] = useState<{name: string, url: string}[]>([]);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await api.get<any>("/settings");
+      if (res?.textures) {
+        setGlobalTextures(res.textures);
+      }
+    } catch (err) {
+      console.error("[Quotation] Failed to load settings:", err);
+    }
+  };
+
   useEffect(() => {
     void fetchProducts();
+    void fetchSettings();
   }, []);
 
   // ── Form state ──────────────────────────────────────────────────────
@@ -256,11 +271,34 @@ function NewQuotation() {
     const img =
       found.productImages?.find((i) => i.type === "product")?.url ||
       found.productImages?.[0]?.url;
-    const textures =
-      found.productImages
-        ?.filter((i) => i.type === "texture")
-        .map((i) => ({ url: i.url, name: i.name || "" })) || [];
-    const sizes = found.sizes || [];
+    
+    // Default available sizes
+    const sizes = ["large", "medium", "small"];
+    
+    // Derive available textures from variants, or fallback to product images if empty
+    let textures = Array.from(new Set(found.variants?.map(v => v.texture) || [])).map(t => {
+      const gt = globalTextures.find(g => g.name === t);
+      return { url: gt?.url || "", name: t };
+    });
+    if (textures.length === 0) {
+      textures = found.productImages
+          ?.filter((i) => i.type === "texture")
+          .map((i) => ({ url: i.url, name: i.name || "" })) || [];
+    }
+    
+    const selectedSize = sizes[0] || "";
+    const selectedTexture = textures[0]?.name || textures[0]?.url || img || "";
+    let price = found.unitPrice;
+    let selectedImage = img;
+
+    if (found.variants && found.variants.length > 0) {
+      const variant = found.variants.find(v => v.size === selectedSize && v.texture === selectedTexture);
+      if (variant) {
+        price = variant.price;
+        selectedImage = variant.productImage || img;
+      }
+    }
+
     setItems((p) => [
       ...p,
       {
@@ -270,21 +308,46 @@ function NewQuotation() {
         hsnNumber: found.hsnNumber || "",
         description: found.description || "",
         quantity: 1,
-        price: found.unitPrice,
+        price: price,
         discountPercent: 0,
-        selectedSize: sizes[0] || "",
-        selectedTexture: textures[0]?.url || img || "",
+        selectedSize: selectedSize,
+        selectedTexture: selectedTexture,
         availableSizes: sizes,
         availableTextures: textures,
-        image: img,
+        image: selectedImage,
       },
     ]);
     setPickerOpen(false);
     setPickQ("");
   };
 
-  const updateItem = (id: string, patch: Partial<QuotationItemLocal>) =>
-    setItems((p) => p.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+  const updateItem = (id: string, patch: Partial<QuotationItemLocal>) => {
+    setItems((p) => p.map((it) => {
+      if (it.id !== id) return it;
+      const updatedIt = { ...it, ...patch };
+      
+      // If size or texture changed, check for variant match
+      if (patch.selectedSize !== undefined || patch.selectedTexture !== undefined) {
+        const product = products.find(pr => pr._id === updatedIt.productId);
+        if (product) {
+          const fallbackImg = product.productImages?.find((i: any) => i.type === "product")?.url || product.productImages?.[0]?.url || "";
+          if (product.variants && product.variants.length > 0) {
+            const variant = product.variants.find(v => v.size === updatedIt.selectedSize && v.texture === updatedIt.selectedTexture);
+            if (variant) {
+              updatedIt.price = variant.price;
+              updatedIt.image = variant.productImage || fallbackImg;
+            } else {
+              updatedIt.price = product.unitPrice; // fallback
+              updatedIt.image = fallbackImg;
+            }
+          } else {
+             updatedIt.image = fallbackImg;
+          }
+        }
+      }
+      return updatedIt;
+    }));
+  };
   const removeItem = (id: string) =>
     setItems((p) => p.filter((it) => it.id !== id));
 
@@ -321,9 +384,7 @@ function NewQuotation() {
           it.image ||
           p?.productImages?.find((i) => i.type === "product")?.url ||
           p?.productImages?.[0]?.url;
-        const availableSizes = it.availableSizes?.length
-          ? it.availableSizes
-          : p?.sizes || [];
+        const availableSizes = ["large", "medium", "small"];
         const availableTextures = it.availableTextures?.length
           ? it.availableTextures
           : p?.productImages
@@ -766,13 +827,14 @@ function NewQuotation() {
                           const img =
                             it.productImages?.find((i) => i.type === "product")
                               ?.url || it.productImages?.[0]?.url;
+                          const sizesArray = Array.isArray(it.sizes) ? it.sizes : (it.sizes ? Object.values(it.sizes).filter(Boolean) : []);
                           const allSizes =
-                            it.sizes && it.sizes.length > 0
-                              ? it.sizes.slice(0, 2).join(", ")
+                            sizesArray.length > 0
+                              ? sizesArray.slice(0, 2).join(", ")
                               : "";
                           const moreSizes =
-                            it.sizes && it.sizes.length > 2
-                              ? `+${it.sizes.length - 2}`
+                            sizesArray.length > 2
+                              ? `+${sizesArray.length - 2}`
                               : "";
                           const textureCount =
                             it.productImages?.filter(
@@ -864,26 +926,15 @@ function NewQuotation() {
               <div className="space-y-3">
                 {items.map((it) => {
                   const p = products.find((pr) => pr._id === it.productId);
-                  const availableSizes = it.availableSizes?.length
-                    ? it.availableSizes
-                    : p?.sizes || [];
+                  const availableSizes = ["large", "medium", "small"];
                   const availableTextures = it.availableTextures?.length
                     ? it.availableTextures
                     : p?.productImages
                       ?.filter((i: any) => i.type === "texture")
                       .map((i: any) => ({ url: i.url, name: i.name || "" })) || [];
-                  const currentTexture =
-                    it.selectedTexture ||
-                    availableTextures[0]?.url ||
-                    "";
+                  const currentTexture = it.selectedTexture || availableTextures[0]?.name || availableTextures[0]?.url || "";
 
-                  const textureImgObj = p?.productImages?.find((i: any) => i.type === "texture" && i.url === currentTexture);
-
-                  const productImage =
-                    textureImgObj?.linkedUrl ||
-                    it.image ||
-                    p?.productImages?.find((i: any) => i.type === "product")?.url ||
-                    p?.productImages?.[0]?.url;
+                  const productImage = it.image || p?.productImages?.find((i: any) => i.type === "product")?.url || p?.productImages?.[0]?.url;
 
                   const productDescription =
                     it.description || p?.description || "";
@@ -998,7 +1049,7 @@ function NewQuotation() {
                               >
                                 {availableSizes.map((sz) => (
                                   <option key={sz} value={sz}>
-                                    {sz}
+                                    {sz.charAt(0).toUpperCase() + sz.slice(1)}
                                   </option>
                                 ))}
                               </select>
@@ -1743,7 +1794,7 @@ function TextureDropdown({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  const currentObj = textures.find((t) => t.url === value);
+  const currentObj = textures.find((t) => t.name === value || t.url === value);
 
   return (
     <div ref={wrapRef} className="relative w-max">
@@ -1752,10 +1803,10 @@ function TextureDropdown({
         onClick={() => setOpen(!open)}
         className="relative w-12 h-12 rounded-lg border border-border bg-background overflow-hidden hover:opacity-80 transition-opacity grid place-items-center group"
       >
-        {value ? (
+        {currentObj?.url || value ? (
           <>
             <img
-              src={value}
+              src={currentObj?.url || value}
               alt="Texture"
               className="w-full h-full object-cover"
             />
@@ -1773,15 +1824,17 @@ function TextureDropdown({
       </button>
       {open && (
         <div className="absolute z-20 mt-2 right-0 sm:left-0 sm:right-auto bg-popover border border-border rounded-xl shadow-elegant p-2 grid grid-cols-3 gap-2 w-max">
-          {textures.map((tx) => (
+          {textures.map((tx) => {
+            const txValue = tx.name || tx.url;
+            return (
             <button
-              key={tx.url}
+              key={txValue}
               type="button"
               onClick={() => {
-                onChange(tx.url);
+                onChange(txValue);
                 setOpen(false);
               }}
-              className={`relative w-12 h-12 rounded-lg overflow-hidden border-2 transition-colors group ${value === tx.url ? "border-primary" : "border-transparent hover:border-border"}`}
+              className={`relative w-12 h-12 rounded-lg overflow-hidden border-2 transition-colors group ${value === txValue ? "border-primary" : "border-transparent hover:border-border"}`}
             >
               <img
                 src={tx.url}
@@ -1794,7 +1847,7 @@ function TextureDropdown({
                 </div>
               )}
             </button>
-          ))}
+          );})}
           {textures.length === 0 && (
             <span className="text-xs text-muted-foreground p-2 col-span-3">
               No textures

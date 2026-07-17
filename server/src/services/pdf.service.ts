@@ -91,31 +91,50 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
     let productImageUrl = '';
     let referenceImageUrl = '';
     let textureImageUrl = '';
-    let textureName = '';
+    let textureName = item.selectedTexture || '';
+    
+    // Resolve the dimension string from the product's sizes object
+    let resolvedSize = item.selectedSize || '';
+    
+    let product: any = null;
 
-    // Fetch product to get images
+    // Fetch product to get images and variants
     try {
-      const product = await Product.findById(item.productId).lean().exec();
-      if (product && product.productImages) {
-        const productImg = product.productImages.find((img: any) => img.type === 'product');
-        const referenceImg = product.productImages.find((img: any) => img.type === 'reference');
-        const textureImg = product.productImages.find((img: any) => img.type === 'texture');
+      product = await Product.findById(item.productId).lean().exec();
+      if (product) {
+        if (product.sizes && typeof product.sizes === 'object' && !Array.isArray(product.sizes)) {
+          const sizeKey = (item.selectedSize || '').toLowerCase() as 'large' | 'medium' | 'small';
+          if (sizeKey && (product.sizes as any)[sizeKey]) {
+            resolvedSize = (product.sizes as any)[sizeKey];
+          }
+        }
 
-        if (productImg) productImageUrl = productImg.url;
-        if (referenceImg) referenceImageUrl = referenceImg.url;
-        if (textureImg) textureImageUrl = textureImg.url;
+        // Base image fallback
+        if (product.productImages) {
+          const productImg = product.productImages.find((img: any) => img.type === 'product');
+          const referenceImg = product.productImages.find((img: any) => img.type === 'reference');
+          
+          if (productImg) productImageUrl = productImg.url;
+          if (referenceImg) referenceImageUrl = referenceImg.url;
+          
+          // Legacy support for older products that might not have variants but use linked images
+          if (item.selectedTexture) {
+            const selectedTexImg = product.productImages.find((img: any) => img.type === 'texture' && img.url === item.selectedTexture);
+            if (selectedTexImg) {
+              if (selectedTexImg.name) textureName = selectedTexImg.name;
+              if (selectedTexImg.linkedUrl) productImageUrl = selectedTexImg.linkedUrl;
+              if (selectedTexImg.linkedReferenceUrl) referenceImageUrl = selectedTexImg.linkedReferenceUrl;
+            }
+          }
+        }
         
-        // If a specific texture is selected, see if it has linked images or a name
-        if (item.selectedTexture) {
-          const selectedTexImg = product.productImages.find((img: any) => img.type === 'texture' && img.url === item.selectedTexture);
-          if (selectedTexImg) {
-            if (selectedTexImg.name) textureName = selectedTexImg.name;
-            if (selectedTexImg.linkedUrl) {
-              productImageUrl = selectedTexImg.linkedUrl;
-            }
-            if (selectedTexImg.linkedReferenceUrl) {
-              referenceImageUrl = selectedTexImg.linkedReferenceUrl;
-            }
+        // Variant overrides
+        if (product.variants && product.variants.length > 0) {
+          const variant = product.variants.find((v: any) => v.size === item.selectedSize && v.texture === item.selectedTexture);
+          if (variant) {
+            if (variant.productImage) productImageUrl = variant.productImage;
+            if (variant.referenceImage) referenceImageUrl = variant.referenceImage;
+            textureName = variant.texture;
           }
         }
       }
@@ -124,10 +143,24 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
       logger.warn(`[PDF] Could not fetch product images for ${item.productId}`);
     }
 
+    // Attempt to lookup texture URL from Global Settings
+    try {
+      const settings = await Settings.findOne().lean().exec();
+      if (settings && settings.textures && item.selectedTexture) {
+        // If selectedTexture matches a name, use its URL.
+        const gt = settings.textures.find((t: any) => t.name === item.selectedTexture);
+        if (gt && gt.url) {
+          textureImageUrl = gt.url;
+        }
+      }
+    } catch {
+       logger.warn(`[PDF] Could not fetch global settings for textures`);
+    }
+
     items.push({
       index: index++,
       productName: item.productSnapshot.productName,
-      size: item.selectedSize || item.productSnapshot.size || '',
+      size: resolvedSize || item.productSnapshot.size || '',
       unitPrice: item.unitPrice,
       quantity: item.quantity,
       discountPercent: item.discountPercent || 0,

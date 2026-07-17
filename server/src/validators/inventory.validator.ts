@@ -32,7 +32,21 @@ export const createProductSchema = z.object({
     .min(0, 'Price cannot be negative')
     .default(0),
 
-  sizes: z.array(z.string().trim()).default([]),
+  sizes: z.object({
+    large: z.string().trim().default(''),
+    medium: z.string().trim().default(''),
+    small: z.string().trim().default(''),
+  }).default({ large: '', medium: '', small: '' }),
+
+  variants: z.array(
+    z.object({
+      size: z.enum(['large', 'medium', 'small']),
+      texture: z.string().min(1, 'Texture is required'),
+      price: z.number().min(0, 'Price cannot be negative'),
+      productImage: z.string().default(''),
+      referenceImage: z.string().default(''),
+    })
+  ).default([]),
 
   status: z.enum(PRODUCT_STATUS_VALUES).default('Active'),
 

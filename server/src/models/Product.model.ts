@@ -21,6 +21,20 @@ export interface IProductImage {
 // ─────────────────────────────────────────────
 // Product interface
 // ─────────────────────────────────────────────
+export interface IProductSizes {
+  large: string;
+  medium: string;
+  small: string;
+}
+
+export interface IProductVariant {
+  size: 'large' | 'medium' | 'small';
+  texture: string;
+  price: number;
+  productImage: string;
+  referenceImage: string;
+}
+
 export interface IProduct {
   productId: string;
   productName: string;
@@ -29,16 +43,15 @@ export interface IProduct {
   hsnNumber?: string;
   description?: string;
   unitPrice: number;
-  sizes?: string[];
+  sizes: IProductSizes;
+  variants: IProductVariant[];
   status: ProductStatus;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface IProductDocument extends Omit<IProduct, 'sizes'>, Document {
-  sizes: string[];
-}
+export interface IProductDocument extends IProduct, Document {}
 export interface IProductModel extends Model<IProductDocument> {
   generateProductId(): Promise<string>;
 }
@@ -58,6 +71,17 @@ const productImageSchema = new Schema<IProductImage>(
     linkedUrl: { type: String, default: '' },
     linkedReferenceUrl: { type: String, default: '' },
     name: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
+const productVariantSchema = new Schema<IProductVariant>(
+  {
+    size: { type: String, enum: ['large', 'medium', 'small'], required: true },
+    texture: { type: String, required: true },
+    price: { type: Number, required: true },
+    productImage: { type: String, default: '' },
+    referenceImage: { type: String, default: '' },
   },
   { _id: false }
 );
@@ -101,7 +125,18 @@ const productSchema = new Schema<IProductDocument, IProductModel>(
       default: 0,
     },
     sizes: {
-      type: [String],
+      type: new Schema<IProductSizes>(
+        {
+          large: { type: String, default: '' },
+          medium: { type: String, default: '' },
+          small: { type: String, default: '' },
+        },
+        { _id: false }
+      ),
+      default: () => ({ large: '', medium: '', small: '' }),
+    },
+    variants: {
+      type: [productVariantSchema],
       default: [],
     },
     status: {

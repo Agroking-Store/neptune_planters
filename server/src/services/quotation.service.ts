@@ -79,7 +79,9 @@ export async function createQuotation(
     const productSnapshot = {
       productName: product.productName,
       hsnNumber: product.hsnNumber || '',
-      size: product.sizes?.join(', ') || '',
+      size: (product.sizes && typeof product.sizes === 'object' && !Array.isArray(product.sizes)) 
+        ? [product.sizes.large, product.sizes.medium, product.sizes.small].filter(Boolean).join(' | ') 
+        : '',
     };
 
     // Calculate item total: quantity * unitPrice * (1 - discountPercent/100)
@@ -177,7 +179,9 @@ export async function updateQuotation(
       productSnapshot: {
         productName: product.productName,
         hsnNumber: product.hsnNumber || '',
-        size: product.sizes?.join(', ') || '',
+        size: (product.sizes && typeof product.sizes === 'object' && !Array.isArray(product.sizes)) 
+          ? [product.sizes.large, product.sizes.medium, product.sizes.small].filter(Boolean).join(' | ') 
+          : '',
       },
       quantity: item.quantity,
       unitPrice: item.unitPrice,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Save, Upload, Tag, RefreshCw, Loader2 } from "lucide-react";
+import { Save, Upload, Tag, RefreshCw, Loader2, FileText, Package } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { createFileRoute } from "@tanstack/react-router";
@@ -8,6 +8,17 @@ import { AppShell } from "@/components/AppShell";
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
+
+interface IInventorySizes {
+  large: string;
+  medium: string;
+  small: string;
+}
+
+interface IGlobalTexture {
+  name: string;
+  url: string;
+}
 
 interface ISettings {
   logoImg: string;
@@ -31,6 +42,8 @@ interface ISettings {
   footerInstagram: string;
   footerWebsite: string;
   footerLocation: string;
+  inventorySizes: IInventorySizes;
+  textures: IGlobalTexture[];
 }
 
 const defaultSettings: ISettings = {
@@ -55,13 +68,18 @@ const defaultSettings: ISettings = {
   footerInstagram: "neptuneplanters",
   footerWebsite: "www.shopneptune.in",
   footerLocation: "Sr No 34/1, Holkarwadi, Handewadi, Pune-412308",
+  inventorySizes: { large: "", medium: "", small: "" },
+  textures: [],
 };
+
+type SettingsTab = "quotation" | "inventory";
 
 function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [settings, setSettings] = useState<ISettings>(defaultSettings);
+  const [activeTab, setActiveTab] = useState<SettingsTab>("quotation");
 
   const logoRef = useRef<HTMLInputElement>(null);
   const planterRef = useRef<HTMLInputElement>(null);
@@ -71,7 +89,14 @@ function SettingsPage() {
       try {
         const res = await api.get<ISettings>("/settings");
         if (res) {
-          setSettings(res);
+          setSettings({
+            ...defaultSettings,
+            ...res,
+            inventorySizes: {
+              ...defaultSettings.inventorySizes,
+              ...(res.inventorySizes || {}),
+            },
+          });
         }
       } catch (err) {
         toast.error("Failed to load settings.");
@@ -86,11 +111,18 @@ function SettingsPage() {
     setSettings((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleSizeChange = (size: keyof IInventorySizes, value: string) => {
+    setSettings((prev) => ({
+      ...prev,
+      inventorySizes: { ...prev.inventorySizes, [size]: value },
+    }));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
       await api.put("/settings", settings);
-      toast.success("Global quotation settings updated successfully.");
+      toast.success("Settings updated successfully.");
     } catch (err) {
       toast.error("Failed to save settings.");
     } finally {
@@ -104,7 +136,14 @@ function SettingsPage() {
     try {
       const res = await api.post<ISettings>("/settings/reset");
       if (res) {
-        setSettings(res);
+        setSettings({
+          ...defaultSettings,
+          ...res,
+          inventorySizes: {
+            ...defaultSettings.inventorySizes,
+            ...(res.inventorySizes || {}),
+          },
+        });
         toast.success("Settings reset to defaults.");
       }
     } catch (err) {
@@ -139,7 +178,7 @@ function SettingsPage() {
           <div>
             <h1 className="font-display text-3xl sm:text-4xl font-semibold">Settings</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Configure global details used in all quotation PDFs.
+              Configure global details used across your application.
             </p>
           </div>
           
@@ -164,94 +203,260 @@ function SettingsPage() {
           </div>
         </div>
 
-        <div className="space-y-12">
-          
-          {/* Media Section */}
-          <section>
-            <h3 className="font-semibold text-xl mb-6 pb-3 border-b border-border">1. Media</h3>
-            <div className="flex flex-wrap gap-8">
-              <div className="w-56">
-                <ImageDrop
-                  label="Logo Image"
-                  value={settings.logoImg}
-                  onPick={() => logoRef.current?.click()}
-                  onClear={() => handleChange("logoImg", "")}
-                  inputRef={logoRef}
-                  onFile={(f) => readFile(f, "logoImg")}
-                />
-              </div>
-              <div className="w-56">
-                <ImageDrop
-                  label="Planter Hero Image"
-                  value={settings.planterImg}
-                  onPick={() => planterRef.current?.click()}
-                  onClear={() => handleChange("planterImg", "")}
-                  inputRef={planterRef}
-                  onFile={(f) => readFile(f, "planterImg")}
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="hideDefaultPlanter"
-                checked={settings.hideDefaultPlanter}
-                onChange={(e) => handleChange("hideDefaultPlanter", e.target.checked)}
-                className="w-5 h-5 rounded border-border text-primary focus:ring-primary cursor-pointer"
-              />
-              <label htmlFor="hideDefaultPlanter" className="text-sm font-medium text-muted-foreground cursor-pointer">
-                Hide default planter image
-              </label>
-            </div>
-          </section>
-
-          {/* About Us Section */}
-          <section>
-            <h3 className="font-semibold text-xl mb-6 pb-3 border-b border-border">2. About Us</h3>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Field label="Company Name"><input value={settings.companyName} onChange={(e) => handleChange("companyName", e.target.value)} className={inputClass} /></Field>
-              <Field label="Address Line 1"><input value={settings.addressLine1} onChange={(e) => handleChange("addressLine1", e.target.value)} className={inputClass} /></Field>
-              <Field label="Address Line 2"><input value={settings.addressLine2} onChange={(e) => handleChange("addressLine2", e.target.value)} className={inputClass} /></Field>
-              <Field label="Phone"><input value={settings.phone} onChange={(e) => handleChange("phone", e.target.value)} className={inputClass} /></Field>
-              <Field label="Email"><input value={settings.email} onChange={(e) => handleChange("email", e.target.value)} className={inputClass} /></Field>
-              <Field label="GST No"><input value={settings.gstNo} onChange={(e) => handleChange("gstNo", e.target.value)} className={inputClass} placeholder="Optional" /></Field>
-            </div>
-          </section>
-
-          {/* Bank Details Section */}
-          <section>
-            <h3 className="font-semibold text-xl mb-6 pb-3 border-b border-border">3. Bank Details</h3>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Field label="Bank Name"><input value={settings.bankName} onChange={(e) => handleChange("bankName", e.target.value)} className={inputClass} /></Field>
-              <Field label="A/C Name"><input value={settings.accountName} onChange={(e) => handleChange("accountName", e.target.value)} className={inputClass} /></Field>
-              <Field label="A/C No"><input value={settings.accountNo} onChange={(e) => handleChange("accountNo", e.target.value)} className={inputClass} /></Field>
-              <Field label="IFSC Code"><input value={settings.ifscCode} onChange={(e) => handleChange("ifscCode", e.target.value)} className={inputClass} /></Field>
-              <Field label="Branch"><input value={settings.branch} onChange={(e) => handleChange("branch", e.target.value)} className={inputClass} /></Field>
-              <Field label="UPI ID"><input value={settings.upiId} onChange={(e) => handleChange("upiId", e.target.value)} className={inputClass} placeholder="Optional" /></Field>
-            </div>
-          </section>
-
-          {/* Prepared By Section */}
-          <section>
-            <h3 className="font-semibold text-xl mb-6 pb-3 border-b border-border">4. Prepared By</h3>
-            <div className="grid sm:grid-cols-2 gap-6">
-              <Field label="Prepared By"><input value={settings.preparedBy} onChange={(e) => handleChange("preparedBy", e.target.value)} className={inputClass} /></Field>
-              <Field label="Signature Text"><input value={settings.signatureText} onChange={(e) => handleChange("signatureText", e.target.value)} className={inputClass} /></Field>
-            </div>
-          </section>
-
-          {/* Footer Info Section */}
-          <section>
-            <h3 className="font-semibold text-xl mb-6 pb-3 border-b border-border">5. Footer Information</h3>
-            <div className="grid sm:grid-cols-2 gap-6">
-              <Field label="Mobile Number"><input value={settings.footerMobile} onChange={(e) => handleChange("footerMobile", e.target.value)} className={inputClass} /></Field>
-              <Field label="Instagram Handle"><input value={settings.footerInstagram} onChange={(e) => handleChange("footerInstagram", e.target.value)} className={inputClass} placeholder="@username" /></Field>
-              <Field label="Website"><input value={settings.footerWebsite} onChange={(e) => handleChange("footerWebsite", e.target.value)} className={inputClass} /></Field>
-              <Field label="Location"><input value={settings.footerLocation} onChange={(e) => handleChange("footerLocation", e.target.value)} className={inputClass} /></Field>
-            </div>
-          </section>
-
+        {/* ── Tab Selector ──────────────────────────────────────────────── */}
+        <div className="flex gap-3">
+          <button
+            onClick={() => setActiveTab("quotation")}
+            className={`flex items-center gap-3 px-5 py-3.5 rounded-xl text-sm font-medium transition-all border ${
+              activeTab === "quotation"
+                ? "bg-gradient-primary text-primary-foreground shadow-elegant border-transparent"
+                : "bg-card border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <FileText className="w-4.5 h-4.5" />
+            Quotation Settings
+          </button>
+          <button
+            onClick={() => setActiveTab("inventory")}
+            className={`flex items-center gap-3 px-5 py-3.5 rounded-xl text-sm font-medium transition-all border ${
+              activeTab === "inventory"
+                ? "bg-gradient-primary text-primary-foreground shadow-elegant border-transparent"
+                : "bg-card border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <Package className="w-4.5 h-4.5" />
+            Inventory Settings
+          </button>
         </div>
+
+        {/* ── Quotation Settings Tab ───────────────────────────────────── */}
+        {activeTab === "quotation" && (
+          <div className="space-y-12">
+            
+            {/* Media Section */}
+            <section>
+              <h3 className="font-semibold text-xl mb-6 pb-3 border-b border-border">1. Media</h3>
+              <div className="flex flex-wrap gap-8">
+                <div className="w-56">
+                  <ImageDrop
+                    label="Logo Image"
+                    value={settings.logoImg}
+                    onPick={() => logoRef.current?.click()}
+                    onClear={() => handleChange("logoImg", "")}
+                    inputRef={logoRef}
+                    onFile={(f) => readFile(f, "logoImg")}
+                  />
+                </div>
+                <div className="w-56">
+                  <ImageDrop
+                    label="Planter Hero Image"
+                    value={settings.planterImg}
+                    onPick={() => planterRef.current?.click()}
+                    onClear={() => handleChange("planterImg", "")}
+                    inputRef={planterRef}
+                    onFile={(f) => readFile(f, "planterImg")}
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="hideDefaultPlanter"
+                  checked={settings.hideDefaultPlanter}
+                  onChange={(e) => handleChange("hideDefaultPlanter", e.target.checked)}
+                  className="w-5 h-5 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                />
+                <label htmlFor="hideDefaultPlanter" className="text-sm font-medium text-muted-foreground cursor-pointer">
+                  Hide default planter image
+                </label>
+              </div>
+            </section>
+
+            {/* About Us Section */}
+            <section>
+              <h3 className="font-semibold text-xl mb-6 pb-3 border-b border-border">2. About Us</h3>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Field label="Company Name"><input value={settings.companyName} onChange={(e) => handleChange("companyName", e.target.value)} className={inputClass} /></Field>
+                <Field label="Address Line 1"><input value={settings.addressLine1} onChange={(e) => handleChange("addressLine1", e.target.value)} className={inputClass} /></Field>
+                <Field label="Address Line 2"><input value={settings.addressLine2} onChange={(e) => handleChange("addressLine2", e.target.value)} className={inputClass} /></Field>
+                <Field label="Phone"><input value={settings.phone} onChange={(e) => handleChange("phone", e.target.value)} className={inputClass} /></Field>
+                <Field label="Email"><input value={settings.email} onChange={(e) => handleChange("email", e.target.value)} className={inputClass} /></Field>
+                <Field label="GST No"><input value={settings.gstNo} onChange={(e) => handleChange("gstNo", e.target.value)} className={inputClass} placeholder="Optional" /></Field>
+              </div>
+            </section>
+
+            {/* Bank Details Section */}
+            <section>
+              <h3 className="font-semibold text-xl mb-6 pb-3 border-b border-border">3. Bank Details</h3>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Field label="Bank Name"><input value={settings.bankName} onChange={(e) => handleChange("bankName", e.target.value)} className={inputClass} /></Field>
+                <Field label="A/C Name"><input value={settings.accountName} onChange={(e) => handleChange("accountName", e.target.value)} className={inputClass} /></Field>
+                <Field label="A/C No"><input value={settings.accountNo} onChange={(e) => handleChange("accountNo", e.target.value)} className={inputClass} /></Field>
+                <Field label="IFSC Code"><input value={settings.ifscCode} onChange={(e) => handleChange("ifscCode", e.target.value)} className={inputClass} /></Field>
+                <Field label="Branch"><input value={settings.branch} onChange={(e) => handleChange("branch", e.target.value)} className={inputClass} /></Field>
+                <Field label="UPI ID"><input value={settings.upiId} onChange={(e) => handleChange("upiId", e.target.value)} className={inputClass} placeholder="Optional" /></Field>
+              </div>
+            </section>
+
+            {/* Prepared By Section */}
+            <section>
+              <h3 className="font-semibold text-xl mb-6 pb-3 border-b border-border">4. Prepared By</h3>
+              <div className="grid sm:grid-cols-2 gap-6">
+                <Field label="Prepared By"><input value={settings.preparedBy} onChange={(e) => handleChange("preparedBy", e.target.value)} className={inputClass} /></Field>
+                <Field label="Signature Text"><input value={settings.signatureText} onChange={(e) => handleChange("signatureText", e.target.value)} className={inputClass} /></Field>
+              </div>
+            </section>
+
+            {/* Footer Info Section */}
+            <section>
+              <h3 className="font-semibold text-xl mb-6 pb-3 border-b border-border">5. Footer Information</h3>
+              <div className="grid sm:grid-cols-2 gap-6">
+                <Field label="Mobile Number"><input value={settings.footerMobile} onChange={(e) => handleChange("footerMobile", e.target.value)} className={inputClass} /></Field>
+                <Field label="Instagram Handle"><input value={settings.footerInstagram} onChange={(e) => handleChange("footerInstagram", e.target.value)} className={inputClass} placeholder="@username" /></Field>
+                <Field label="Website"><input value={settings.footerWebsite} onChange={(e) => handleChange("footerWebsite", e.target.value)} className={inputClass} /></Field>
+                <Field label="Location"><input value={settings.footerLocation} onChange={(e) => handleChange("footerLocation", e.target.value)} className={inputClass} /></Field>
+              </div>
+            </section>
+
+          </div>
+        )}
+
+        {/* ── Inventory Settings Tab ───────────────────────────────────── */}
+        {activeTab === "inventory" && (
+          <div className="space-y-12">
+            <section>
+              <h3 className="font-semibold text-xl mb-2 pb-3 border-b border-border">Product Sizes</h3>
+              <p className="text-muted-foreground text-sm mb-8">
+                Define default dimensions for each product size tier. These will be used as defaults when creating new products, and displayed on quotation PDFs.
+              </p>
+
+              <div className="grid gap-6 max-w-2xl">
+                {/* Large */}
+                <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-5">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/15 to-emerald-600/25 grid place-items-center shrink-0">
+                    <span className="text-lg font-bold text-emerald-600">L</span>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-sm font-semibold text-foreground block mb-1.5">Large</label>
+                    <input
+                      value={settings.inventorySizes.large}
+                      onChange={(e) => handleSizeChange("large", e.target.value)}
+                      className={inputClass}
+                      placeholder="e.g. 100x100x100"
+                    />
+                  </div>
+                </div>
+
+                {/* Medium */}
+                <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-5">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/15 to-blue-600/25 grid place-items-center shrink-0">
+                    <span className="text-lg font-bold text-blue-600">M</span>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-sm font-semibold text-foreground block mb-1.5">Medium</label>
+                    <input
+                      value={settings.inventorySizes.medium}
+                      onChange={(e) => handleSizeChange("medium", e.target.value)}
+                      className={inputClass}
+                      placeholder="e.g. 65x65x65"
+                    />
+                  </div>
+                </div>
+
+                {/* Small */}
+                <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-5">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/15 to-amber-600/25 grid place-items-center shrink-0">
+                    <span className="text-lg font-bold text-amber-600">S</span>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-sm font-semibold text-foreground block mb-1.5">Small</label>
+                    <input
+                      value={settings.inventorySizes.small}
+                      onChange={(e) => handleSizeChange("small", e.target.value)}
+                      className={inputClass}
+                      placeholder="e.g. 30x30x30"
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Global Textures Section */}
+            <section>
+              <h3 className="font-semibold text-xl mb-6 pb-3 border-b border-border">2. Global Textures</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Define the textures that are available to all products.
+              </p>
+              
+              <div className="space-y-4">
+                {settings.textures?.map((texture, index) => (
+                  <div key={index} className="rounded-xl border border-border bg-card p-5 flex items-start sm:items-center gap-5 flex-col sm:flex-row">
+                    <div className="flex-1 w-full">
+                      <label className="text-sm font-semibold text-foreground block mb-1.5">Texture Name</label>
+                      <input
+                        value={texture.name}
+                        onChange={(e) => {
+                          const newTextures = [...(settings.textures || [])];
+                          newTextures[index].name = e.target.value;
+                          setSettings({ ...settings, textures: newTextures });
+                        }}
+                        className={inputClass}
+                        placeholder="e.g. Matte Black"
+                      />
+                    </div>
+                    <div className="flex-1 w-full">
+                      <label className="text-sm font-semibold text-foreground block mb-1.5">Texture Image</label>
+                      <div className="flex items-center gap-3">
+                        {texture.url && (
+                          <div className="w-10 h-10 rounded border border-border overflow-hidden shrink-0">
+                            <img src={texture.url} alt="texture" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="text-xs max-w-[200px]"
+                          onChange={(e) => {
+                            if (e.target.files?.[0]) {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const newTextures = [...(settings.textures || [])];
+                                newTextures[index].url = reader.result as string;
+                                setSettings({ ...settings, textures: newTextures });
+                              };
+                              reader.readAsDataURL(e.target.files[0]);
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="shrink-0 pt-6 sm:pt-0">
+                      <button
+                        onClick={() => {
+                          const newTextures = settings.textures.filter((_, i) => i !== index);
+                          setSettings({ ...settings, textures: newTextures });
+                        }}
+                        className="text-sm text-destructive hover:bg-destructive/10 px-3 py-1.5 rounded-lg"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                
+                <button
+                  onClick={() => {
+                    const newTextures = [...(settings.textures || []), { name: "", url: "" }];
+                    setSettings({ ...settings, textures: newTextures });
+                  }}
+                  className="w-full py-3 border-2 border-dashed border-border rounded-xl text-sm font-medium hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                >
+                  + Add Global Texture
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
       </div>
     </AppShell>
   );

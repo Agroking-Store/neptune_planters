@@ -25,14 +25,25 @@ function EditItem() {
   // ── Form state ────────────────────────────────────────────────────────
   const [image, setImage]               = useState<string | undefined>();
   const [referenceImage, setRefImage]   = useState<string | undefined>();
-  const [textureImages, setTextureImages] = useState<{ url: string, linkedUrl: string, linkedReferenceUrl: string, name: string }[]>([]);
+  
+  interface IVariantState {
+    size: 'large' | 'medium' | 'small';
+    texture: string;
+    price: number;
+    productImage: string;
+    referenceImage: string;
+  }
+  const [variants, setVariants] = useState<IVariantState[]>([]);
+  const [globalTextures, setGlobalTextures] = useState<{name: string, url: string}[]>([]);
 
   const [form, setForm] = useState({
     productName: "", hsnNumber: "", description: "",
     unitPrice: 0,
   });
 
-  const [sizes, setSizes] = useState<string[]>([]);
+  const [sizes, setSizes] = useState<{ large: string; medium: string; small: string }>({
+    large: "", medium: "", small: "",
+  });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -40,6 +51,22 @@ function EditItem() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Load settings defaults first
+        let defaultSizes = { large: "", medium: "", small: "" };
+        try {
+          const settingsRes = await api.get<any>("/settings");
+          if (settingsRes?.inventorySizes) {
+            defaultSizes = {
+              large: settingsRes.inventorySizes.large || "",
+              medium: settingsRes.inventorySizes.medium || "",
+              small: settingsRes.inventorySizes.small || "",
+            };
+          }
+          if (settingsRes?.textures) {
+            setGlobalTextures(settingsRes.textures);
+          }
+        } catch {}
+
         const product = await api.get<any>(`/inventory/products/${id}`);
 
         if (product) {
@@ -50,19 +77,28 @@ function EditItem() {
             unitPrice: product.unitPrice || 0,
           });
 
-          if (product.sizes && Array.isArray(product.sizes)) {
-            setSizes(product.sizes);
+          // Handle sizes: support new object format and fallback for old array format
+          if (product.sizes && typeof product.sizes === 'object' && !Array.isArray(product.sizes)) {
+            setSizes({
+              large: product.sizes.large || defaultSizes.large,
+              medium: product.sizes.medium || defaultSizes.medium,
+              small: product.sizes.small || defaultSizes.small,
+            });
+          } else {
+            // Old array format or no sizes — use defaults
+            setSizes(defaultSizes);
           }
 
           // Pre-fill image fields
           if (product.productImages && Array.isArray(product.productImages)) {
             const prodImg = product.productImages.find((img: any) => img.type === "product");
             const refImg  = product.productImages.find((img: any) => img.type === "reference");
-            const texImgs = product.productImages.filter((img: any) => img.type === "texture");
-
             if (prodImg) setImage(prodImg.url);
             if (refImg) setRefImage(refImg.url);
-            if (texImgs.length > 0) setTextureImages(texImgs.map((img: any) => ({ url: img.url, linkedUrl: img.linkedUrl || "", linkedReferenceUrl: img.linkedReferenceUrl || "", name: img.name || "" })));
+          }
+
+          if (product.variants && Array.isArray(product.variants)) {
+            setVariants(product.variants);
           }
         }
       } catch (err) {
@@ -91,7 +127,7 @@ function EditItem() {
     }
   };
 
-  const handleTextureFile = async (idx: number, f: File, type: 'texture' | 'product' | 'reference' = 'texture') => {
+  const handleVariantFile = async (idx: number, f: File, type: 'product' | 'reference') => {
     try {
       const options = {
         maxSizeMB: 1,
@@ -101,49 +137,31 @@ function EditItem() {
       const compressedFile = await imageCompression(f, options);
       const reader = new FileReader();
       reader.onload = () => {
-        setTextureImages(prev => {
-          const newTextures = [...prev];
+        setVariants(prev => {
+          const newVariants = [...prev];
           if (type === 'product') {
-            newTextures[idx].linkedUrl = reader.result as string;
+            newVariants[idx].productImage = reader.result as string;
           } else if (type === 'reference') {
-            newTextures[idx].linkedReferenceUrl = reader.result as string;
-          } else {
-            newTextures[idx].url = reader.result as string;
+            newVariants[idx].referenceImage = reader.result as string;
           }
-          return newTextures;
+          return newVariants;
         });
       };
       reader.readAsDataURL(compressedFile);
     } catch (error) {
-      console.error("Texture compression error:", error);
-      toast.error("Failed to compress texture");
+      console.error("Variant image compression error:", error);
+      toast.error("Failed to compress image");
     }
   };
 
-  const addTextureSlot = () => {
-    setTextureImages([...textureImages, { url: "", linkedUrl: "", linkedReferenceUrl: "", name: "" }]);
+  const addVariantSlot = () => {
+    setVariants([...variants, { size: "large", texture: globalTextures[0]?.name || "", price: form.unitPrice || 0, productImage: "", referenceImage: "" }]);
   };
 
-  const removeTextureSlot = (idx: number) => {
-    const newTextures = [...textureImages];
-    newTextures.splice(idx, 1);
-    setTextureImages(newTextures);
-  };
-
-  const addSizeSlot = () => {
-    setSizes([...sizes, ""]);
-  };
-
-  const updateSize = (idx: number, val: string) => {
-    const newSizes = [...sizes];
-    newSizes[idx] = val;
-    setSizes(newSizes);
-  };
-
-  const removeSizeSlot = (idx: number) => {
-    const newSizes = [...sizes];
-    newSizes.splice(idx, 1);
-    setSizes(newSizes);
+  const removeVariantSlot = (idx: number) => {
+    const newVariants = [...variants];
+    newVariants.splice(idx, 1);
+    setVariants(newVariants);
   };
 
   // ── Submit ────────────────────────────────────────────────────────────
@@ -155,14 +173,14 @@ function EditItem() {
     }
 
     if (form.unitPrice <= 0) {
-    toast.error("Product price must be greater than 0");
-    return;
-  }
+      toast.error("Product price must be greater than 0");
+      return;
+    }
   
-  if (isNaN(form.unitPrice) || form.unitPrice === null) {
-    toast.error("Please enter a valid price");
-    return;
-  }
+    if (isNaN(form.unitPrice) || form.unitPrice === null) {
+      toast.error("Please enter a valid price");
+      return;
+    }
 
     setSubmitting(true);
 
@@ -170,14 +188,14 @@ function EditItem() {
     const productImages = [
       image         && { type: "product",   url: image,         publicId: "" },
       referenceImage && { type: "reference", url: referenceImage, publicId: "" },
-      ...textureImages.filter(t => t.url).map(t => ({ type: "texture", url: t.url, publicId: "", linkedUrl: t.linkedUrl, linkedReferenceUrl: t.linkedReferenceUrl, name: t.name }))
     ].filter(Boolean);
 
     const payload = {
       ...form,
       unitPrice: Number(form.unitPrice),
-      sizes: sizes.filter(s => s.trim() !== ""),
+      sizes,
       productImages,
+      variants,
     };
 
     try {
@@ -252,112 +270,168 @@ function EditItem() {
         {/* Attributes */}
         <Section icon={<Palette className="w-5 h-5" />} title="Attributes" subtitle="Visual descriptors, textures, and dimensions.">
           <div className="space-y-6">
-            {/* Multiple Dimensions */}
+            {/* Fixed Three Dimensions */}
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-medium">Dimensions</label>
-                <button type="button" onClick={addSizeSlot} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors">
-                  <Plus className="w-3.5 h-3.5" /> Add Dimension
-                </button>
-              </div>
-              {sizes.length === 0 ? (
-                <div className="text-xs text-muted-foreground p-3 border border-dashed rounded-xl text-center">No dimensions added. Click 'Add Dimension' to begin.</div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {sizes.map((s, i) => (
-                    <div key={i} className="flex items-center gap-1.5 bg-muted/50 border border-border rounded-xl px-2 py-1.5">
-                      <input 
-                        value={s} 
-                        onChange={(e) => updateSize(i, e.target.value)} 
-                        className="bg-transparent text-sm w-32 focus:outline-none placeholder:text-muted-foreground/50" 
-                        placeholder="65x65x65" 
-                      />
-                      <button type="button" onClick={() => removeSizeSlot(i)} className="p-1 rounded-md text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
+              <label className="text-sm font-medium mb-3 block">Dimensions</label>
+              <p className="text-xs text-muted-foreground mb-4">
+                Default values are loaded from global settings. Override per product if needed.
+              </p>
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500/15 to-emerald-600/25 grid place-items-center shrink-0">
+                      <span className="text-xs font-bold text-emerald-600">L</span>
                     </div>
-                  ))}
+                    <span className="text-sm font-semibold">Large</span>
+                  </div>
+                  <input
+                    value={sizes.large}
+                    onChange={(e) => setSizes({ ...sizes, large: e.target.value })}
+                    className={input}
+                    placeholder="e.g. 100x100x100"
+                  />
                 </div>
-              )}
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500/15 to-blue-600/25 grid place-items-center shrink-0">
+                      <span className="text-xs font-bold text-blue-600">M</span>
+                    </div>
+                    <span className="text-sm font-semibold">Medium</span>
+                  </div>
+                  <input
+                    value={sizes.medium}
+                    onChange={(e) => setSizes({ ...sizes, medium: e.target.value })}
+                    className={input}
+                    placeholder="e.g. 65x65x65"
+                  />
+                </div>
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500/15 to-amber-600/25 grid place-items-center shrink-0">
+                      <span className="text-xs font-bold text-amber-600">S</span>
+                    </div>
+                    <span className="text-sm font-semibold">Small</span>
+                  </div>
+                  <input
+                    value={sizes.small}
+                    onChange={(e) => setSizes({ ...sizes, small: e.target.value })}
+                    className={input}
+                    placeholder="e.g. 30x30x30"
+                  />
+                </div>
+              </div>
             </div>
 
             <hr className="border-border" />
 
-            {/* Unlimited Textures */}
+            {/* Variants */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-medium">Texture Photos</label>
-                <button type="button" onClick={addTextureSlot} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors">
-                  <Plus className="w-3.5 h-3.5" /> Add Texture
+                <label className="text-sm font-medium">Variants (Size + Texture)</label>
+                <button type="button" onClick={addVariantSlot} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors">
+                  <Plus className="w-3.5 h-3.5" /> Add Variant
                 </button>
               </div>
-              {textureImages.length === 0 ? (
-                 <div className="text-xs text-muted-foreground p-3 border border-dashed rounded-xl text-center">No texture slots added. Click 'Add Texture' to begin.</div>
+              {variants.length === 0 ? (
+                 <div className="text-xs text-muted-foreground p-3 border border-dashed rounded-xl text-center">No variants added. Click 'Add Variant' to begin.</div>
               ) : (
                 <div className="space-y-4">
-                  {textureImages.map((img, i) => (
+                  {variants.map((v, i) => (
                     <div key={i} className="relative group p-4 border border-border rounded-xl bg-card">
-                      <div className="mb-4 sm:w-1/2">
-                        <Field label={`Texture Name ${i + 1}`}>
-                          <input
-                            value={img.name}
-                            onChange={(e) => {
-                              const newTextures = [...textureImages];
-                              newTextures[i].name = e.target.value;
-                              setTextureImages(newTextures);
-                            }}
-                            className={input}
-                            placeholder="e.g. Matte Black"
-                          />
-                        </Field>
+                      <div className="flex flex-wrap gap-4 mb-4">
+                        <div className="w-32">
+                          <Field label="Size">
+                            <select
+                              value={v.size}
+                              onChange={(e) => {
+                                const newVariants = [...variants];
+                                newVariants[i].size = e.target.value as any;
+                                setVariants(newVariants);
+                              }}
+                              className={input}
+                            >
+                              <option value="large">Large</option>
+                              <option value="medium">Medium</option>
+                              <option value="small">Small</option>
+                            </select>
+                          </Field>
+                        </div>
+                        <div className="w-56">
+                          <Field label="Texture">
+                            <div className="flex items-center gap-2">
+                              {v.texture && globalTextures.some(gt => gt.name === v.texture) && (
+                                <img 
+                                  src={globalTextures.find(gt => gt.name === v.texture)?.url} 
+                                  alt="Preview"
+                                  className="w-10 h-10 rounded-lg border border-border object-cover shrink-0" 
+                                />
+                              )}
+                              <select
+                                value={v.texture}
+                                onChange={(e) => {
+                                  const newVariants = [...variants];
+                                  newVariants[i].texture = e.target.value;
+                                  setVariants(newVariants);
+                                }}
+                                className={input}
+                              >
+                                {globalTextures.length === 0 && <option value="">No global textures</option>}
+                                {globalTextures.map((gt) => (
+                                  <option key={gt.name} value={gt.name}>{gt.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </Field>
+                        </div>
+                        <div className="w-32">
+                          <Field label="Price (₹)">
+                            <input
+                              type="number"
+                              min={0}
+                              value={v.price}
+                              onChange={(e) => {
+                                const newVariants = [...variants];
+                                newVariants[i].price = +e.target.value || 0;
+                                setVariants(newVariants);
+                              }}
+                              className={input}
+                            />
+                          </Field>
+                        </div>
                       </div>
                       <div className="flex flex-wrap gap-4">
                         <div className="w-40">
                           <ImageDrop 
-                            label={`Texture Image ${i + 1}`} 
-                            value={img.url} 
-                            onPick={() => textureImgRefs.current[i * 3]?.click()} 
+                            label={`Variant Product Img`} 
+                            value={v.productImage} 
+                            onPick={() => textureImgRefs.current[i * 2]?.click()} 
                             onClear={() => {
-                              const newTextures = [...textureImages];
-                              newTextures[i].url = "";
-                              setTextureImages(newTextures);
+                              const newVariants = [...variants];
+                              newVariants[i].productImage = "";
+                              setVariants(newVariants);
                             }} 
-                            inputRef={(el) => { textureImgRefs.current[i * 3] = el; }} 
-                            onFile={(f) => handleTextureFile(i, f, 'texture')} 
-                          />
-                        </div>
-                        <div className="w-40">
-                          <ImageDrop 
-                            label={`Product Img for Texture ${i + 1}`} 
-                            value={img.linkedUrl} 
-                            onPick={() => textureImgRefs.current[i * 3 + 1]?.click()} 
-                            onClear={() => {
-                              const newTextures = [...textureImages];
-                              newTextures[i].linkedUrl = "";
-                              setTextureImages(newTextures);
-                            }} 
-                            inputRef={(el) => { textureImgRefs.current[i * 3 + 1] = el; }} 
-                            onFile={(f) => handleTextureFile(i, f, 'product')} 
+                            inputRef={(el) => { textureImgRefs.current[i * 2] = el; }} 
+                            onFile={(f) => handleVariantFile(i, f, 'product')} 
                           />
                         </div>
                         <div className="w-40">
                           <ImageDrop
-                            label={`Ref Img for Texture ${i + 1}`}
-                            value={img.linkedReferenceUrl}
-                            onPick={() => textureImgRefs.current[i * 3 + 2]?.click()}
+                            label={`Variant Ref Img`}
+                            value={v.referenceImage}
+                            onPick={() => textureImgRefs.current[i * 2 + 1]?.click()}
                             onClear={() => {
-                              const newTextures = [...textureImages];
-                              newTextures[i].linkedReferenceUrl = "";
-                              setTextureImages(newTextures);
+                              const newVariants = [...variants];
+                              newVariants[i].referenceImage = "";
+                              setVariants(newVariants);
                             }}
-                            inputRef={(el) => { textureImgRefs.current[i * 3 + 2] = el; }}
-                            onFile={(f) => handleTextureFile(i, f, 'reference')}
+                            inputRef={(el) => { textureImgRefs.current[i * 2 + 1] = el; }}
+                            onFile={(f) => handleVariantFile(i, f, 'reference')}
                           />
                         </div>
                       </div>
                       <button 
                         type="button" 
-                        onClick={() => removeTextureSlot(i)}
+                        onClick={() => removeVariantSlot(i)}
                         className="absolute top-2 right-2 px-2 py-1 text-xs rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
                       >
                         Remove Slot
