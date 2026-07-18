@@ -262,9 +262,48 @@ function Inventory() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-64">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-muted-foreground">Loading products...</span>
+      <div className="space-y-6">
+        <div className="flex items-end justify-between gap-4 flex-wrap">
+          <div className="space-y-2">
+            <div className="h-10 w-48 bg-muted rounded-xl animate-pulse"></div>
+            <div className="h-5 w-64 bg-muted rounded-xl animate-pulse"></div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-40 bg-muted rounded-xl animate-pulse"></div>
+            <div className="h-11 w-32 bg-muted rounded-xl animate-pulse"></div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-2xl border border-border bg-card p-5 h-32 animate-pulse flex flex-col justify-between">
+              <div className="flex justify-between items-start">
+                <div className="w-10 h-10 rounded-xl bg-muted"></div>
+                <div className="w-16 h-4 bg-muted rounded"></div>
+              </div>
+              <div className="w-24 h-8 bg-muted rounded mt-2"></div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="rounded-2xl border border-border bg-card shadow-soft overflow-hidden flex flex-col">
+          <div className="p-3 sm:p-4 border-b border-border bg-muted/20 flex items-center gap-3">
+            <div className="h-11 flex-1 bg-muted rounded-xl animate-pulse"></div>
+            <div className="h-11 w-11 bg-muted rounded-xl animate-pulse"></div>
+          </div>
+          <div className="p-4 space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex gap-4 items-center">
+                <div className="w-6 h-4 bg-muted rounded animate-pulse"></div>
+                <div className="w-10 h-10 bg-muted rounded-lg animate-pulse shrink-0"></div>
+                <div className="flex-1 h-6 bg-muted rounded animate-pulse"></div>
+                <div className="w-24 h-6 bg-muted rounded animate-pulse hidden md:block"></div>
+                <div className="w-16 h-6 bg-muted rounded animate-pulse hidden md:block"></div>
+                <div className="w-16 h-8 bg-muted rounded-lg animate-pulse"></div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -355,7 +394,7 @@ function Inventory() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-accent overflow-hidden grid place-items-center shrink-0">
-                          {getProductImage(i) ? <img src={getProductImage(i)} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{(i.productName || "").slice(0, 2)}</span>}
+                          {getProductImage(i) ? <img src={getProductImage(i)} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{(i.productName || "").slice(0, 2)}</span>}
                         </div>
                         <div className="font-medium truncate max-w-[200px]">{i.productName}</div>
                       </div>
@@ -390,7 +429,7 @@ function Inventory() {
           {filtered.map((i) => (
             <div key={i._id} className="p-4 flex gap-3">
               <div className="w-14 h-14 rounded-xl bg-accent overflow-hidden grid place-items-center shrink-0">
-                {getProductImage(i) ? <img src={getProductImage(i)} alt="" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{(i.productName || "").slice(0, 2)}</span>}
+                {getProductImage(i) ? <img src={getProductImage(i)} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{(i.productName || "").slice(0, 2)}</span>}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">

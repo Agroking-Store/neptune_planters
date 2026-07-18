@@ -279,7 +279,7 @@ export async function generateQuotationPdf(quotationId: string): Promise<Buffer>
 
     // Load HTML content
     await page.setContent(html, {
-      waitUntil: 'load', // Wait for fonts & images to load
+      waitUntil: 'networkidle0', // Wait for fonts & images to load completely
       timeout: 30000,
     });
 

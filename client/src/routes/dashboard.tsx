@@ -268,6 +268,65 @@ function DashboardInner() {
     return matches && sOk;
   });
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-end justify-between gap-4 flex-wrap">
+          <div className="space-y-2">
+            <div className="h-10 w-48 bg-muted rounded-xl animate-pulse"></div>
+            <div className="h-5 w-64 bg-muted rounded-xl animate-pulse"></div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-40 bg-muted rounded-xl animate-pulse"></div>
+            <div className="h-11 w-32 bg-muted rounded-xl animate-pulse"></div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-2xl border border-border bg-card p-5 h-32 animate-pulse flex flex-col justify-between">
+              <div className="flex justify-between items-start">
+                <div className="w-10 h-10 rounded-xl bg-muted"></div>
+                <div className="w-16 h-4 bg-muted rounded"></div>
+              </div>
+              <div className="w-24 h-8 bg-muted rounded mt-2"></div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="rounded-2xl border border-border bg-card shadow-soft overflow-hidden p-5 sm:p-6 h-48 animate-pulse flex flex-col">
+          <div className="w-48 h-6 bg-muted rounded mb-4"></div>
+          <div className="space-y-6 flex-1">
+             <div className="w-full h-8 bg-muted rounded-full"></div>
+             <div className="w-full h-8 bg-muted rounded-full"></div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card shadow-soft overflow-hidden flex flex-col">
+          <div className="p-3 sm:p-4 border-b border-border bg-muted/20 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="h-11 flex-1 bg-muted rounded-xl animate-pulse"></div>
+            <div className="h-11 w-full sm:w-44 bg-muted rounded-xl animate-pulse"></div>
+            <div className="h-11 w-32 bg-muted rounded-xl animate-pulse hidden sm:block"></div>
+          </div>
+          <div className="p-4 space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex gap-4 items-center">
+                <div className="w-6 h-4 bg-muted rounded animate-pulse"></div>
+                <div className="flex-1 h-6 bg-muted rounded animate-pulse"></div>
+                <div className="flex-1 h-6 bg-muted rounded animate-pulse hidden sm:block"></div>
+                <div className="w-24 h-6 bg-muted rounded animate-pulse hidden md:block"></div>
+                <div className="w-24 h-6 bg-muted rounded animate-pulse hidden lg:block"></div>
+                <div className="w-20 h-6 bg-muted rounded animate-pulse hidden lg:block"></div>
+                <div className="w-16 h-6 bg-muted rounded animate-pulse hidden md:block"></div>
+                <div className="w-40 h-8 bg-muted rounded-lg animate-pulse"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4 flex-wrap">
@@ -588,16 +647,7 @@ function DashboardInner() {
                   </tr>
                 );
               })}
-              {loading && (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="p-12 text-center text-muted-foreground text-sm"
-                  >
-                    Loading quotations...
-                  </td>
-                </tr>
-              )}
+
               {!loading && !filtered.length && (
                 <tr>
                   <td
@@ -714,11 +764,7 @@ function DashboardInner() {
               </div>
             );
           })}
-          {loading && (
-            <div className="p-10 text-center text-muted-foreground text-sm">
-              Loading quotations...
-            </div>
-          )}
+
           {!loading && !filtered.length && (
             <div className="p-10 text-center text-muted-foreground text-sm">
               No quotations found.
