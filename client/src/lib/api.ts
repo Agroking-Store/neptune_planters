@@ -95,7 +95,7 @@ async function request<T>(
   // ── 401: attempt silent token refresh once ──
   if (res.status === 401 && !isRetry) {
     console.log("[api] 401 received — attempting token refresh");
-    
+
     const newToken = await silentRefresh();
     if (newToken) {
       console.log("[api] Token refreshed — retrying original request");

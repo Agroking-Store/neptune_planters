@@ -4,7 +4,7 @@ export async function downloadQuotationPDF(q: any, inventory: any[] = []) {
   if (!q.id) {
     throw new Error("Invalid quotation ID. Cannot generate PDF.");
   }
-  
+
   const token = tokenStore.get();
   const headers: Record<string, string> = {};
   if (token) {
@@ -34,7 +34,7 @@ export async function downloadQuotationPDF(q: any, inventory: any[] = []) {
     a.download = `${q.number || 'Quotation'}.pdf`;
     document.body.appendChild(a);
     a.click();
-    
+
     // Cleanup
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
