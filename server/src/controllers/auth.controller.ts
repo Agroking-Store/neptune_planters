@@ -20,15 +20,14 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     rememberMe?: boolean;
   };
 
-  const { accessToken, refreshToken } = await loginUser(email, password);
+  const { accessToken, refreshToken } = await loginUser(email, password, rememberMe);
 
-  // Remember Me: 30 days if checked, 7 days if not
-  const cookieOptions = {
-    ...refreshCookieOptions,
-    maxAge: rememberMe
-      ? 30 * 24 * 60 * 60 * 1000  // 30 days
-      : 7  * 24 * 60 * 60 * 1000, // 7 days
-  };
+  const cookieOptions: any = { ...refreshCookieOptions };
+  if (rememberMe) {
+    cookieOptions.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+  } else {
+    delete cookieOptions.maxAge; // Session cookie
+  }
 
   res.cookie(REFRESH_COOKIE_NAME, refreshToken, cookieOptions);
 
@@ -50,12 +49,19 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
     throw ApiError.unauthorized('No refresh token provided');
   }
 
-  const { accessToken, refreshToken: newRefreshToken } = await refreshAccessToken(
+  const { accessToken, refreshToken: newRefreshToken, rememberMe } = await refreshAccessToken(
     incomingToken
   );
 
+  const cookieOptions: any = { ...refreshCookieOptions };
+  if (rememberMe) {
+    cookieOptions.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+  } else {
+    delete cookieOptions.maxAge; // Session cookie
+  }
+
   // Rotate cookie
-  res.cookie(REFRESH_COOKIE_NAME, newRefreshToken, refreshCookieOptions);
+  res.cookie(REFRESH_COOKIE_NAME, newRefreshToken, cookieOptions);
 
   res.status(200).json(
     ApiResponse.success('Token refreshed successfully', { accessToken }).toJSON()

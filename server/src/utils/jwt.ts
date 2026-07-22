@@ -13,6 +13,7 @@ export interface AccessTokenPayload {
 
 export interface RefreshTokenPayload {
   userId: string;
+  rememberMe?: boolean;
 }
 
 // ─────────────────────────────────────────────

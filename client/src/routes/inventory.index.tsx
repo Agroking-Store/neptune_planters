@@ -34,19 +34,10 @@ function Inventory() {
   const [reportTo, setReportTo] = useState("");
   const [reportLoading, setReportLoading] = useState(false);
 
-  const fetchData = async () => {
+  const fetchProducts = async () => {
     try {
-      const [prodRes, analyticsRes] = await Promise.all([
-        api.get<any[]>("/inventory/products"),
-        api.get<any>("/analytics/sales").catch((err) => {
-          console.error("Analytics fetch failed", err);
-          return null;
-        })
-      ]);
+      const prodRes = await api.get<any[]>("/inventory/products");
       setProducts(prodRes ?? []);
-      if (analyticsRes) {
-        setAnalytics(analyticsRes);
-      }
     } catch (err) {
       toast.error("Failed to load products from server");
     } finally {
@@ -54,18 +45,34 @@ function Inventory() {
     }
   };
 
+  const fetchAnalytics = async () => {
+    try {
+      const analyticsRes = await api.get<any>("/analytics/sales");
+      if (analyticsRes) {
+        setAnalytics(analyticsRes);
+      }
+    } catch (err) {
+      console.error("Analytics fetch failed", err);
+    }
+  };
+
   useEffect(() => {
-    void fetchData();
+    void fetchProducts();
+    void fetchAnalytics();
   }, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
+    
+    setProducts((prev) => prev.filter((p) => p._id !== id));
+    
     try {
       await api.delete(`/inventory/products/${id}`);
       toast.success("Product deleted successfully");
-      void fetchData();
+      void fetchAnalytics();
     } catch (err) {
       toast.error("Failed to delete product");
+      void fetchProducts();
     }
   };
 

@@ -12,7 +12,8 @@ import { logger } from '../utils/logger';
 // ─────────────────────────────────────────────
 export async function loginUser(
   email: string,
-  password: string
+  password: string,
+  rememberMe: boolean = false
 ): Promise<{ accessToken: string; refreshToken: string }> {
   // 1. Find user (includes password and refreshTokens via static method)
   const user = await User.findByEmail(email);
@@ -42,6 +43,7 @@ export async function loginUser(
   const accessToken = generateAccessToken(tokenPayload);
   const refreshToken = generateRefreshToken({
     userId: tokenPayload.userId,
+    rememberMe,
   });
 
   // 5. Store refresh token in whitelist using atomic update to avoid VersionError
@@ -59,7 +61,7 @@ export async function loginUser(
 // ─────────────────────────────────────────────
 export async function refreshAccessToken(
   incomingRefreshToken: string
-): Promise<{ accessToken: string; refreshToken: string }> {
+): Promise<{ accessToken: string; refreshToken: string; rememberMe?: boolean }> {
   // 1. Verify JWT signature and expiry
   const payload = verifyRefreshToken(incomingRefreshToken);
 
@@ -81,7 +83,7 @@ export async function refreshAccessToken(
   };
 
   const newAccessToken = generateAccessToken(tokenPayload);
-  const newRefreshToken = generateRefreshToken({ userId: tokenPayload.userId });
+  const newRefreshToken = generateRefreshToken({ userId: tokenPayload.userId, rememberMe: payload.rememberMe });
 
   // 4. Atomically replace the old refresh token with the new one
   const result = await User.updateOne(
@@ -98,7 +100,7 @@ export async function refreshAccessToken(
   }
 
   logger.info(`Token refreshed for user: ${user.email}`);
-  return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+  return { accessToken: newAccessToken, refreshToken: newRefreshToken, rememberMe: payload.rememberMe };
 }
 
 // ─────────────────────────────────────────────
