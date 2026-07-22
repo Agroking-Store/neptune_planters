@@ -59,7 +59,7 @@ interface ProductRecord {
   unitPrice: number;
   size?: string;
   description?: string;
-  sizes?: string[];
+  sizes?: any;
   productImages?: { type: string; url: string; linkedUrl?: string; linkedReferenceUrl?: string; name?: string }[];
   variants?: { size: string; texture: string; price: number; productImage: string; referenceImage: string }[];
 }
