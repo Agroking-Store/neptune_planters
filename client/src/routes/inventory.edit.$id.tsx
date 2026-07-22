@@ -110,7 +110,21 @@ function EditItem() {
     void loadData();
   }, [id]);
 
+  const uploadImage = async (f: File): Promise<string | undefined> => {
+    try {
+      const fd = new FormData();
+      fd.append("images", f);
+      const res = await api.post<any>("/upload", fd);
+      return res.urls[0];
+    } catch (err) {
+      console.error("Upload error:", err);
+      toast.error("Failed to upload image to server");
+      return undefined;
+    }
+  };
+
   const readFile = async (f: File, setter: (s: string) => void) => {
+    const toastId = toast.loading("Uploading image...");
     try {
       const options = {
         maxSizeMB: 1,
@@ -118,16 +132,20 @@ function EditItem() {
         useWebWorker: true,
       };
       const compressedFile = await imageCompression(f, options);
-      const reader = new FileReader();
-      reader.onload = () => setter(reader.result as string);
-      reader.readAsDataURL(compressedFile);
+      const url = await uploadImage(compressedFile);
+      if (url) {
+        setter(url);
+      }
     } catch (error) {
-      console.error("Image compression error:", error);
-      toast.error("Failed to compress image");
+      console.error("Image processing error:", error);
+      toast.error("Failed to process image");
+    } finally {
+      toast.dismiss(toastId);
     }
   };
 
   const handleVariantFile = async (idx: number, f: File, type: 'product' | 'reference') => {
+    const toastId = toast.loading("Uploading variant image...");
     try {
       const options = {
         maxSizeMB: 1,
@@ -135,22 +153,24 @@ function EditItem() {
         useWebWorker: true,
       };
       const compressedFile = await imageCompression(f, options);
-      const reader = new FileReader();
-      reader.onload = () => {
+      const url = await uploadImage(compressedFile);
+      
+      if (url) {
         setVariants(prev => {
           const newVariants = [...prev];
           if (type === 'product') {
-            newVariants[idx].productImage = reader.result as string;
+            newVariants[idx].productImage = url;
           } else if (type === 'reference') {
-            newVariants[idx].referenceImage = reader.result as string;
+            newVariants[idx].referenceImage = url;
           }
           return newVariants;
         });
-      };
-      reader.readAsDataURL(compressedFile);
+      }
     } catch (error) {
-      console.error("Variant image compression error:", error);
-      toast.error("Failed to compress image");
+      console.error("Variant image processing error:", error);
+      toast.error("Failed to process image");
+    } finally {
+      toast.dismiss(toastId);
     }
   };
 

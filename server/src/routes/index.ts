@@ -5,6 +5,7 @@ import customerRoutes from './customer.routes';
 import quotationRoutes from './quotation.routes';
 import { analyticsRouter } from './analytics.routes';
 import settingsRoutes from './settings.routes';
+import uploadRoutes from './upload.routes';
 
 const router = Router();
 
@@ -17,6 +18,7 @@ router.use('/customers', customerRoutes);
 router.use('/quotations', quotationRoutes);
 router.use('/analytics', analyticsRouter);
 router.use('/settings', settingsRoutes);
+router.use('/upload', uploadRoutes);
 
 // Health check (unauthenticated)
 router.get('/health', (_req, res) => {

@@ -914,11 +914,16 @@ function EditQuotation() {
                 {items.map((it) => {
                   const p = products.find((pr) => pr._id === it.productId);
                   const availableSizes = ["large", "medium", "small"];
-                  const availableTextures = it.availableTextures?.length
-                    ? it.availableTextures
-                    : p?.productImages
-                      ?.filter((i: any) => i.type === "texture")
-                      .map((i: any) => ({ url: i.url, name: i.name || "" })) || [];
+                  let availableTextures = it.availableTextures?.length ? it.availableTextures : [];
+                  if (availableTextures.length === 0 && p) {
+                    availableTextures = Array.from(new Set(p.variants?.map((v: any) => v.texture) || [])).map((t: any) => {
+                      const gt = globalTextures.find(g => g.name === t);
+                      return { url: gt?.url || "", name: t };
+                    });
+                    if (availableTextures.length === 0) {
+                      availableTextures = p.productImages?.filter((i: any) => i.type === "texture").map((i: any) => ({ url: i.url, name: i.name || "" })) || [];
+                    }
+                  }
                   const currentTexture = it.selectedTexture || availableTextures[0]?.name || availableTextures[0]?.url || "";
 
                   const productImage = it.image || p?.productImages?.find((i: any) => i.type === "product")?.url || p?.productImages?.[0]?.url;

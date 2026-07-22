@@ -7,6 +7,32 @@ import { ApiError } from '../utils/ApiError';
 import { logger } from '../utils/logger';
 import { buildQuotationHtml } from './pdf-template.service';
 import { Settings, ISettings } from '../models/Settings.model';
+import fs from 'fs';
+import path from 'path';
+
+// ─────────────────────────────────────────────
+// Helper to convert local images to base64 for PDF
+// ─────────────────────────────────────────────
+function getLocalImageBase64(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('data:image')) return url;
+  
+  if (url.startsWith('/uploads/')) {
+    try {
+      const filePath = path.join(__dirname, '../..', url);
+      if (fs.existsSync(filePath)) {
+        const ext = path.extname(filePath).toLowerCase().replace('.', '');
+        const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
+        const buffer = fs.readFileSync(filePath);
+        return `data:${mime};base64,${buffer.toString('base64')}`;
+      }
+    } catch (e) {
+      logger.warn(`Failed to convert local image to base64: ${url}`);
+    }
+  }
+  
+  return url;
+}
 
 // ─────────────────────────────────────────────
 // Types for PDF template data
@@ -167,9 +193,9 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
       total: item.total,
       selectedTexture: item.selectedTexture || '',
       textureName,
-      productImageUrl,
-      referenceImageUrl,
-      textureImageUrl: (item.selectedTexture && (item.selectedTexture.startsWith('http') || item.selectedTexture.startsWith('data:image'))) ? item.selectedTexture : textureImageUrl,
+      productImageUrl: getLocalImageBase64(productImageUrl),
+      referenceImageUrl: getLocalImageBase64(referenceImageUrl),
+      textureImageUrl: getLocalImageBase64((item.selectedTexture && (item.selectedTexture.startsWith('http') || item.selectedTexture.startsWith('data:image'))) ? item.selectedTexture : textureImageUrl),
     });
   }
 

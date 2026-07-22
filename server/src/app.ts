@@ -8,6 +8,7 @@ import router from './routes/index';
 import { errorHandler } from './middleware/errorHandler.middleware';
 import { notFound } from './middleware/notFound.middleware';
 import { logger } from './utils/logger';
+import path from 'path';
 
 // ─────────────────────────────────────────────
 // Express application factory
@@ -72,6 +73,9 @@ export function createApp(): express.Application {
 
   // ── API Routes ────────────────────────────
   app.use('/api', router);
+
+  // ── Static Files ──────────────────────────
+  app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
   // ── 404 Handler ───────────────────────────
   app.use(notFound);
