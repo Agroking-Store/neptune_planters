@@ -269,7 +269,12 @@ function EditQuotation() {
       found.productImages?.find((i) => i.type === "product")?.url ||
       found.productImages?.[0]?.url;
     
-    const sizes = ["large", "medium", "small"];
+    let sizes: string[] = [];
+    if (Array.isArray(found.sizes)) {
+      sizes = found.sizes.map(s => s.name);
+    } else if (found.sizes && typeof found.sizes === 'object') {
+      sizes = Object.keys(found.sizes).filter(k => (found.sizes as any)[k]);
+    }
     
     // Derive available textures from variants, or fallback to product images if empty
     let textures = Array.from(new Set(found.variants?.map(v => v.texture) || [])).map(t => {
@@ -379,7 +384,12 @@ function EditQuotation() {
           it.image ||
           p?.productImages?.find((i) => i.type === "product")?.url ||
           p?.productImages?.[0]?.url;
-        const availableSizes = ["large", "medium", "small"];
+        let availableSizes: string[] = [];
+        if (Array.isArray(p?.sizes)) {
+          availableSizes = p.sizes.map((s: any) => s.name);
+        } else if (p?.sizes && typeof p.sizes === 'object') {
+          availableSizes = Object.keys(p.sizes).filter(k => (p.sizes as any)[k]);
+        }
         const availableTextures = it.availableTextures?.length
           ? it.availableTextures
           : p?.productImages

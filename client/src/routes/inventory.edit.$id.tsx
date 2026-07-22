@@ -27,7 +27,7 @@ function EditItem() {
   const [referenceImage, setRefImage]   = useState<string | undefined>();
   
   interface IVariantState {
-    size: 'large' | 'medium' | 'small';
+    size: string;
     texture: string;
     price: number;
     productImage: string;
@@ -41,9 +41,7 @@ function EditItem() {
     unitPrice: 0,
   });
 
-  const [sizes, setSizes] = useState<{ large: string; medium: string; small: string }>({
-    large: "", medium: "", small: "",
-  });
+  const [sizes, setSizes] = useState<{ name: string; dimensions: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -51,17 +49,8 @@ function EditItem() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load settings defaults first
-        let defaultSizes = { large: "", medium: "", small: "" };
         try {
           const settingsRes = await api.get<any>("/settings");
-          if (settingsRes?.inventorySizes) {
-            defaultSizes = {
-              large: settingsRes.inventorySizes.large || "",
-              medium: settingsRes.inventorySizes.medium || "",
-              small: settingsRes.inventorySizes.small || "",
-            };
-          }
           if (settingsRes?.textures) {
             setGlobalTextures(settingsRes.textures);
           }
@@ -77,16 +66,16 @@ function EditItem() {
             unitPrice: product.unitPrice || 0,
           });
 
-          // Handle sizes: support new object format and fallback for old array format
-          if (product.sizes && typeof product.sizes === 'object' && !Array.isArray(product.sizes)) {
-            setSizes({
-              large: product.sizes.large || defaultSizes.large,
-              medium: product.sizes.medium || defaultSizes.medium,
-              small: product.sizes.small || defaultSizes.small,
-            });
+          if (Array.isArray(product.sizes)) {
+            setSizes(product.sizes);
+          } else if (product.sizes && typeof product.sizes === 'object') {
+            const mappedSizes = [];
+            if (product.sizes.large) mappedSizes.push({ name: 'Large', dimensions: product.sizes.large });
+            if (product.sizes.medium) mappedSizes.push({ name: 'Medium', dimensions: product.sizes.medium });
+            if (product.sizes.small) mappedSizes.push({ name: 'Small', dimensions: product.sizes.small });
+            setSizes(mappedSizes);
           } else {
-            // Old array format or no sizes — use defaults
-            setSizes(defaultSizes);
+            setSizes([]);
           }
 
           // Pre-fill image fields
@@ -175,7 +164,7 @@ function EditItem() {
   };
 
   const addVariantSlot = () => {
-    setVariants([...variants, { size: "large", texture: globalTextures[0]?.name || "", price: form.unitPrice || 0, productImage: "", referenceImage: "" }]);
+    setVariants([...variants, { size: sizes[0]?.name || "", texture: globalTextures[0]?.name || "", price: form.unitPrice || 0, productImage: "", referenceImage: "" }]);
   };
 
   const removeVariantSlot = (idx: number) => {
@@ -290,55 +279,60 @@ function EditItem() {
         {/* Attributes */}
         <Section icon={<Palette className="w-5 h-5" />} title="Attributes" subtitle="Visual descriptors, textures, and dimensions.">
           <div className="space-y-6">
-            {/* Fixed Three Dimensions */}
+            {/* Dynamic Dimensions */}
             <div>
-              <label className="text-sm font-medium mb-3 block">Dimensions</label>
-              <p className="text-xs text-muted-foreground mb-4">
-                Default values are loaded from global settings. Override per product if needed.
-              </p>
-              <div className="grid sm:grid-cols-3 gap-4">
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500/15 to-emerald-600/25 grid place-items-center shrink-0">
-                      <span className="text-xs font-bold text-emerald-600">L</span>
-                    </div>
-                    <span className="text-sm font-semibold">Large</span>
-                  </div>
-                  <input
-                    value={sizes.large}
-                    onChange={(e) => setSizes({ ...sizes, large: e.target.value })}
-                    className={input}
-                    placeholder="e.g. 100x100x100"
-                  />
+              <div className="flex items-center justify-between mb-3 block">
+                <div>
+                  <label className="text-sm font-medium">Dimensions</label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Add any number of custom sizes for this product (e.g., "Large", "Extra Small").
+                  </p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500/15 to-blue-600/25 grid place-items-center shrink-0">
-                      <span className="text-xs font-bold text-blue-600">M</span>
+                <button type="button" onClick={() => setSizes([...sizes, { name: "", dimensions: "" }])} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors shrink-0">
+                  <Plus className="w-3.5 h-3.5" /> Add Size
+                </button>
+              </div>
+              
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {sizes.length === 0 ? (
+                  <div className="text-xs text-muted-foreground p-3 border border-dashed rounded-xl text-center sm:col-span-2 lg:col-span-3">No sizes added. Click 'Add Size' to begin.</div>
+                ) : sizes.map((s, idx) => (
+                  <div key={idx} className="rounded-xl border border-border bg-card p-4 relative group">
+                    <div className="flex flex-col gap-3">
+                      <Field label="Size Name">
+                        <input
+                          value={s.name}
+                          onChange={(e) => {
+                            const newSizes = [...sizes];
+                            newSizes[idx].name = e.target.value;
+                            setSizes(newSizes);
+                          }}
+                          className={input}
+                          placeholder="e.g. Large, 50cm"
+                        />
+                      </Field>
+                      <Field label="Dimensions">
+                        <input
+                          value={s.dimensions}
+                          onChange={(e) => {
+                            const newSizes = [...sizes];
+                            newSizes[idx].dimensions = e.target.value;
+                            setSizes(newSizes);
+                          }}
+                          className={input}
+                          placeholder="e.g. 100x100x100"
+                        />
+                      </Field>
                     </div>
-                    <span className="text-sm font-semibold">Medium</span>
+                    <button
+                      type="button"
+                      onClick={() => setSizes(sizes.filter((_, i) => i !== idx))}
+                      className="absolute top-2 right-2 p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-lg transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
-                  <input
-                    value={sizes.medium}
-                    onChange={(e) => setSizes({ ...sizes, medium: e.target.value })}
-                    className={input}
-                    placeholder="e.g. 65x65x65"
-                  />
-                </div>
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500/15 to-amber-600/25 grid place-items-center shrink-0">
-                      <span className="text-xs font-bold text-amber-600">S</span>
-                    </div>
-                    <span className="text-sm font-semibold">Small</span>
-                  </div>
-                  <input
-                    value={sizes.small}
-                    onChange={(e) => setSizes({ ...sizes, small: e.target.value })}
-                    className={input}
-                    placeholder="e.g. 30x30x30"
-                  />
-                </div>
+                ))}
               </div>
             </div>
 
@@ -365,14 +359,15 @@ function EditItem() {
                               value={v.size}
                               onChange={(e) => {
                                 const newVariants = [...variants];
-                                newVariants[i].size = e.target.value as any;
+                                newVariants[i].size = e.target.value;
                                 setVariants(newVariants);
                               }}
                               className={input}
                             >
-                              <option value="large">Large</option>
-                              <option value="medium">Medium</option>
-                              <option value="small">Small</option>
+                              {sizes.length === 0 && <option value="">No sizes added</option>}
+                              {sizes.map((s, sIdx) => (
+                                <option key={sIdx} value={s.name}>{s.name || "Unnamed Size"}</option>
+                              ))}
                             </select>
                           </Field>
                         </div>

@@ -79,8 +79,8 @@ export async function createQuotation(
     const productSnapshot = {
       productName: product.productName,
       hsnNumber: product.hsnNumber || '',
-      size: (product.sizes && typeof product.sizes === 'object' && !Array.isArray(product.sizes)) 
-        ? [product.sizes.large, product.sizes.medium, product.sizes.small].filter(Boolean).join(' | ') 
+      size: Array.isArray(product.sizes) 
+        ? product.sizes.map((s: any) => s.dimensions).filter(Boolean).join(' | ') 
         : '',
     };
 
@@ -179,8 +179,8 @@ export async function updateQuotation(
       productSnapshot: {
         productName: product.productName,
         hsnNumber: product.hsnNumber || '',
-        size: (product.sizes && typeof product.sizes === 'object' && !Array.isArray(product.sizes)) 
-          ? [product.sizes.large, product.sizes.medium, product.sizes.small].filter(Boolean).join(' | ') 
+        size: Array.isArray(product.sizes) 
+          ? product.sizes.map((s: any) => s.dimensions).filter(Boolean).join(' | ') 
           : '',
       },
       quantity: item.quantity,

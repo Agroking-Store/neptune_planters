@@ -128,10 +128,10 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
     try {
       product = await Product.findById(item.productId).lean().exec();
       if (product) {
-        if (product.sizes && typeof product.sizes === 'object' && !Array.isArray(product.sizes)) {
-          const sizeKey = (item.selectedSize || '').toLowerCase() as 'large' | 'medium' | 'small';
-          if (sizeKey && (product.sizes as any)[sizeKey]) {
-            resolvedSize = (product.sizes as any)[sizeKey];
+        if (Array.isArray(product.sizes)) {
+          const matchingSize = product.sizes.find((s: any) => s.name === item.selectedSize);
+          if (matchingSize) {
+            resolvedSize = matchingSize.dimensions;
           }
         }
 

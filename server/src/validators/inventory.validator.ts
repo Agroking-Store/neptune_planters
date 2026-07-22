@@ -32,15 +32,16 @@ export const createProductSchema = z.object({
     .min(0, 'Price cannot be negative')
     .default(0),
 
-  sizes: z.object({
-    large: z.string().trim().default(''),
-    medium: z.string().trim().default(''),
-    small: z.string().trim().default(''),
-  }).default({ large: '', medium: '', small: '' }),
+  sizes: z.array(
+    z.object({
+      name: z.string().min(1, 'Size name is required'),
+      dimensions: z.string().default(''),
+    })
+  ).default([]),
 
   variants: z.array(
     z.object({
-      size: z.enum(['large', 'medium', 'small']),
+      size: z.string().min(1, 'Size is required'),
       texture: z.string().min(1, 'Texture is required'),
       price: z.number().min(0, 'Price cannot be negative'),
       productImage: z.string().default(''),

@@ -1,10 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export interface IInventorySizes {
-  large: string;
-  medium: string;
-  small: string;
-}
 
 export interface IGlobalTexture {
   name: string;
@@ -33,18 +28,10 @@ export interface ISettings extends Document {
   footerInstagram: string;
   footerWebsite: string;
   footerLocation: string;
-  inventorySizes: IInventorySizes;
+
   textures: IGlobalTexture[];
 }
 
-const inventorySizesSchema = new Schema<IInventorySizes>(
-  {
-    large: { type: String, default: '' },
-    medium: { type: String, default: '' },
-    small: { type: String, default: '' },
-  },
-  { _id: false }
-);
 
 const globalTextureSchema = new Schema<IGlobalTexture>(
   {
@@ -77,7 +64,7 @@ const settingsSchema = new Schema<ISettings>(
     footerInstagram: { type: String, default: 'neptuneplanters' },
     footerWebsite: { type: String, default: 'www.shopneptune.in' },
     footerLocation: { type: String, default: 'Sr No 34/1, Holkarwadi, Handewadi, Pune-412308' },
-    inventorySizes: { type: inventorySizesSchema, default: () => ({ large: '', medium: '', small: '' }) },
+
     textures: { type: [globalTextureSchema], default: [] },
   },
   { timestamps: true }

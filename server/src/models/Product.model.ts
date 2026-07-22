@@ -21,14 +21,13 @@ export interface IProductImage {
 // ─────────────────────────────────────────────
 // Product interface
 // ─────────────────────────────────────────────
-export interface IProductSizes {
-  large: string;
-  medium: string;
-  small: string;
+export interface IProductSize {
+  name: string;
+  dimensions: string;
 }
 
 export interface IProductVariant {
-  size: 'large' | 'medium' | 'small';
+  size: string;
   texture: string;
   price: number;
   productImage: string;
@@ -43,7 +42,7 @@ export interface IProduct {
   hsnNumber?: string;
   description?: string;
   unitPrice: number;
-  sizes: IProductSizes;
+  sizes: IProductSize[];
   variants: IProductVariant[];
   status: ProductStatus;
   createdBy: mongoose.Types.ObjectId;
@@ -75,9 +74,17 @@ const productImageSchema = new Schema<IProductImage>(
   { _id: false }
 );
 
+const productSizeSchema = new Schema<IProductSize>(
+  {
+    name: { type: String, required: true },
+    dimensions: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
 const productVariantSchema = new Schema<IProductVariant>(
   {
-    size: { type: String, enum: ['large', 'medium', 'small'], required: true },
+    size: { type: String, required: true },
     texture: { type: String, required: true },
     price: { type: Number, required: true },
     productImage: { type: String, default: '' },
@@ -125,15 +132,8 @@ const productSchema = new Schema<IProductDocument, IProductModel>(
       default: 0,
     },
     sizes: {
-      type: new Schema<IProductSizes>(
-        {
-          large: { type: String, default: '' },
-          medium: { type: String, default: '' },
-          small: { type: String, default: '' },
-        },
-        { _id: false }
-      ),
-      default: () => ({ large: '', medium: '', small: '' }),
+      type: [productSizeSchema],
+      default: [],
     },
     variants: {
       type: [productVariantSchema],

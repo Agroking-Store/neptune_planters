@@ -9,11 +9,7 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
-interface IInventorySizes {
-  large: string;
-  medium: string;
-  small: string;
-}
+
 
 interface IGlobalTexture {
   name: string;
@@ -42,7 +38,7 @@ interface ISettings {
   footerInstagram: string;
   footerWebsite: string;
   footerLocation: string;
-  inventorySizes: IInventorySizes;
+
   textures: IGlobalTexture[];
 }
 
@@ -68,7 +64,7 @@ const defaultSettings: ISettings = {
   footerInstagram: "neptuneplanters",
   footerWebsite: "www.shopneptune.in",
   footerLocation: "Sr No 34/1, Holkarwadi, Handewadi, Pune-412308",
-  inventorySizes: { large: "", medium: "", small: "" },
+
   textures: [],
 };
 
@@ -92,10 +88,7 @@ function SettingsPage() {
           setSettings({
             ...defaultSettings,
             ...res,
-            inventorySizes: {
-              ...defaultSettings.inventorySizes,
-              ...(res.inventorySizes || {}),
-            },
+
           });
         }
       } catch (err) {
@@ -111,12 +104,7 @@ function SettingsPage() {
     setSettings((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSizeChange = (size: keyof IInventorySizes, value: string) => {
-    setSettings((prev) => ({
-      ...prev,
-      inventorySizes: { ...prev.inventorySizes, [size]: value },
-    }));
-  };
+
 
   const handleSave = async () => {
     setSaving(true);
@@ -139,10 +127,7 @@ function SettingsPage() {
         setSettings({
           ...defaultSettings,
           ...res,
-          inventorySizes: {
-            ...defaultSettings.inventorySizes,
-            ...(res.inventorySizes || {}),
-          },
+
         });
         toast.success("Settings reset to defaults.");
       }
@@ -324,62 +309,6 @@ function SettingsPage() {
         {/* ── Inventory Settings Tab ───────────────────────────────────── */}
         {activeTab === "inventory" && (
           <div className="space-y-12">
-            <section>
-              <h3 className="font-semibold text-xl mb-2 pb-3 border-b border-border">Product Sizes</h3>
-              <p className="text-muted-foreground text-sm mb-8">
-                Define default dimensions for each product size tier. These will be used as defaults when creating new products, and displayed on quotation PDFs.
-              </p>
-
-              <div className="grid gap-6 max-w-2xl">
-                {/* Large */}
-                <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-5">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/15 to-emerald-600/25 grid place-items-center shrink-0">
-                    <span className="text-lg font-bold text-emerald-600">L</span>
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-sm font-semibold text-foreground block mb-1.5">Large</label>
-                    <input
-                      value={settings.inventorySizes.large}
-                      onChange={(e) => handleSizeChange("large", e.target.value)}
-                      className={inputClass}
-                      placeholder="e.g. 100x100x100"
-                    />
-                  </div>
-                </div>
-
-                {/* Medium */}
-                <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-5">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/15 to-blue-600/25 grid place-items-center shrink-0">
-                    <span className="text-lg font-bold text-blue-600">M</span>
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-sm font-semibold text-foreground block mb-1.5">Medium</label>
-                    <input
-                      value={settings.inventorySizes.medium}
-                      onChange={(e) => handleSizeChange("medium", e.target.value)}
-                      className={inputClass}
-                      placeholder="e.g. 65x65x65"
-                    />
-                  </div>
-                </div>
-
-                {/* Small */}
-                <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-5">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/15 to-amber-600/25 grid place-items-center shrink-0">
-                    <span className="text-lg font-bold text-amber-600">S</span>
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-sm font-semibold text-foreground block mb-1.5">Small</label>
-                    <input
-                      value={settings.inventorySizes.small}
-                      onChange={(e) => handleSizeChange("small", e.target.value)}
-                      className={inputClass}
-                      placeholder="e.g. 30x30x30"
-                    />
-                  </div>
-                </div>
-              </div>
-            </section>
 
             {/* Global Textures Section */}
             <section>
