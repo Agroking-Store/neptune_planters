@@ -185,18 +185,6 @@ function NewItem() {
       </div>
 
       <form onSubmit={submit} className="space-y-6">
-        {/* Media */}
-        <Section icon={<ImageIcon className="w-5 h-5" />} title="Product Media" subtitle="Primary product and reference imagery.">
-          <div className="flex flex-wrap gap-4">
-            <div className="w-40">
-              <ImageDrop label="Product Image" value={image} onPick={() => productImgRef.current?.click()} onClear={() => setImage(undefined)} inputRef={productImgRef} onFile={(f) => readFile(f, setImage)} />
-            </div>
-            <div className="w-40">
-              <ImageDrop label="Reference Image" value={referenceImage} onPick={() => refImgRef.current?.click()} onClear={() => setRefImage(undefined)} inputRef={refImgRef} onFile={(f) => readFile(f, setRefImage)} />
-            </div>
-          </div>
-        </Section>
-
         {/* Product Info */}
         <Section icon={<Package className="w-5 h-5" />} title="Product Info" subtitle="The essentials: name, description and price.">
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -212,6 +200,18 @@ function NewItem() {
             <Field className="sm:col-span-2 lg:col-span-3" label="Product Description">
               <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className={`${input} resize-none`} placeholder="Short description shown on quotations…" />
             </Field>
+          </div>
+        </Section>
+
+        {/* Media */}
+        <Section icon={<ImageIcon className="w-5 h-5" />} title="Product Media" subtitle="Primary product and reference imagery.">
+          <div className="flex flex-wrap gap-4">
+            <div className="w-40">
+              <ImageDrop label="Product Image" value={image} onPick={() => productImgRef.current?.click()} onClear={() => setImage(undefined)} inputRef={productImgRef} onFile={(f) => readFile(f, setImage)} />
+            </div>
+            <div className="w-40">
+              <ImageDrop label="Reference Image" value={referenceImage} onPick={() => refImgRef.current?.click()} onClear={() => setRefImage(undefined)} inputRef={refImgRef} onFile={(f) => readFile(f, setRefImage)} />
+            </div>
           </div>
         </Section>
 
