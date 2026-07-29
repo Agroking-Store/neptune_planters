@@ -76,6 +76,7 @@ export function createApp(): express.Application {
 
   // ── Static Files ──────────────────────────
   app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+  app.use('/api/uploads', express.static(path.join(__dirname, '../uploads')));
 
   // ── 404 Handler ───────────────────────────
   app.use(notFound);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Save, Upload, Tag, RefreshCw, Loader2, FileText, Package } from "lucide-react";
+import { Save, Upload, Tag, RefreshCw, Loader2, FileText, Package, Trash2 } from "lucide-react";
+import { resolveImageUrl } from "@/lib/utils";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { createFileRoute } from "@tanstack/react-router";

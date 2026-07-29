@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Upload, Package, Save, Image as ImageIcon, Tag, Palette, Loader2, Plus, X, ArrowLeft } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { toast } from "sonner";
+import { resolveImageUrl } from "@/lib/utils";
 import { isAuthenticated } from "@/lib/auth";
 import { api, ApiClientError } from "@/lib/api";
 import imageCompression from 'browser-image-compression';
@@ -68,9 +69,9 @@ function EditItem() {
             setSizes(product.sizes);
           } else if (product.sizes && typeof product.sizes === 'object') {
             const mappedSizes = [];
-            if (product.sizes.large) mappedSizes.push({ name: 'Large', dimensions: product.sizes.large });
-            if (product.sizes.medium) mappedSizes.push({ name: 'Medium', dimensions: product.sizes.medium });
-            if (product.sizes.small) mappedSizes.push({ name: 'Small', dimensions: product.sizes.small });
+            if (product.sizes.large) mappedSizes.push({ name: 'Large', dimensions: product.sizes.large, price: 0 });
+            if (product.sizes.medium) mappedSizes.push({ name: 'Medium', dimensions: product.sizes.medium, price: 0 });
+            if (product.sizes.small) mappedSizes.push({ name: 'Small', dimensions: product.sizes.small, price: 0 });
             setSizes(mappedSizes);
           } else {
             setSizes([]);
@@ -357,7 +358,7 @@ function EditItem() {
                             <div className="flex items-center gap-2">
                               {v.texture && globalTextures.some(gt => gt.name === v.texture) && (
                                 <img 
-                                  src={globalTextures.find(gt => gt.name === v.texture)?.url} 
+                                  src={resolveImageUrl(globalTextures.find(gt => gt.name === v.texture)?.url)} 
                                   alt="Preview"
                                   className="w-10 h-10 rounded-lg border border-border object-cover shrink-0" 
                                 />

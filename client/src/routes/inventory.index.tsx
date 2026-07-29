@@ -1,6 +1,7 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { isAuthenticated } from "@/lib/auth";
 import { useEffect, useMemo, useState } from "react";
+import { resolveImageUrl } from "@/lib/utils";
 import { Boxes, Plus, Search, Pencil, Trash2, Loader2, ShoppingCart, TrendingUp, Wallet, FileText, Download, X, Calendar } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { formatINR } from "@/lib/store";
