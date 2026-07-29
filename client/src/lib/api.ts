@@ -116,8 +116,15 @@ async function request<T>(
   }
 
   if (!res.ok) {
-    const data = json as { message?: string };
-    const msg = data?.message ?? `Request failed with status ${res.status}`;
+    const data = json as { message?: string; errors?: any[]; meta?: { errors?: any[] } };
+    let msg = data?.message ?? `Request failed with status ${res.status}`;
+    
+    const errorsList = data?.errors || data?.meta?.errors;
+    if (errorsList && Array.isArray(errorsList) && errorsList.length > 0) {
+      const errorDetails = errorsList.map(e => e.message || e.msg || (typeof e === 'string' ? e : JSON.stringify(e))).join(", ");
+      msg = `${msg}: ${errorDetails}`;
+    }
+
     console.error(`[api] Error ${res.status}:`, msg);
     throw new ApiClientError(res.status, msg);
   }

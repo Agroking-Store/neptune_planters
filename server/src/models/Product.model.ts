@@ -24,12 +24,11 @@ export interface IProductImage {
 export interface IProductSize {
   name: string;
   dimensions: string;
+  price: number;
 }
 
 export interface IProductVariant {
-  size: string;
   texture: string;
-  price: number;
   productImage: string;
   referenceImage: string;
 }
@@ -78,15 +77,14 @@ const productSizeSchema = new Schema<IProductSize>(
   {
     name: { type: String, required: true },
     dimensions: { type: String, default: '' },
+    price: { type: Number, required: true, default: 0 },
   },
   { _id: false }
 );
 
 const productVariantSchema = new Schema<IProductVariant>(
   {
-    size: { type: String, required: true },
     texture: { type: String, required: true },
-    price: { type: Number, required: true },
     productImage: { type: String, default: '' },
     referenceImage: { type: String, default: '' },
   },

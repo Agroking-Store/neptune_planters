@@ -26,9 +26,7 @@ function NewItem() {
   const [referenceImage, setRefImage] = useState<string | undefined>();
   
   interface IVariantState {
-    size: string;
     texture: string;
-    price: number;
     productImage: string;
     referenceImage: string;
   }
@@ -40,7 +38,7 @@ function NewItem() {
     unitPrice: 0,
   });
 
-  const [sizes, setSizes] = useState<{ name: string; dimensions: string }[]>([]);
+  const [sizes, setSizes] = useState<{ name: string; dimensions: string; price: number }[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   // Fetch global settings defaults for sizes on mount
@@ -123,7 +121,7 @@ function NewItem() {
   };
 
   const addVariantSlot = () => {
-    setVariants([...variants, { size: sizes[0]?.name || "", texture: globalTextures[0]?.name || "", price: form.unitPrice || 0, productImage: "", referenceImage: "" }]);
+    setVariants([...variants, { texture: globalTextures[0]?.name || "", productImage: "", referenceImage: "" }]);
   };
 
   const removeVariantSlot = (idx: number) => {
@@ -187,17 +185,14 @@ function NewItem() {
       <form onSubmit={submit} className="space-y-6">
         {/* Product Info */}
         <Section icon={<Package className="w-5 h-5" />} title="Product Info" subtitle="The essentials: name, description and price.">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4">
             <Field label="Product Name *">
               <input value={form.productName} onChange={(e) => setForm({ ...form, productName: e.target.value })} className={input} placeholder="Office Chair Executive" />
-            </Field>
-            <Field label="Product Price (₹) *">
-              <input type="number" min={0} value={form.unitPrice} onChange={(e) => setForm({ ...form, unitPrice: +e.target.value || 0 })} className={input} />
             </Field>
             <Field label="HSN Number">
               <input value={form.hsnNumber} onChange={(e) => setForm({ ...form, hsnNumber: e.target.value })} className={input} placeholder="94013000" />
             </Field>
-            <Field className="sm:col-span-2 lg:col-span-3" label="Product Description">
+            <Field className="sm:col-span-2" label="Product Description">
               <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className={`${input} resize-none`} placeholder="Short description shown on quotations…" />
             </Field>
           </div>
@@ -227,7 +222,7 @@ function NewItem() {
                     Add any number of custom sizes for this product (e.g., "Large", "Extra Small").
                   </p>
                 </div>
-                <button type="button" onClick={() => setSizes([...sizes, { name: "", dimensions: "" }])} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors shrink-0">
+                <button type="button" onClick={() => setSizes([...sizes, { name: "", dimensions: "", price: 0 }])} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors shrink-0">
                   <Plus className="w-3.5 h-3.5" /> Add Size
                 </button>
               </div>
@@ -262,6 +257,20 @@ function NewItem() {
                           placeholder="e.g. 100x100x100"
                         />
                       </Field>
+                      <Field label="Price (₹)">
+                        <input
+                          type="number"
+                          min={0}
+                          value={s.price || 0}
+                          onChange={(e) => {
+                            const newSizes = [...sizes];
+                            newSizes[idx].price = +e.target.value || 0;
+                            setSizes(newSizes);
+                          }}
+                          className={input}
+                          placeholder="e.g. 1000"
+                        />
+                      </Field>
                     </div>
                     <button
                       type="button"
@@ -280,7 +289,7 @@ function NewItem() {
             {/* Variants */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-medium">Variants (Size + Texture)</label>
+                <label className="text-sm font-medium">Variants (Textures)</label>
                 <button type="button" onClick={addVariantSlot} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors">
                   <Plus className="w-3.5 h-3.5" /> Add Variant
                 </button>
@@ -292,24 +301,6 @@ function NewItem() {
                   {variants.map((v, i) => (
                     <div key={i} className="relative group p-4 border border-border rounded-xl bg-card">
                       <div className="flex flex-wrap gap-4 mb-4">
-                        <div className="w-32">
-                          <Field label="Size">
-                            <select
-                              value={v.size}
-                              onChange={(e) => {
-                                const newVariants = [...variants];
-                                newVariants[i].size = e.target.value;
-                                setVariants(newVariants);
-                              }}
-                              className={input}
-                            >
-                              {sizes.length === 0 && <option value="">No sizes added</option>}
-                              {sizes.map((s, sIdx) => (
-                                <option key={sIdx} value={s.name}>{s.name || "Unnamed Size"}</option>
-                              ))}
-                            </select>
-                          </Field>
-                        </div>
                         <div className="w-56">
                           <Field label="Texture">
                             <div className="flex items-center gap-2">
@@ -335,21 +326,6 @@ function NewItem() {
                                 ))}
                               </select>
                             </div>
-                          </Field>
-                        </div>
-                        <div className="w-32">
-                          <Field label="Price (₹)">
-                            <input
-                              type="number"
-                              min={0}
-                              value={v.price}
-                              onChange={(e) => {
-                                const newVariants = [...variants];
-                                newVariants[i].price = +e.target.value || 0;
-                                setVariants(newVariants);
-                              }}
-                              className={input}
-                            />
                           </Field>
                         </div>
                       </div>
@@ -453,7 +429,7 @@ function ImageDrop({
       <div className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5"><Tag className="w-3 h-3" /> {label}</div>
       <button type="button" onClick={onPick} className="w-full aspect-square rounded-2xl border-2 border-dashed border-border grid place-items-center text-center overflow-hidden bg-gradient-soft hover:bg-muted transition-colors">
         {value ? (
-          <img src={value} alt={label} className="w-full h-full object-cover" />
+          <img src={resolveImageUrl(value)} alt={label} className="w-full h-full object-cover" />
         ) : (
           <div className="p-4">
             <div className="w-10 h-10 rounded-xl bg-gradient-primary grid place-items-center text-primary-foreground mx-auto mb-2 shadow-elegant"><Upload className="w-4 h-4" /></div>

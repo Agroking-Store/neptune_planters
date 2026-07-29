@@ -36,14 +36,13 @@ export const createProductSchema = z.object({
     z.object({
       name: z.string().min(1, 'Size name is required'),
       dimensions: z.string().default(''),
+      price: z.number().min(0, 'Price cannot be negative').default(0),
     })
   ).default([]),
 
   variants: z.array(
     z.object({
-      size: z.string().min(1, 'Size is required'),
       texture: z.string().min(1, 'Texture is required'),
-      price: z.number().min(0, 'Price cannot be negative'),
       productImage: z.string().default(''),
       referenceImage: z.string().default(''),
     })

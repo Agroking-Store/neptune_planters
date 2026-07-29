@@ -77,7 +77,7 @@ interface QuotationItemLocal {
   discountPercent: number;
   selectedSize: string;
   selectedTexture: string;
-  availableSizes: string[];
+  availableSizes: { name: string; price: number }[];
   availableTextures: { url: string; name: string }[];
   image?: string;
 }
@@ -191,20 +191,30 @@ function NewQuotation() {
             );
           }
           setItems(
-            (data.items || []).map((it: any) => ({
-              id: crypto.randomUUID(),
-              productId: it.productId,
-              name: it.productSnapshot?.productName || "",
-              hsnNumber: it.productSnapshot?.hsnNumber || "",
-              description: it.productSnapshot?.description || "",
-              quantity: it.quantity || 1,
-              price: it.unitPrice || 0,
-              discountPercent: it.discountPercent || 0,
-              selectedSize: it.selectedSize || "",
-              selectedTexture: it.selectedTexture || "",
-              availableSizes: [],
-              availableTextures: [],
-            })),
+            (data.items || []).map((it: any) => {
+              let availableSizes: {name: string, price: number}[] = [];
+              if (it.productSnapshot?.sizes) {
+                if (Array.isArray(it.productSnapshot.sizes)) {
+                  availableSizes = it.productSnapshot.sizes.map((s: any) => ({ name: s.name, price: s.price || 0 }));
+                } else if (typeof it.productSnapshot.sizes === 'object') {
+                  availableSizes = Object.keys(it.productSnapshot.sizes).filter(k => (it.productSnapshot.sizes as any)[k]).map(k => ({ name: k, price: 0 }));
+                }
+              }
+              return {
+                id: crypto.randomUUID(),
+                productId: it.productId,
+                name: it.productSnapshot?.productName || "",
+                hsnNumber: it.productSnapshot?.hsnNumber || "",
+                description: it.productSnapshot?.description || "",
+                quantity: it.quantity || 1,
+                price: it.unitPrice || 0,
+                discountPercent: it.discountPercent || 0,
+                selectedSize: it.selectedSize || "",
+                selectedTexture: it.selectedTexture || "",
+                availableSizes: availableSizes,
+                availableTextures: [],
+              };
+            }),
           );
         }
       } catch (err) {
@@ -273,33 +283,29 @@ function NewQuotation() {
       found.productImages?.[0]?.url;
     
     // Default available sizes
-    let sizes: string[] = [];
+    let sizes: { name: string; price: number }[] = [];
     if (Array.isArray(found.sizes)) {
-      sizes = found.sizes.map(s => s.name);
+      sizes = found.sizes.map(s => ({ name: s.name, price: s.price || 0 }));
     } else if (found.sizes && typeof found.sizes === 'object') {
-      sizes = Object.keys(found.sizes).filter(k => (found.sizes as any)[k]);
+      sizes = Object.keys(found.sizes).filter(k => (found.sizes as any)[k]).map(k => ({ name: k, price: 0 }));
     }
     
-    // Derive available textures from variants, or fallback to product images if empty
-    let textures = Array.from(new Set(found.variants?.map(v => v.texture) || [])).map(t => {
-      const gt = globalTextures.find(g => g.name === t);
-      return { url: gt?.url || "", name: t };
-    });
+    // Show all global textures
+    let textures = globalTextures.map(gt => ({ url: gt.url || "", name: gt.name }));
     if (textures.length === 0) {
       textures = found.productImages
           ?.filter((i) => i.type === "texture")
           .map((i) => ({ url: i.url, name: i.name || "" })) || [];
     }
     
-    const selectedSize = sizes[0] || "";
+    const selectedSize = sizes[0]?.name || "";
     const selectedTexture = textures[0]?.name || textures[0]?.url || img || "";
-    let price = found.unitPrice;
+    let price = sizes[0]?.price || 0;
     let selectedImage = img;
 
     if (found.variants && found.variants.length > 0) {
-      const variant = found.variants.find(v => v.size === selectedSize && v.texture === selectedTexture);
+      const variant = found.variants.find(v => v.texture === selectedTexture);
       if (variant) {
-        price = variant.price;
         selectedImage = variant.productImage || img;
       }
     }
@@ -331,18 +337,31 @@ function NewQuotation() {
       if (it.id !== id) return it;
       const updatedIt = { ...it, ...patch };
       
-      // If size or texture changed, check for variant match
-      if (patch.selectedSize !== undefined || patch.selectedTexture !== undefined) {
+      if (patch.selectedSize !== undefined) {
+        const product = products.find(pr => pr._id === updatedIt.productId);
+        if (product) {
+          let sizes: { name: string; price: number }[] = [];
+          if (Array.isArray(product.sizes)) {
+            sizes = product.sizes.map(s => ({ name: s.name, price: s.price || 0 }));
+          } else if (product.sizes && typeof product.sizes === 'object') {
+            sizes = Object.keys(product.sizes).filter(k => (product.sizes as any)[k]).map(k => ({ name: k, price: 0 }));
+          }
+          const sizeObj = sizes.find(s => s.name === patch.selectedSize);
+          if (sizeObj) {
+            updatedIt.price = sizeObj.price;
+          }
+        }
+      }
+
+      if (patch.selectedTexture !== undefined) {
         const product = products.find(pr => pr._id === updatedIt.productId);
         if (product) {
           const fallbackImg = product.productImages?.find((i: any) => i.type === "product")?.url || product.productImages?.[0]?.url || "";
           if (product.variants && product.variants.length > 0) {
-            const variant = product.variants.find(v => v.size === updatedIt.selectedSize && v.texture === updatedIt.selectedTexture);
+            const variant = product.variants.find(v => v.texture === updatedIt.selectedTexture);
             if (variant) {
-              updatedIt.price = variant.price;
               updatedIt.image = variant.productImage || fallbackImg;
             } else {
-              updatedIt.price = product.unitPrice; // fallback
               updatedIt.image = fallbackImg;
             }
           } else {
@@ -936,14 +955,18 @@ function NewQuotation() {
               <div className="space-y-3">
                 {items.map((it) => {
                   const p = products.find((pr) => pr._id === it.productId);
-                  const availableSizes = ["large", "medium", "small"];
+                  let availableSizes = it.availableSizes?.length ? it.availableSizes : [];
+                  if (availableSizes.length === 0 && p) {
+                    if (Array.isArray(p.sizes)) {
+                      availableSizes = p.sizes.map(s => ({ name: s.name, price: s.price || 0 }));
+                    } else if (p.sizes && typeof p.sizes === 'object') {
+                      availableSizes = Object.keys(p.sizes).filter(k => (p.sizes as any)[k]).map(k => ({ name: k, price: 0 }));
+                    }
+                  }
                   let availableTextures = it.availableTextures?.length ? it.availableTextures : [];
-                  if (availableTextures.length === 0 && p) {
-                    availableTextures = Array.from(new Set(p.variants?.map((v: any) => v.texture) || [])).map((t: any) => {
-                      const gt = globalTextures.find(g => g.name === t);
-                      return { url: gt?.url || "", name: t };
-                    });
-                    if (availableTextures.length === 0) {
+                  if (availableTextures.length === 0) {
+                    availableTextures = globalTextures.map(gt => ({ url: gt.url || "", name: gt.name }));
+                    if (availableTextures.length === 0 && p) {
                       availableTextures = p.productImages?.filter((i: any) => i.type === "texture").map((i: any) => ({ url: i.url, name: i.name || "" })) || [];
                     }
                   }
@@ -1063,8 +1086,8 @@ function NewQuotation() {
                                 className="w-full px-2 py-1 rounded border border-border text-sm"
                               >
                                 {availableSizes.map((sz) => (
-                                  <option key={sz} value={sz}>
-                                    {sz.charAt(0).toUpperCase() + sz.slice(1)}
+                                  <option key={sz.name} value={sz.name}>
+                                    {sz.name.charAt(0).toUpperCase() + sz.name.slice(1)}
                                   </option>
                                 ))}
                               </select>

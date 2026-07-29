@@ -22,7 +22,7 @@ export function errorHandler(
   // ── 1. Known operational API errors ──────────
   if (error instanceof ApiError) {
     res.status(error.statusCode).json(
-      ApiResponse.error(error.message).toJSON()
+      new ApiResponse(false, error.message, null, error.errors ? { errors: error.errors } : undefined).toJSON()
     );
     return;
   }

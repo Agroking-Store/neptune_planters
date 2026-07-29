@@ -401,7 +401,7 @@ function Inventory() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-accent overflow-hidden grid place-items-center shrink-0">
-                          {getProductImage(i) ? <img src={getProductImage(i)} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{(i.productName || "").slice(0, 2)}</span>}
+                          {getProductImage(i) ? <img src={resolveImageUrl(getProductImage(i))} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{(i.productName || "").slice(0, 2)}</span>}
                         </div>
                         <div className="font-medium truncate max-w-[200px]">{i.productName}</div>
                       </div>
@@ -436,7 +436,7 @@ function Inventory() {
           {filtered.map((i) => (
             <div key={i._id} className="p-4 flex gap-3">
               <div className="w-14 h-14 rounded-xl bg-accent overflow-hidden grid place-items-center shrink-0">
-                {getProductImage(i) ? <img src={getProductImage(i)} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{(i.productName || "").slice(0, 2)}</span>}
+                {getProductImage(i) ? <img src={resolveImageUrl(getProductImage(i))} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <span className="text-xs text-accent-foreground">{(i.productName || "").slice(0, 2)}</span>}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">

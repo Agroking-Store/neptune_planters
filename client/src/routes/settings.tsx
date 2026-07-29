@@ -338,7 +338,7 @@ function SettingsPage() {
                       <div className="flex items-center gap-3">
                         {texture.url && (
                           <div className="w-10 h-10 rounded border border-border overflow-hidden shrink-0">
-                            <img src={texture.url} alt="texture" className="w-full h-full object-cover" />
+                            <img src={resolveImageUrl(texture.url)} alt="texture" className="w-full h-full object-cover" />
                           </div>
                         )}
                         <input
@@ -412,7 +412,7 @@ function ImageDrop({
       <div className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5"><Tag className="w-3 h-3" /> {label}</div>
       <button type="button" onClick={onPick} className="w-full aspect-video rounded-2xl border-2 border-dashed border-border grid place-items-center text-center overflow-hidden bg-gradient-soft hover:bg-muted transition-colors">
         {value ? (
-          <img src={value} alt={label} className="w-full h-full object-contain bg-black/5" />
+          <img src={resolveImageUrl(value)} alt={label} className="w-full h-full object-contain bg-black/5" />
         ) : (
           <div className="p-4">
             <div className="w-10 h-10 rounded-xl bg-gradient-primary grid place-items-center text-primary-foreground mx-auto mb-2 shadow-elegant"><Upload className="w-4 h-4" /></div>
