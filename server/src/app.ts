@@ -71,12 +71,14 @@ export function createApp(): express.Application {
   // ── Trust proxy (needed for rate limiting behind reverse proxies) ─
   app.set('trust proxy', 1);
 
-  // ── API Routes ────────────────────────────
-  app.use('/api', router);
-
   // ── Static Files ──────────────────────────
+  // Must be BEFORE the API router so /api/uploads requests are served
+  // as static files instead of falling through to the router's 404 handler.
   app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
   app.use('/api/uploads', express.static(path.join(__dirname, '../uploads')));
+
+  // ── API Routes ────────────────────────────
+  app.use('/api', router);
 
   // ── 404 Handler ───────────────────────────
   app.use(notFound);
