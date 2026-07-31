@@ -834,7 +834,7 @@ function NewQuotation() {
                   <Plus className="w-4 h-4" /> Add Item
                 </button>
                 {pickerOpen && (
-                  <div className="absolute right-0 mt-2 w-[min(92vw,360px)] rounded-2xl border border-border bg-popover shadow-elegant p-3 z-20">
+                  <div className="absolute right-0 mt-2 w-[min(92vw,420px)] rounded-2xl border border-border bg-popover shadow-elegant p-3 z-20">
                     <div className="relative">
                       <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                       <input
@@ -859,12 +859,19 @@ function NewQuotation() {
                           const sizesArray = Array.isArray(it.sizes) ? it.sizes : (it.sizes ? Object.values(it.sizes).filter(Boolean) : []);
                           const allSizes =
                             sizesArray.length > 0
-                              ? sizesArray.slice(0, 2).join(", ")
+                              ? sizesArray.slice(0, 2).map((s: any) => typeof s === "object" ? (s.name?.trim() || "") : (typeof s === 'string' ? s.trim() : s)).join(", ")
                               : "";
                           const moreSizes =
                             sizesArray.length > 2
                               ? `+${sizesArray.length - 2}`
                               : "";
+                          const prices = sizesArray.map((s: any) => typeof s === "object" ? (Number(s.price) || 0) : 0);
+                          let priceDisplay = formatINR(it.unitPrice);
+                          if (prices.length > 0) {
+                            const minPrice = Math.min(...prices);
+                            const maxPrice = Math.max(...prices);
+                            priceDisplay = minPrice === maxPrice ? formatINR(minPrice) : `${formatINR(minPrice)} - ${formatINR(maxPrice)}`;
+                          }
                           const textureCount =
                             it.productImages?.filter(
                               (i) => i.type === "texture",
@@ -876,9 +883,9 @@ function NewQuotation() {
                               onClick={() => addItem(it._id)}
                               className="w-full p-3 hover:bg-muted rounded-lg text-left transition-all border-b border-border last:border-0 group relative"
                             >
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-start gap-3">
                                 {/* Left: Image */}
-                                <div className="w-12 h-12 rounded-lg bg-accent overflow-hidden grid place-items-center shrink-0">
+                                <div className="w-14 h-14 rounded-lg bg-accent overflow-hidden grid place-items-center shrink-0 border border-border/50">
                                   {img ? (
                                     <img
                                       src={img}
@@ -886,41 +893,36 @@ function NewQuotation() {
                                       className="w-full h-full object-cover"
                                     />
                                   ) : (
-                                    <span className="text-xs text-accent-foreground">
+                                    <span className="text-xs font-medium text-accent-foreground uppercase">
                                       {it.productName.slice(0, 2)}
                                     </span>
                                   )}
                                 </div>
 
-                                {/* Center: Product Info */}
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-semibold text-sm text-foreground">
+                                {/* Right: Info */}
+                                <div className="flex-1 min-w-0 py-0.5">
+                                  <div className="font-semibold text-sm text-foreground leading-snug line-clamp-2">
                                     {it.productName}
                                   </div>
-                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                  <div className="font-bold text-[13px] text-primary mt-1">
+                                    {priceDisplay}
+                                  </div>
+                                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                                     {allSizes && (
-                                      <span className="text-[10px] text-muted-foreground">
+                                      <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1 bg-muted/40 px-1.5 py-0.5 rounded-md border border-border/50">
                                         📏 {allSizes} {moreSizes}
                                       </span>
                                     )}
                                     {textureCount > 0 && (
-                                      <span className="text-[10px] text-muted-foreground">
-                                        🎨 {textureCount} texture
-                                        {textureCount !== 1 ? "s" : ""}
+                                      <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1 bg-muted/40 px-1.5 py-0.5 rounded-md border border-border/50">
+                                        🎨 {textureCount} texture{textureCount !== 1 ? "s" : ""}
                                       </span>
                                     )}
                                     {it.hsnNumber && (
-                                      <span className="text-[10px] text-muted-foreground">
+                                      <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1 bg-muted/40 px-1.5 py-0.5 rounded-md border border-border/50">
                                         HSN: {it.hsnNumber}
                                       </span>
                                     )}
-                                  </div>
-                                </div>
-
-                                {/* Right: Price */}
-                                <div className="text-right shrink-0">
-                                  <div className="font-bold text-sm text-primary">
-                                    {formatINR(it.unitPrice)}
                                   </div>
                                 </div>
                               </div>

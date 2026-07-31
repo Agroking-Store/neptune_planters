@@ -86,6 +86,17 @@ function Inventory() {
     return undefined;
   };
 
+  const getPriceDisplay = (i: any) => {
+    const sizesArray = Array.isArray(i.sizes) ? i.sizes : (i.sizes ? Object.values(i.sizes).filter(Boolean) : []);
+    const prices = sizesArray.map((s: any) => typeof s === "object" ? (Number(s.price) || 0) : 0).filter((p: any) => typeof p === 'number');
+    if (prices.length > 0) {
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      return minPrice === maxPrice ? formatINR(minPrice) : `${formatINR(minPrice)} - ${formatINR(maxPrice)}`;
+    }
+    return formatINR(i.unitPrice);
+  };
+
   const filtered = useMemo(() => {
     return products.filter((i) => {
       if (!q) return true;
@@ -386,16 +397,13 @@ function Inventory() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
-                {["#", "Product", "Description", "Price", "HSN", "Sizes", "Textures", "Actions"].map((h) => (
-                  <th key={h} className={`font-medium px-4 py-3 whitespace-nowrap ${["Sizes", "Textures"].includes(h) ? "text-center" : "text-left"}`}>{h}</th>
+                {["#", "Product", "Description", "Price", "HSN", "Actions"].map((h) => (
+                  <th key={h} className="font-medium px-4 py-3 whitespace-nowrap text-left">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map((i, idx) => {
-                const sizesCount = Array.isArray(i.sizes) ? i.sizes.length : 0;
-                const texturesCount = Array.isArray(i.productImages) ? i.productImages.filter((img: any) => img.type === "texture").length : 0;
-                
                 return (
                   <tr key={i._id} className="border-t border-border hover:bg-muted/30">
                     <td className="px-4 py-3 text-muted-foreground">{idx + 1}</td>
@@ -410,14 +418,9 @@ function Inventory() {
                     <td className="px-4 py-3 text-muted-foreground">
                       <div className="truncate max-w-[250px]">{i.description || "-"}</div>
                     </td>
-                    <td className="px-4 py-3 font-medium whitespace-nowrap">{formatINR(i.unitPrice)}</td>
+                    <td className="px-4 py-3 font-medium whitespace-nowrap">{getPriceDisplay(i)}</td>
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{i.hsnNumber || "-"}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-medium">{sizesCount}</span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-accent text-accent-foreground text-xs font-medium">{texturesCount}</span>
-                    </td>
+
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
                         <Link to={`/inventory/edit/${i._id}`} className="w-9 h-9 rounded-lg border border-border bg-background hover:bg-muted grid place-items-center" aria-label="Edit"><Pencil className="w-4 h-4 text-primary" /></Link>
@@ -427,7 +430,7 @@ function Inventory() {
                   </tr>
                 );
               })}
-              {!filtered.length && <tr><td colSpan={8} className="p-12 text-center text-muted-foreground text-sm">No items found.</td></tr>}
+              {!filtered.length && <tr><td colSpan={6} className="p-12 text-center text-muted-foreground text-sm">No items found.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -446,7 +449,7 @@ function Inventory() {
                     <div className="text-xs text-muted-foreground truncate">{i.description || (i.hsnNumber ? `HSN: ${i.hsnNumber}` : "")}</div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="font-semibold">{formatINR(i.unitPrice)}</div>
+                    <div className="font-semibold">{getPriceDisplay(i)}</div>
                   </div>
                 </div>
                 <div className="flex gap-2 mt-3">
