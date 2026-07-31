@@ -24,6 +24,7 @@ import { formatINR } from "@/lib/store";
 import { toast } from "sonner";
 import { api, ApiClientError } from "@/lib/api";
 import { downloadQuotationPDF } from "@/lib/pdf";
+import { resolveImageUrl } from "@/lib/utils";
 
 
 export const Route = createFileRoute("/quotations/edit/$id")({
@@ -875,7 +876,7 @@ function EditQuotation() {
                                 <div className="w-14 h-14 rounded-lg bg-accent overflow-hidden grid place-items-center shrink-0 border border-border/50">
                                   {img ? (
                                     <img
-                                      src={img}
+                                      src={resolveImageUrl(img)}
                                       alt=""
                                       className="w-full h-full object-cover"
                                     />
@@ -977,7 +978,7 @@ function EditQuotation() {
                           <div className="w-10 h-10 rounded-lg bg-accent overflow-hidden grid place-items-center shrink-0">
                             {productImage ? (
                               <img
-                                src={productImage}
+                                src={resolveImageUrl(productImage)}
                                 alt=""
                                 className="w-full h-full object-cover"
                               />
@@ -1810,7 +1811,7 @@ function TextureDropdown({
         {currentObj?.url || value ? (
           <>
             <img
-              src={currentObj?.url || value}
+              src={resolveImageUrl(currentObj?.url || value)}
               alt="Texture"
               className="w-full h-full object-cover"
             />
@@ -1841,7 +1842,7 @@ function TextureDropdown({
               className={`relative w-12 h-12 rounded-lg overflow-hidden border-2 transition-colors group ${value === txValue ? "border-primary" : "border-transparent hover:border-border"}`}
             >
               <img
-                src={tx.url}
+                src={resolveImageUrl(tx.url)}
                 alt={tx.name || "Texture"}
                 className="w-full h-full object-cover"
               />
