@@ -26,8 +26,6 @@ export const getSettingsHandler = asyncHandler(async (_req: Request, res: Respon
 // PUT /api/settings
 // ─────────────────────────────────────────────
 export const updateSettingsHandler = asyncHandler(async (req: Request, res: Response) => {
-  const settings = await getSettings();
-  
   // Update fields from body, explicitly omitting internal properties
   const updateData = { ...req.body };
   delete updateData._id;
