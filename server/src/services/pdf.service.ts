@@ -40,7 +40,8 @@ function getLocalImageBase64(url: string): string {
 export interface PdfItemData {
   index: number;
   productName: string;
-  size: string;
+  dimensions: string;
+  sizeName: string;
   unitPrice: number;
   quantity: number;
   discountPercent: number;
@@ -186,7 +187,8 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
     items.push({
       index: index++,
       productName: item.productSnapshot.productName,
-      size: resolvedSize || item.productSnapshot.size || '',
+      sizeName: item.selectedSize || '',
+      dimensions: resolvedSize || item.productSnapshot.size || '',
       unitPrice: item.unitPrice,
       quantity: item.quantity,
       discountPercent: item.discountPercent || 0,
@@ -303,11 +305,20 @@ export async function generateQuotationPdf(quotationId: string): Promise<Buffer>
     // Set viewport to match our 1000px template design
     await page.setViewport({ width: 1000, height: 900 });
 
-    // Load HTML content
+    // Load HTML content — use domcontentloaded to avoid hanging on external font requests
     await page.setContent(html, {
-      waitUntil: 'networkidle0', // Wait for fonts & images to load completely
+      waitUntil: 'domcontentloaded',
       timeout: 30000,
     });
+
+    // Give fonts up to 10s to load, but don't fail if they can't be fetched
+    await page.evaluate(() => {
+      return Promise.race([
+        // @ts-ignore - `document` exists in the Puppeteer browser context, not Node.js
+        (document.fonts as any).ready,
+        new Promise(resolve => setTimeout(resolve, 10000)),
+      ]);
+    }).catch(() => {});
 
     // Generate PDF formatted to A4 proportions (1000px width maintains layout, 1414px height gives A4 ratio)
     const pdfBuffer = await page.pdf({

@@ -92,9 +92,12 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
           <td class="td-sr">${item.index}</td>
           <td class="td-product">
             <div class="product-name">${item.productName}</div>
-            <div class="product-dims">${item.size}</div>
+            ${item.dimensions ? `<div class="product-dims">${item.dimensions}</div>` : ''}
           </td>
-          <td class="td-qty">${item.quantity}</td>
+          <td class="td-qty">
+            <div>${item.quantity}</div>
+            ${item.sizeName ? `<div class="discount-amount" style="text-transform: none; font-weight: normal;">(${item.sizeName})</div>` : ''}
+          </td>
           <td class="td-price">${formatCurrency(item.unitPrice).replace('₹', '').trim()}</td>
           <td class="td-discount">
             <div>${item.discountPercent || 0}%</div>
@@ -573,8 +576,8 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     }
 
     .img-cell--texture img {
-      width: 52px;
-      height: 52px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       object-fit: cover;
       max-width: none;
@@ -986,35 +989,35 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
         <div class="header__meta">
           <div class="header__meta-inner">
             <div class="detail-row">
-              <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">description</span></span>
+              <span class="detail-row__icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg></span>
               <div class="detail-row__content">
                 <span class="detail-row__label">Quotation No.</span>
                 <span class="detail-row__value">: &nbsp;${data.quotationId}</span>
               </div>
             </div>
             <div class="detail-row">
-              <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">calendar_today</span></span>
+              <span class="detail-row__icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg></span>
               <div class="detail-row__content">
                 <span class="detail-row__label">Date</span>
                 <span class="detail-row__value">: &nbsp;${data.createdDate}</span>
               </div>
             </div>
             <div class="detail-row">
-              <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">event_available</span></span>
+              <span class="detail-row__icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16.53 11.06L15.47 10l-4.88 4.88-2.12-2.12-1.06 1.06L10.59 17l5.94-5.94zM19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg></span>
               <div class="detail-row__content">
                 <span class="detail-row__label">Valid Till</span>
                 <span class="detail-row__value">: &nbsp;${data.validTillDate}</span>
               </div>
             </div>
             <div class="detail-row">
-              <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">verified_user</span></span>
+              <span class="detail-row__icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg></span>
               <div class="detail-row__content">
                 <span class="detail-row__label">Payment Terms</span>
                 <span class="detail-row__value">: &nbsp;${data.advancePayment}% Advance</span>
               </div>
             </div>
             <div class="detail-row">
-              <span class="detail-row__icon"><span class="material-symbols-outlined" style="font-size:16px">local_shipping</span></span>
+              <span class="detail-row__icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20 8h-3V4H3v13h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg></span>
               <div class="detail-row__content">
                 <span class="detail-row__label">Delivery</span>
                 <span class="detail-row__value">: &nbsp;${data.deliveryTime} Days</span>
@@ -1208,7 +1211,7 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
     <!-- ═══════════════ BOTTOM CONTACT BAR ═══════════════ -->
     <div class="contact-bar">
       <span class="contact-bar__item">
-        <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">phone</span></span>
+        <span class="contact-bar__icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg></span>
         <span>${fMobile}</span>
       </span>
       <span class="contact-bar__item">
@@ -1222,11 +1225,11 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
         <span>${fInsta || '@neptuneplanters'}</span>
       </span>
       <span class="contact-bar__item">
-        <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:14px">language</span></span>
+        <span class="contact-bar__icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95a15.65 15.65 0 00-1.38-3.56A8.03 8.03 0 0118.92 8zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2s.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56A7.987 7.987 0 015.08 16zm2.95-8H5.08a7.987 7.987 0 013.9-3.56c-.6 1.11-1.06 2.31-1.38 3.56zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2s.07-1.34.16-2h4.68c.09.66.16 1.32.16 2s-.07 1.34-.16 2zm1.18 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95a8.03 8.03 0 01-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2s-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z"/></svg></span>
         <span>${fWeb}</span>
       </span>
       <span class="contact-bar__item">
-        <span class="contact-bar__icon"><span class="material-symbols-outlined" style="font-size:16px">location_on</span></span>
+        <span class="contact-bar__icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></span>
         <span>${fLoc}</span>
       </span>
     </div>
