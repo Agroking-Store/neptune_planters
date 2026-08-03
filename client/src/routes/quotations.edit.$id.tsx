@@ -961,8 +961,14 @@ function EditQuotation() {
                     }
                   }
                   const currentTexture = it.selectedTexture || availableTextures[0]?.name || availableTextures[0]?.url || "";
+                  
+                  let variantImage = undefined;
+                  if (p?.variants && p.variants.length > 0 && currentTexture) {
+                    const variant = p.variants.find((v: any) => v.texture === currentTexture);
+                    variantImage = variant?.productImage;
+                  }
 
-                  const productImage = it.image || p?.productImages?.find((i: any) => i.type === "product")?.url || p?.productImages?.[0]?.url;
+                  const productImage = it.image || variantImage || p?.productImages?.find((i: any) => i.type === "product")?.url || p?.productImages?.[0]?.url;
 
                   const productDescription =
                     it.description || p?.description || "";
