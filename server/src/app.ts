@@ -62,8 +62,10 @@ export function createApp(): express.Application {
   app.use('/api/auth/login', authLimiter);
 
   // ── Body parsers ──────────────────────────
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+  // Limit to 2mb to prevent Node.js / MongoDB BSON serializer crashes from massive Base64 strings.
+  // Images should ideally be uploaded via the /api/upload endpoint instead.
+  app.use(express.json({ limit: '2mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
   // ── Cookie parser ─────────────────────────
   app.use(cookieParser());

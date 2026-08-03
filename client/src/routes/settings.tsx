@@ -3,6 +3,7 @@ import { Save, Upload, Tag, RefreshCw, Loader2, FileText, Package, Trash2 } from
 import { resolveImageUrl } from "@/lib/utils";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { uploadImage, IMAGE_ACCEPT } from "@/lib/uploadImage";
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 
@@ -139,10 +140,28 @@ function SettingsPage() {
     }
   };
 
-  const readFile = (f: File, field: keyof ISettings) => {
-    const reader = new FileReader();
-    reader.onload = () => handleChange(field, reader.result as string);
-    reader.readAsDataURL(f);
+  const handleUpload = async (f: File, field: keyof ISettings) => {
+    const toastId = toast.loading("Uploading image...");
+    const url = await uploadImage(f);
+    if (url) {
+      handleChange(field, url);
+      toast.success("Image uploaded", { id: toastId });
+    } else {
+      toast.dismiss(toastId);
+    }
+  };
+
+  const handleTextureUpload = async (f: File, index: number) => {
+    const toastId = toast.loading("Uploading texture...");
+    const url = await uploadImage(f);
+    if (url) {
+      const newTextures = [...(settings.textures || [])];
+      newTextures[index].url = url;
+      setSettings({ ...settings, textures: newTextures });
+      toast.success("Texture uploaded", { id: toastId });
+    } else {
+      toast.dismiss(toastId);
+    }
   };
 
   if (loading) {
@@ -230,7 +249,7 @@ function SettingsPage() {
                     onPick={() => logoRef.current?.click()}
                     onClear={() => handleChange("logoImg", "")}
                     inputRef={logoRef}
-                    onFile={(f) => readFile(f, "logoImg")}
+                    onFile={(f) => handleUpload(f, "logoImg")}
                   />
                 </div>
                 <div className="w-56">
@@ -240,7 +259,7 @@ function SettingsPage() {
                     onPick={() => planterRef.current?.click()}
                     onClear={() => handleChange("planterImg", "")}
                     inputRef={planterRef}
-                    onFile={(f) => readFile(f, "planterImg")}
+                    onFile={(f) => handleUpload(f, "planterImg")}
                   />
                 </div>
               </div>
@@ -344,18 +363,11 @@ function SettingsPage() {
                         )}
                         <input
                           type="file"
-                          accept="image/*"
+                          accept={IMAGE_ACCEPT}
                           className="text-xs max-w-[200px]"
                           onChange={(e) => {
-                            if (e.target.files?.[0]) {
-                              const reader = new FileReader();
-                              reader.onload = () => {
-                                const newTextures = [...(settings.textures || [])];
-                                newTextures[index].url = reader.result as string;
-                                setSettings({ ...settings, textures: newTextures });
-                              };
-                              reader.readAsDataURL(e.target.files[0]);
-                            }
+                            const file = e.target.files?.[0];
+                            if (file) handleTextureUpload(file, index);
                           }}
                         />
                       </div>
@@ -418,10 +430,11 @@ function ImageDrop({
           <div className="p-4">
             <div className="w-10 h-10 rounded-xl bg-gradient-primary grid place-items-center text-primary-foreground mx-auto mb-2 shadow-elegant"><Upload className="w-4 h-4" /></div>
             <div className="font-medium text-sm">Upload</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">PNG, JPG, HEIC up to 10MB</div>
           </div>
         )}
       </button>
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
+      <input ref={inputRef} type="file" accept={IMAGE_ACCEPT} className="hidden" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
       {value && onClear && <button type="button" onClick={onClear} className="mt-2 text-xs text-destructive hover:underline block text-center w-full">Remove Image</button>}
     </div>
   );

@@ -114,25 +114,15 @@ function Inventory() {
 
   const palette = ["bg-primary", "bg-violet", "bg-success", "bg-warning", "bg-destructive"];
 
-  // Helper: convert a base64 data URI or fetch a URL into a Uint8Array + extension
+  // Helper: fetch a URL and return as Uint8Array + extension for Excel embedding
   const resolveImage = async (src: string): Promise<{ buf: Uint8Array; ext: "png" | "jpeg" } | null> => {
     try {
-      if (src.startsWith("data:")) {
-        const match = src.match(/^data:image\/(png|jpe?g|webp);base64,(.+)$/i);
-        if (!match) return null;
-        const ext = match[1].toLowerCase().startsWith("png") ? "png" as const : "jpeg" as const;
-        const raw = atob(match[2]);
-        const arr = new Uint8Array(raw.length);
-        for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
-        return { buf: arr, ext };
-      } else {
-        const res = await fetch(src);
-        if (!res.ok) return null;
-        const ct = res.headers.get("content-type") || "";
-        const ext = ct.includes("png") ? "png" as const : "jpeg" as const;
-        const arrayBuf = await res.arrayBuffer();
-        return { buf: new Uint8Array(arrayBuf), ext };
-      }
+      const res = await fetch(src);
+      if (!res.ok) return null;
+      const ct = res.headers.get("content-type") || "";
+      const ext = ct.includes("png") ? "png" as const : "jpeg" as const;
+      const arrayBuf = await res.arrayBuffer();
+      return { buf: new Uint8Array(arrayBuf), ext };
     } catch {
       return null;
     }

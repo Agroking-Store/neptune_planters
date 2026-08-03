@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { resolveImageUrl } from "@/lib/utils";
 import { isAuthenticated } from "@/lib/auth";
 import { api, ApiClientError } from "@/lib/api";
-import imageCompression from 'browser-image-compression';
+import { uploadImage, IMAGE_ACCEPT } from "@/lib/uploadImage";
 
 export const Route = createFileRoute("/inventory/new")({
   head: () => ({ meta: [{ title: "Add Inventory Item — Indux" }] }),
@@ -57,66 +57,32 @@ function NewItem() {
     loadDefaults();
   }, []);
 
-  const uploadImage = async (f: File): Promise<string | undefined> => {
-    try {
-      const fd = new FormData();
-      fd.append("images", f);
-      const res = await api.post<any>("/upload", fd);
-      return res.urls[0];
-    } catch (err) {
-      console.error("Upload error:", err);
-      toast.error("Failed to upload image to server");
-      return undefined;
-    }
-  };
-
-  const readFile = async (f: File, setter: (s: string) => void) => {
+  const handleFileUpload = async (f: File, setter: (s: string) => void) => {
     const toastId = toast.loading("Uploading image...");
-    try {
-      const options = {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 1920,
-        useWebWorker: true,
-      };
-      const compressedFile = await imageCompression(f, options);
-      const url = await uploadImage(compressedFile);
-      if (url) {
-        setter(url);
-      }
-    } catch (error) {
-      console.error("Image processing error:", error);
-      toast.error("Failed to process image");
-    } finally {
+    const url = await uploadImage(f);
+    if (url) {
+      setter(url);
+      toast.success("Image uploaded", { id: toastId });
+    } else {
       toast.dismiss(toastId);
     }
   };
 
   const handleVariantFile = async (idx: number, f: File, type: 'product' | 'reference') => {
     const toastId = toast.loading("Uploading variant image...");
-    try {
-      const options = {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 1920,
-        useWebWorker: true,
-      };
-      const compressedFile = await imageCompression(f, options);
-      const url = await uploadImage(compressedFile);
-      
-      if (url) {
-        setVariants(prev => {
-          const newVariants = [...prev];
-          if (type === 'product') {
-            newVariants[idx].productImage = url;
-          } else if (type === 'reference') {
-            newVariants[idx].referenceImage = url;
-          }
-          return newVariants;
-        });
-      }
-    } catch (error) {
-      console.error("Variant image processing error:", error);
-      toast.error("Failed to process image");
-    } finally {
+    const url = await uploadImage(f);
+    if (url) {
+      setVariants(prev => {
+        const newVariants = [...prev];
+        if (type === 'product') {
+          newVariants[idx].productImage = url;
+        } else if (type === 'reference') {
+          newVariants[idx].referenceImage = url;
+        }
+        return newVariants;
+      });
+      toast.success("Image uploaded", { id: toastId });
+    } else {
       toast.dismiss(toastId);
     }
   };
@@ -203,10 +169,10 @@ function NewItem() {
         <Section icon={<ImageIcon className="w-5 h-5" />} title="Product Media" subtitle="Primary product and reference imagery.">
           <div className="flex flex-wrap gap-4">
             <div className="w-40">
-              <ImageDrop label="Product Image" value={image} onPick={() => productImgRef.current?.click()} onClear={() => setImage(undefined)} inputRef={productImgRef} onFile={(f) => readFile(f, setImage)} />
+              <ImageDrop label="Product Image" value={image} onPick={() => productImgRef.current?.click()} onClear={() => setImage(undefined)} inputRef={productImgRef} onFile={(f) => handleFileUpload(f, setImage)} />
             </div>
             <div className="w-40">
-              <ImageDrop label="Reference Image" value={referenceImage} onPick={() => refImgRef.current?.click()} onClear={() => setRefImage(undefined)} inputRef={refImgRef} onFile={(f) => readFile(f, setRefImage)} />
+              <ImageDrop label="Reference Image" value={referenceImage} onPick={() => refImgRef.current?.click()} onClear={() => setRefImage(undefined)} inputRef={refImgRef} onFile={(f) => handleFileUpload(f, setRefImage)} />
             </div>
           </div>
         </Section>
@@ -435,11 +401,11 @@ function ImageDrop({
           <div className="p-4">
             <div className="w-10 h-10 rounded-xl bg-gradient-primary grid place-items-center text-primary-foreground mx-auto mb-2 shadow-elegant"><Upload className="w-4 h-4" /></div>
             <div className="font-medium text-sm">Click to upload</div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">PNG, JPG up to 5MB</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">PNG, JPG, HEIC up to 10MB</div>
           </div>
         )}
       </button>
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
+      <input ref={inputRef} type="file" accept={IMAGE_ACCEPT} className="hidden" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
       {value && onClear && <button type="button" onClick={onClear} className="mt-2 text-xs text-destructive hover:underline">Remove</button>}
     </div>
   );

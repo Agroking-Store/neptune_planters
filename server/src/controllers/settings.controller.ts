@@ -28,14 +28,21 @@ export const getSettingsHandler = asyncHandler(async (_req: Request, res: Respon
 export const updateSettingsHandler = asyncHandler(async (req: Request, res: Response) => {
   const settings = await getSettings();
   
-  // Update fields from body
-  const updateData = req.body;
-  Object.assign(settings, updateData);
-  
-  await settings.save();
+  // Update fields from body, explicitly omitting internal properties
+  const updateData = { ...req.body };
+  delete updateData._id;
+  delete updateData.__v;
+  delete updateData.createdAt;
+  delete updateData.updatedAt;
+
+  const updatedSettings = await Settings.findOneAndUpdate({}, updateData, {
+    new: true,
+    upsert: true,
+    setDefaultsOnInsert: true
+  });
   
   res.status(200).json(
-    ApiResponse.success('Settings updated successfully', settings.toJSON()).toJSON()
+    ApiResponse.success('Settings updated successfully', updatedSettings!.toJSON()).toJSON()
   );
 });
 
