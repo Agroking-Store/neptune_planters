@@ -145,7 +145,7 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
           
           // Legacy support for older products that might not have variants but use linked images
           if (item.selectedTexture) {
-            const selectedTexImg = product.productImages.find((img: any) => img.type === 'texture' && img.url === item.selectedTexture);
+            const selectedTexImg = product.productImages.find((img: any) => img.type === 'texture' && (img.name === item.selectedTexture || img.url === item.selectedTexture));
             if (selectedTexImg) {
               if (selectedTexImg.name) textureName = selectedTexImg.name;
               if (selectedTexImg.linkedUrl) productImageUrl = selectedTexImg.linkedUrl;
@@ -156,7 +156,7 @@ async function buildTemplateData(quotationId: string): Promise<PdfTemplateData> 
         
         // Variant overrides
         if (product.variants && product.variants.length > 0) {
-          const variant = product.variants.find((v: any) => v.size === item.selectedSize && v.texture === item.selectedTexture);
+          const variant = product.variants.find((v: any) => v.texture === item.selectedTexture);
           if (variant) {
             if (variant.productImage) productImageUrl = variant.productImage;
             if (variant.referenceImage) referenceImageUrl = variant.referenceImage;
