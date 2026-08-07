@@ -53,6 +53,11 @@ uploads/
 temp/
 tmp/
 server/uploads/
+mongodb_data/
+mongodb/
+mongodb.msi
+mongodb.zip
+
 
 # ----------------------------------------------------------------------
 # OS & Editor Files

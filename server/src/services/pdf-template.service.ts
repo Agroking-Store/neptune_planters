@@ -45,7 +45,7 @@ function numberToWords(num: number): string {
   return words.trim();
 }
 
-// Load template images as base64 data URIs
+// Load template images and fonts as base64 data URIs
 function getImageDataUri(relativePath: string): string {
   try {
     const imgPath = path.resolve(__dirname, '..', '..', 'assets', relativePath);
@@ -59,8 +59,20 @@ function getImageDataUri(relativePath: string): string {
   }
 }
 
+function getFontDataUri(relativePath: string): string {
+  try {
+    const fontPath = path.resolve(__dirname, '..', '..', 'assets', relativePath);
+    const fontBuffer = fs.readFileSync(fontPath);
+    return `data:font/ttf;base64,${fontBuffer.toString('base64')}`;
+  } catch (error) {
+    console.warn(`[PDF] Could not load fallback font: ${relativePath}`, error);
+    return '';
+  }
+}
+
 const logoDataUri = getImageDataUri('Quotation logo.png');
 const potDataUri = getImageDataUri('planter img.png');
+const sumoFontUri = getFontDataUri('fonts/GreatVibes-Regular.ttf');
 
 export function buildQuotationHtml(data: PdfTemplateData): string {
   // Use settings if available, else fallback to hardcoded defaults
@@ -151,13 +163,20 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Great+Vibes&display=block"
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=block"
     rel="stylesheet" />
   <!-- Material Symbols for icons -->
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block"
     rel="stylesheet" />
 
   <style>
+    @font-face {
+      font-family: 'Great Vibes';
+      src: url('${sumoFontUri}') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+
     /* ═══════════════════════════════════════════
        RESET & BASE
        ═══════════════════════════════════════════ */
@@ -568,8 +587,8 @@ export function buildQuotationHtml(data: PdfTemplateData): string {
 
     .img-cell img {
       width: 100%;
-      max-width: 120px;
-      height: 65px;
+      max-width: 160px;
+      height: 95px;
       object-fit: contain;
       display: block;
       margin: 0 auto;
